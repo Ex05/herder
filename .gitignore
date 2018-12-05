@@ -1,0 +1,24 @@
+# Ignore compiler output.
+out
+out/*
+herder
+herder_test
+herderServerDaemon
+
+# Ignore VS_Code config/tmp files.
+src/.vscode
+src/.vscode/*
+.vscode
+.vscode/*
+vgcore.*
+
+# Ignore log & auto genertated config files.
+
+# Ignore links to removed files that are still in use by some other process.
+.fuse_hidden*
+
+# Ignore TODO list.
+TODO
+
+# Ignore debugger settings/history files.
+.gdb_history
