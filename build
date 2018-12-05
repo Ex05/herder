@@ -1,0 +1,222 @@
+#!/bin/bash
+
+# Clear the screen.
+clear
+clear
+
+# Halt on the first error.
+set -e
+
+# Build settings.
+buildDirectory="out"
+
+compiler="gcc"
+
+preprocessFlags="-E"
+# (E) Only run preprocessor.
+
+assembleFlags="-S"
+
+compileFlags="-pthread -lrt -c -Wall -Wextra -pedantic -Wno-unused-parameter -std=c11"
+# (pthread) Use POSIX threading.
+# (lrt) POSIX.1b realtime extension library.
+# (c) Compile without linking.
+# (Wno-unused-parameter) Disable warning about unused parameters.
+# (Wall) Turn on "all" warnings.
+# (Wextra) Turn on extra warnings not included in 'Wall'.
+# (pedantic-errors) Issue all the warnings demanded by strict ISO C and turns them into errors.
+# (Wno-unused-parameter) Don't warn about unused parameter.
+# (std=c11) Use C11 (C standard revision) ISO/IEC 9899:2011.
+
+additionalDebugFlags="-D DEBUG"
+
+additionaladditionalReleaseFlags="-D NDEBUG"
+
+linkerFlags="-pthread -lrt"
+
+libraries="-lpthread"
+
+# prepareBuildDirectory(buildDirectory)
+prepareBuildDirectory(){
+    # Remove build directory if already present.
+    if [ -d "$1" ]; then
+        rm -r $1
+    fi
+
+    # Create build directory.
+    mkdir $1
+}
+
+# cleanBuildDirectoy(buildDirectory)
+cleanBuildDirectoy(){
+    rm -r $1
+}
+
+# preprocess(compiler, "compilerFlags", buildDirectory, fileName)
+preprocess(){
+    pushd src > /dev/null
+
+    printf "Preprocess:\n"
+
+    \time --format '\tUser time: %Us\n\tSystem time: %Ss\n\tCPU utilization: %P' $1 $2 -o ../$3/$4.i $4.c    
+
+    popd > /dev/null
+}
+
+# assemble(compiler, "compilerFlags", buildDirectory, fileName)
+assemble(){
+    pushd src > /dev/null
+
+    printf "Assembling:\n"
+
+    \time --format '\tUser time: %Us\n\tSystem time: %Ss\n\tCPU utilization: %P' $1 $2 -o ../$3/$4.s ../$3/$4.i    
+
+    popd > /dev/null
+}
+
+# compile(compiler, "compilerFlags", buildDirectory, inputFileName, outputFileName)
+compile(){
+    pushd src >/dev/null
+
+    printf "Compile:\n"
+
+    # Compile.
+    \time --format '\tUser time: %Us\n\tSystem time: %Ss\n\tCPU utilization: %P' $1 $2 -o ../$3/$5 $4
+
+    popd > /dev/null
+}
+
+# link(compiler, "linkFlags", "libraries", buildDirectory, objectFileName, executableName)
+link(){
+    pushd $4 > /dev/null
+    
+    printf "Link:\n"
+
+    #  Link.
+    \time --format '\tUser time: %Us\n\tSystem time: %Ss\n\tCPU utilization: %P' $1 $2 $3 -o ../$6 ../$4/$5.o
+    
+    popd >/dev/null
+}
+
+# buildRelease(fileName, executableName)
+buildRelease(){
+    prepareBuildDirectory $buildDirectory
+
+    preprocess $compiler "$preprocessFlags" $buildDirectory $1
+
+    assemble $compiler "$assembleFlags" $buildDirectory $1
+
+    compile $compiler "$compileFlags" $buildDirectory "../$buildDirectory/$1.s" "$1.o"
+
+    link $compiler "$linkFlags" "$libraries" $buildDirectory $1 $2
+}
+
+# buildDebug(fileName, executableName)
+buildDebug(){
+    prepareBuildDirectory $buildDirectory
+
+    compile $compiler "$compileFlags" $buildDirectory "$1.c" "$1.o"
+
+    link $compiler "$linkFlags" "$libraries" $buildDirectory $1 $2
+}
+
+# buildAndRunTest(fileName, executableName)
+buildAndRunTest(){
+    if [ -d "$2" ]; then
+        rm -r $2
+    fi
+
+    compileFlags="$compileFlags -D TEST_BUILD"
+
+    buildDebug $1 $2
+
+    set +e
+
+    ./$2
+
+    if [ $? -eq 0 ]; then
+        valgrind --leak-check=full --track-origins=yes --show-leak-kinds=all ./$2 > /dev/null
+    fi
+}   
+
+# printBuildOptions(void)
+printBuildOptions(){
+    printf "Usage 'build <target> optinal:<optimisation>'.\n "
+    printf "\tTargets:[herder, server, all, test], Optimisation:[0-3].\n"
+}
+
+# Print build options if no arguments were paresed.
+if [ $# -eq 0 ];then
+    printBuildOptions
+
+    exit -1
+fi
+
+# Build a debug build without optimisations when no arguments are passed.
+# Else apply choosen optimisations.
+if [ $# -eq 1 ] || [ "$1" == "test" ] || [ "$2" == "debug" ]; then
+    compileFlags="$compileFlags -O0 -g $additionalDebugFlags"
+else
+    if [ "$2" == "0" ]; then
+        compileFlags="$compileFlags -O0 $additionalReleaseFlags"
+    else
+        if [ "$2" == "1" ]; then
+            compileFlags="$compileFlags -O1 $additionalReleaseFlags"
+        else
+            if [ "$2" == "2" ]; then
+                compileFlags="$compileFlags -O2 $additionalReleaseFlags"
+            else
+                if [ "$2" == "3" ]; then
+                    compileFlags="$compileFlags -O3 $additionalReleaseFlags"
+                else
+                    printBuildOptions
+
+                    exit -1
+                fi
+            fi
+        fi
+    fi
+fi
+
+# If the build target is herder, build the client side executable.
+if [ "$1" == "herder" ] || [ "$1" == "all" ]; then
+    # Build the debug version of the executable.
+    if [ "$2" == "debug" ];then
+        buildDebug herder herder
+
+        if [ "$1" != "all" ]; then
+            exit 0
+        fi
+    else
+        buildRelease herder herder
+
+        printf "Build completeted.\n"
+
+        if [ "$1" != "all" ]; then
+            exit 0
+        fi
+    fi
+fi
+
+# If the target is 'server' build the sever executable.
+if [ "$1" == "server" ] || [ "$1" == "all" ]; then
+    # Build the debug version of the executable.
+    if [ "$2" == "debug" ]; then
+        buildDebug server herderServerDaemon
+
+        exit 0
+    else
+        buildRelease server herderServerDaemon
+
+        printf "Build completeted.\n"
+
+        exit 0
+    fi
+fi
+
+# Build and Run the test executable.
+if [ "$1" == "test" ]; then
+    buildAndRunTest test herder_test
+
+    exit 0
+fi
