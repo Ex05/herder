@@ -12,9 +12,9 @@ inline void linkedList_init(LinkedList* list) {
 inline void linkedList_add(LinkedList* list, void* data) {
     Node* node = linkedList_initNode(data);
     
-    if (LINKED_LIST_IS_EMPTY(list)) {
+    if(LINKED_LIST_IS_EMPTY(list)) {
         list->tail = node;
-    } else {
+    }else{
         node->next = list->tail;
         list->tail = node;
     }

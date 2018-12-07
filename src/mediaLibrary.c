@@ -17,7 +17,7 @@ local ERROR_CODE mediaLibrary_extractShowName(EpisodeInfo*, LinkedList*, char*, 
 
 local ERROR_CODE mediaLibrary_extractEpisodeNumber(EpisodeInfo*, char*, const uint_fast64_t);
 
-local void mediaLibrary_extractEpisodeName(EpisodeInfo*, char*, const uint_fast64_t);
+local ERROR_CODE mediaLibrary_extractEpisodeName(EpisodeInfo*, char*, const uint_fast64_t);
 
 local ERROR_CODE mediaLibrary_extractSeasonNumber(EpisodeInfo*, char*, const size_t);
 
@@ -318,12 +318,14 @@ inline ERROR_CODE mediaLibrary_extractEpisodeInfo(EpisodeInfo* info, LinkedList*
         error = ERROR_INCOMPLETE;
     }
 
-    mediaLibrary_extractEpisodeName(info, fileName, strlen(fileName));
+    if(mediaLibrary_extractEpisodeName(info, fileName, strlen(fileName)) != ERROR_NO_ERROR){
+        error = ERROR_INCOMPLETE;
+    }
 
     return error;
 }
 
-inline void mediaLibrary_extractEpisodeName(EpisodeInfo* info, char* fileName, uint_fast64_t fileNameLength){
+inline ERROR_CODE mediaLibrary_extractEpisodeName(EpisodeInfo* info, char* fileName, uint_fast64_t fileNameLength){
     char* s;
     while((s = strstr(fileName, "__")) != NULL){
         util_stringCopy(s, s + 1, strlen(s));
@@ -343,16 +345,25 @@ inline void mediaLibrary_extractEpisodeName(EpisodeInfo* info, char* fileName, u
         fileNameLength--;
     }
 
+    if(fileNameLength <= 0){
+        info->nameLength = 0;
+        info->name = NULL;
+
+        return ERROR(ERROR_INCOMPLETE);
+    }
+
     info->name = malloc(sizeof(*info->name) * (fileNameLength + 1));
     strncpy(info->name, fileName, fileNameLength + 1);
 
     info->nameLength = fileNameLength;
+
+    return ERROR(ERROR_NO_ERROR);
 }
 
 inline ERROR_CODE mediaLibrary_extractEpisodeNumber(EpisodeInfo* info, char* fileName, const uint_fast64_t fileNameLength){
     info->episode = mediaLibrary_extractPrefixedNumber(fileName, fileNameLength, 'e');
 
-    if(info->episode <= -1){
+    if(info->episode == 0){
         return ERROR(ERROR_INCOMPLETE);
     }
 
@@ -362,7 +373,7 @@ inline ERROR_CODE mediaLibrary_extractEpisodeNumber(EpisodeInfo* info, char* fil
 inline ERROR_CODE mediaLibrary_extractSeasonNumber(EpisodeInfo* info, char* fileName, const size_t fileNameLength){
     info->season = mediaLibrary_extractPrefixedNumber(fileName, fileNameLength, 's');
 
-    if(info->season <= -1){
+    if(info->season == 0){
         return ERROR(ERROR_INCOMPLETE);
     }
 
@@ -456,6 +467,9 @@ ERROR_CODE mediaLibrary_extractShowName(EpisodeInfo* info, LinkedList* shows, ch
             util_stringCopy(beginIndex, beginIndex + nameLength, strlen(beginIndex) + 1 - nameLength);
         }
     }else{
+        info->showNameLength = 0;
+        info->showName = NULL;
+
         return ERROR(ERROR_INCOMPLETE);
     }
 
@@ -490,7 +504,7 @@ inline int_fast16_t mediaLibrary_extractPrefixedNumber(char* s, uint_fast64_t st
         }
     }
 
-    return -1;
+    return 0;
 }
 
 ERROR_CODE mediaLibrary_import(MediaLibrary* library, const char* importDirectory){
