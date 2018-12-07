@@ -403,7 +403,9 @@ local SERVER_CONTEXT_HANDLER(server_pageExtractShowInfo){
     if((error = mediaLibrary_initEpisodeInfo(&info)) != ERROR_NO_ERROR){
         goto label_onError;
     }else{
-        if((error = mediaLibrary_extractEpisodeInfo(&info, &server->library.shows, fileName, fileNameLength)) != ERROR_NO_ERROR){
+        error = mediaLibrary_extractEpisodeInfo(&info, &server->library.shows, fileName, fileNameLength);
+
+        if(error != ERROR_NO_ERROR || error != ERROR_INCOMPLETE){
             goto label_onError;
         }else{
             util_uint64ToByteArray(response->data + response->dataLength, error);
@@ -1005,13 +1007,13 @@ inline void server_daemonize(const char* workingDirectory){
 
     pid_t pid = fork();
 
-    if (pid < 0){
+    if(pid < 0){
         exit(EXIT_FAILURE);
-    }else if (pid > 0){
+    }else if(pid > 0){
         exit(EXIT_SUCCESS);
     }
 
-    if (setsid() < 0){
+    if(setsid() < 0){
         exit(EXIT_FAILURE);
     }
 
@@ -1020,9 +1022,9 @@ inline void server_daemonize(const char* workingDirectory){
 
     pid = fork();
 
-    if (pid < 0){
+    if(pid < 0){
         exit(EXIT_FAILURE);
-    }else if (pid > 0){
+    }else if(pid > 0){
         exit(EXIT_SUCCESS);
     }
 

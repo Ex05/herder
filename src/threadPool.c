@@ -38,7 +38,7 @@ inline ERROR_CODE threadPool_init(ThreadPool* threadPool, const uint_fast16_t nu
     
      uint_fast16_t i;
      for(i = 0; i < numWorkers; i++){
-        if (pthread_create(&threadPool->threads[i], NULL, threadPool_threadFunc, threadPool) != 0){
+        if(pthread_create(&threadPool->threads[i], NULL, threadPool_threadFunc, threadPool) != 0){
             UTIL_LOG_ERROR("Failed to create thread.");
 
             free(threadPool->threads);       

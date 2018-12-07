@@ -826,22 +826,30 @@ ERROR_CODE herder_extractShowInfo(Property* remoteHost, Property* remotePort, Ep
         uint_fast64_t returnCode = util_byteArrayTo_uint64(response.data + readOffset);
         readOffset += sizeof(uint64_t);
 
-        if(returnCode != ERROR_NO_ERROR){
+        if(returnCode != ERROR_NO_ERROR && returnCode != ERROR_INCOMPLETE){
             error = returnCode;
         }else{
             (*episodeInfo)->showNameLength = util_byteArrayTo_uint64(response.data + readOffset);
             readOffset += sizeof(uint64_t);
 
-            (*episodeInfo)->showName = malloc(sizeof(*(*episodeInfo)->showName) * ((*episodeInfo)->showNameLength) + 1);
-            strncpy((*episodeInfo)->showName, (char*) (response.data + readOffset), (*episodeInfo)->showNameLength);
-            readOffset += (*episodeInfo)->showNameLength;
+            if((*episodeInfo)->showNameLength != 0){
+                (*episodeInfo)->showName = malloc(sizeof(*(*episodeInfo)->showName) * ((*episodeInfo)->showNameLength) + 1);
+                strncpy((*episodeInfo)->showName, (char*) (response.data + readOffset), (*episodeInfo)->showNameLength);
+                readOffset += (*episodeInfo)->showNameLength;
+            }else{
+                (*episodeInfo)->showName = NULL;
+            }            
 
             (*episodeInfo)->nameLength = util_byteArrayTo_uint64(response.data + readOffset);
             readOffset += sizeof(uint64_t);
 
-            (*episodeInfo)->name = malloc(sizeof(*(*episodeInfo)->name) * ((*episodeInfo)->nameLength + 1));
-            strncpy((*episodeInfo)->name, (char*) (response.data + readOffset), (*episodeInfo)->nameLength);
-            readOffset += (*episodeInfo)->nameLength;
+            if((*episodeInfo)->nameLength != 0){
+                (*episodeInfo)->name = malloc(sizeof(*(*episodeInfo)->name) * ((*episodeInfo)->nameLength + 1));
+                strncpy((*episodeInfo)->name, (char*) (response.data + readOffset), (*episodeInfo)->nameLength);
+                readOffset += (*episodeInfo)->nameLength;
+            }else{
+                (*episodeInfo)->name = NULL;
+            }
 
             (*episodeInfo)->season = util_byteArrayTo_uint16(response.data + readOffset);
             readOffset += sizeof(uint16_t);
@@ -866,6 +874,23 @@ label_unMap:
         UTIL_LOG_ERROR(util_toErrorString(ERROR_FAILED_TO_UNMAP_MEMORY));
     }
 
+    // TODO: Extract this to its own function . (Jan - 2018.12.07)
+    if((*episodeInfo)->showName == NULL){
+        UTIL_LOG_CONSOLE_(LOG_INFO, "Failed to extract show name from file: '%s'.", fileName);
+
+        UTIL_LOG_CONSOLE(LOG_INFO, "Please enter the show name...");
+
+        (*episodeInfo)->showName = util_readUserInput();
+    }
+
+     if((*episodeInfo)->name == NULL){
+        UTIL_LOG_CONSOLE_(LOG_INFO, "Failed to extract episode name from file: '%s'.", fileName);
+
+        UTIL_LOG_CONSOLE(LOG_INFO, "Please enter the episode name...");
+
+        (*episodeInfo)->name = util_readUserInput();
+    }
+    
     return ERROR(error);
 }
 

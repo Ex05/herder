@@ -147,7 +147,7 @@ inline ERROR_CODE util_unMap(void* buffer, const uint_fast64_t length){
 inline void util_concatenate(char* dst, const size_t lengthDst, const char* a, const size_t lengthA, const char* b, const size_t lengthB) {
 	strncpy(dst, a, lengthA);
 
-	if (lengthDst - lengthA > 0)
+	if(lengthDst - lengthA > 0)
 		strncpy(dst + lengthA, b, lengthB);
 }
 
@@ -217,7 +217,7 @@ inline void util_stringCopy(char* a, char* b, uint_fast64_t length){
 inline int_fast64_t util_findFirst(const char* s, const uint_fast64_t length, const char c) {    
     int_fast64_t i;    
     for (i = 0; i < (int_fast64_t) length; i++){
-        if (*(s + i) == c){
+        if(*(s + i) == c){
             return i;
         }
     }
@@ -244,7 +244,7 @@ inline int_fast64_t util_findFirst_s(const char* buffer, const uint_fast64_t buf
 inline int_fast64_t util_findLast(const char* s, const uint_fast64_t length, const char c) {    
     int_fast64_t i;    
     for (i = length - 1; i >= 0; i--){
-        if (*(s + i) == c){
+        if(*(s + i) == c){
             return i;
         }
     }
@@ -342,10 +342,10 @@ inline char* util_readUserInput(void){
     while (true) {
         int_fast32_t c = fgetc(stdin);
 
-        if (c == EOF) 
+        if(c == EOF) 
             break;
 
-        if (!isspace(c)) {
+        if(!isspace(c)) {
              ungetc(c, stdin);
 
              break;
@@ -356,7 +356,7 @@ inline char* util_readUserInput(void){
     while (true) {
         int_fast32_t c = fgetc(stdin);
     
-        if (c == '\n' || c == '\0' || c == EOF){
+        if(c == '\n' || c == '\0' || c == EOF){
             s[i] = 0;
 
             break;
@@ -364,7 +364,7 @@ inline char* util_readUserInput(void){
 
         s[i] = c;
 
-        if (i == limit - 1) {
+        if(i == limit - 1) {
             limit *= 2;
 
             s = realloc(s, limit);
@@ -403,7 +403,7 @@ inline int util_hashString(const char* s, uint_fast64_t length){
 }
 
 inline ERROR_CODE util_createDirectory(const char* directory){
-    if (!util_fileExists(directory)){
+    if(!util_fileExists(directory)){
         if(mkdir(directory, 0700) == 0){
          return ERROR(ERROR_NO_ERROR);
         }else{
@@ -472,7 +472,7 @@ inline ERROR_CODE util_getBaseDirectory(char** baseDirectory, uint_fast64_t* bas
     if(firstSeperator == -1){
         return ERROR(ERROR_INVALID_REQUEST_URL);
     // URL: /
-    }else {
+    }else{
         const int_fast64_t secondSeperator = util_findFirst(url + firstSeperator + 1, urlLength - (firstSeperator + 1), '/');
 
         if(secondSeperator == -1){
