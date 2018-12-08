@@ -52,7 +52,7 @@ SERVER_CONTEXT_HANDLER(server_defaultContextHandler){
     uint_fast64_t fileLocationLength;
     char* fileLocation;
     if(request->urlLength == 1 && request->requestURL[0] == '/'){
-        fileLocationLength = 11;
+        fileLocationLength = 11/*/index.html*/;
         fileLocation = alloca(sizeof(*fileLocation) * (11/*/index.html*/ + 1));
 
         memcpy(fileLocation, "/index.html", 11);
