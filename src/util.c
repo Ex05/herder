@@ -334,7 +334,7 @@ inline ERROR_CODE util_deleteFile(const char* file){
 }
 
 // http://www.stroustrup.com/new_learning.pdf
-inline char* util_readUserInput(void){
+char* util_readUserInput(void){
     uint_fast16_t limit = 32;
     char* s = malloc(limit);
 

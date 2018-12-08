@@ -280,6 +280,8 @@ char* util_getHomeDirectory(void);
 
 char* util_getFileName(char*, const uint_fast64_t);
 
+char* util_readUserInput(void);
+
 #undef UTIL_MAX_ERROR_MSG_LENGTH
 
 #endif

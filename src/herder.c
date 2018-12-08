@@ -880,7 +880,7 @@ label_unMap:
 
         UTIL_LOG_CONSOLE(LOG_INFO, "Please enter the show name...");
 
-        (*episodeInfo)->showName = util_readUserInput();
+       (*episodeInfo)->showName = util_readUserInput();
     }
 
      if((*episodeInfo)->name == NULL){
