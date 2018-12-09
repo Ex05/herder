@@ -94,7 +94,7 @@ local ERROR_CODE herder_addEpisode(Property*, Property*, Property*, char*, const
     strncpy(propertyFilePath + userHomeLength, "/herder/settings", 17);
     
     if(!util_fileExists(propertyFilePath)){
-        if(propertyFile_create(8, propertyFilePath) != ERROR_NO_ERROR){
+        if(propertyFile_create(propertyFilePath, 8) != ERROR_NO_ERROR){
             goto label_free;
         }
     }

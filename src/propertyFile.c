@@ -144,7 +144,7 @@ ERROR_CODE propertyFile_init(PropertyFile* propertyFile, const char* fileName){
     return ERROR(ERROR_NO_ERROR);
 }
 
-ERROR_CODE propertyFile_create(const uint8_t numPageEntries, const char* fileName){
+ERROR_CODE propertyFile_create(const char* fileName, const uint8_t numPageEntries){
     FILE* file = fopen(fileName, "a");
 
     if(file == NULL){

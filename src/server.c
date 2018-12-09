@@ -480,7 +480,7 @@ label_return:
         strncpy(propertyFilePath + serverWorkingDirectoryLength, PROPERTY_FILE_NAME, proeprtyFileNameLength + 1);
 
         if(!util_fileExists(propertyFilePath)){
-            propertyFile_create(8, propertyFilePath);
+            propertyFile_create(propertyFilePath, 8);
         }
 
         PropertyFile propertyFile;

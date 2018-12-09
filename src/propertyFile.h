@@ -43,7 +43,7 @@ typedef struct{
 
 ERROR_CODE propertyFile_init(PropertyFile*, const char*);
 
-ERROR_CODE propertyFile_create(const uint_fast8_t, const char*);
+ERROR_CODE propertyFile_create(const char*, const uint_fast8_t);
 
 ERROR_CODE propertyFile_getProperty(PropertyFile*, Property**, const char*);
 

@@ -968,7 +968,7 @@ TEST_TEST_FUNCTION(propertyFile_create){
         }
     }
 
-    if(propertyFile_create(16, PROPERTY_FILE_PATH) != ERROR_NO_ERROR){
+    if(propertyFile_create(PROPERTY_FILE_PATH, 16) != ERROR_NO_ERROR){
         UTIL_LOG_ERROR_("Failed to create property file '%s'.\n", PROPERTY_FILE_PATH);                
 
         return false;
@@ -992,7 +992,7 @@ TEST_TEST_FUNCTION(propertyFile_add){
         }
     }
 
-    if(propertyFile_create(16, PROPERTY_FILE_PATH) != ERROR_NO_ERROR){
+    if(propertyFile_create(PROPERTY_FILE_PATH, 16) != ERROR_NO_ERROR){
         UTIL_LOG_ERROR_("Failed to create property file '%s'.\n", PROPERTY_FILE_PATH);                
 
         return false;
@@ -1048,7 +1048,7 @@ TEST_TEST_FUNCTION(propertyFile_remove){
         }
     }
 
-    if(propertyFile_create(16, PROPERTY_FILE_PATH) != ERROR_NO_ERROR){
+    if(propertyFile_create(PROPERTY_FILE_PATH, 16) != ERROR_NO_ERROR){
         UTIL_LOG_ERROR_("Failed to create property file '%s'.\n", PROPERTY_FILE_PATH);                
 
         return false;
