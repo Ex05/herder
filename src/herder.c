@@ -203,6 +203,21 @@ local ERROR_CODE herder_addEpisode(Property*, Property*, Property*, char*, const
     if(argumentParser_contains(&parser, &argumentSetLibraryDirectory)){
         noValidArgument = false;
 
+        char* libraryDirectoryString;
+        uint_fast64_t libraryDirectoryStringLength;
+        if(argumentSetLibraryDirectory.value[argumentSetLibraryDirectory.valueLength] != '/'){
+            libraryDirectoryStringLength = argumentSetLibraryDirectory.valueLength + 1/*'/'*/ ;
+
+            libraryDirectoryString = alloca(libraryDirectoryStringLength + 1);
+            strncpy(libraryDirectory, argumentSetLibraryDirectory.value, argumentSetLibraryDirectory.valueLength);
+            libraryDirectoryString[libraryDirectoryStringLength - 1] = '/';
+            libraryDirectoryString[libraryDirectoryStringLength] = '\0';
+        }else{
+            libraryDirectoryString = argumentSetLibraryDirectory.value;
+
+            libraryDirectoryStringLength = argumentSetLibraryDirectory.valueLength;
+        }
+
          if(ARGUMENT_PARSER_ARGUMENT_HAS_VALUE(argumentSetLibraryDirectory)){
             if(PROPERTY_IS_NOT_SET(libraryDirectory)){
                 propertyFile_addProperty(&properties, &libraryDirectory, PROPERTY_LIBRARY_DIRECTORY_NAME, argumentSetLibraryDirectory.valueLength + 1);
