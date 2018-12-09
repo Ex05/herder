@@ -209,7 +209,7 @@ local ERROR_CODE herder_addEpisode(Property*, Property*, Property*, char*, const
             libraryDirectoryStringLength = argumentSetLibraryDirectory.valueLength + 1/*'/'*/ ;
 
             libraryDirectoryString = alloca(libraryDirectoryStringLength + 1);
-            strncpy(libraryDirectory, argumentSetLibraryDirectory.value, argumentSetLibraryDirectory.valueLength);
+            strncpy(libraryDirectoryString, argumentSetLibraryDirectory.value, argumentSetLibraryDirectory.valueLength);
             libraryDirectoryString[libraryDirectoryStringLength - 1] = '/';
             libraryDirectoryString[libraryDirectoryStringLength] = '\0';
         }else{
