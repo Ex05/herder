@@ -24,8 +24,6 @@
 #include <sys/stat.h>
 #include <fcntl.h>
 
-#define READ_BUFFER_SIZE 8192
-
 #define SERVER_DAEMON_NAME "herderServerDaemon"
 
 #define PROPERTY_FILE_NAME "server_settings"
@@ -1073,7 +1071,5 @@ inline void server_daemonize(const char* workingDirectory){
 		UTIL_LOG_WARNING("Failed to append signal handler. [SIGTERM]"); 
 	}
 }
-
-#undef READ_BUFFER_SIZE
 
 #endif
