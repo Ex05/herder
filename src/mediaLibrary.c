@@ -21,8 +21,6 @@ local ERROR_CODE mediaLibrary_extractEpisodeName(EpisodeInfo*, char*, const uint
 
 local ERROR_CODE mediaLibrary_extractSeasonNumber(EpisodeInfo*, char*, const size_t);
 
-local int_fast16_t mediaLibrary_extractPrefixedNumber(char*, uint_fast64_t, const char);
-
 local void mediaLibrary_fillEpisodeInfo(EpisodeInfo*);
 
 local ERROR_CODE mediaLibrary_containsShow(LinkedList*, Show**, const char*, const size_t);
@@ -361,7 +359,10 @@ inline ERROR_CODE mediaLibrary_extractEpisodeName(EpisodeInfo* info, char* fileN
 }
 
 inline ERROR_CODE mediaLibrary_extractEpisodeNumber(EpisodeInfo* info, char* fileName, const uint_fast64_t fileNameLength){
-    info->episode = mediaLibrary_extractPrefixedNumber(fileName, fileNameLength, 'e');
+    ERROR_CODE error;
+    if((error = util_extractPrefixedNumber(fileName, fileNameLength, &info->episode, 'e')) != ERROR_NO_ERROR){
+        return ERROR(error);
+    }
 
     if(info->episode == 0){
         return ERROR(ERROR_INCOMPLETE);
@@ -371,7 +372,10 @@ inline ERROR_CODE mediaLibrary_extractEpisodeNumber(EpisodeInfo* info, char* fil
 }
 
 inline ERROR_CODE mediaLibrary_extractSeasonNumber(EpisodeInfo* info, char* fileName, const size_t fileNameLength){
-    info->season = mediaLibrary_extractPrefixedNumber(fileName, fileNameLength, 's');
+    ERROR_CODE error;
+    if((error = util_extractPrefixedNumber(fileName, fileNameLength, &info->season, 's')) != ERROR_NO_ERROR){
+        return ERROR(error);
+    }
 
     if(info->season == 0){
         return ERROR(ERROR_INCOMPLETE);
@@ -478,33 +482,6 @@ ERROR_CODE mediaLibrary_extractShowName(EpisodeInfo* info, LinkedList* shows, ch
 
 inline bool mediaLibrary_isCharcterWordDelimiter(char c){
      return c == '.' || c == ' ' || c == '_';
-}
-
-inline int_fast16_t mediaLibrary_extractPrefixedNumber(char* s, uint_fast64_t stringLength, const char prefix){
-    int_fast64_t offset;
-    while((offset = util_findFirst(s, stringLength, prefix)) != -1){
-        s += ++offset;
-        stringLength -= offset;
-
-        uint_fast64_t i;
-        for(i = 0; i < stringLength; i++){
-            if(isdigit(*(s + i)) == 0){
-                break;
-            }
-        }
-
-        if(i > 0){
-            char* numberString = alloca(sizeof(*numberString) * (i + 1));
-            strncpy(numberString, s, i);
-            numberString[i] = '\0';
-
-            util_stringCopy(s - 1, s + i, strlen(s) + 1 - i);
-
-            return atoi(numberString);
-        }
-    }
-
-    return 0;
 }
 
 ERROR_CODE mediaLibrary_import(MediaLibrary* library, const char* importDirectory){

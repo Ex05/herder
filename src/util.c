@@ -110,6 +110,7 @@ local const char* UTIL_ERROR_CODE_MESSAGE_MAPPING_ARRAY[] = {
     "ERROR_ALREADY_EXIST",
     "ERROR_FAILED_TO_COPY_FILE",
     "ERROR_FAILED_TO_DELETEFILE",
+    "ERROR_CONVERSION_ERROR",
 };
 
 inline const char* util_toErrorString(const ERROR_CODE errorCode){
@@ -587,6 +588,44 @@ inline char* util_getHomeDirectory(void){
 
 inline char* util_getFileName(char* filePath, const uint_fast64_t filePathLength){
     return filePath + (util_findLast(filePath, filePathLength, '/') + 1);
+}
+
+inline ERROR_CODE util_extractPrefixedNumber(char* s, uint_fast64_t stringLength, int_fast16_t* value, const char prefix){
+    int_fast64_t offset;
+    while((offset = util_findFirst(s, stringLength, prefix)) != -1){
+        s += ++offset;
+        stringLength -= offset;
+
+        uint_fast64_t i;
+        for(i = 0; i < stringLength; i++){
+            if(isdigit(*(s + i)) == 0){
+                break;
+            }
+        }
+
+        if(i > 0){
+            char* numberString = alloca(sizeof(*numberString) * (i + 1));
+            strncpy(numberString, s, i);
+            numberString[i] = '\0';
+
+            util_stringCopy(s - 1, s + i, strlen(s) + 1 - i);
+
+            char* endPtr;
+            *value = strtol(numberString, &endPtr, 10);
+
+            if((*value == 0 && endPtr == numberString) || *value == LONG_MIN || *value == LONG_MAX || *value <= 0 || *value > UINT16_MAX){
+                UTIL_LOG_CONSOLE_(LOG_ERR, "'%s' is not a valid number.", numberString);
+
+                return ERROR(ERROR_CONVERSION_ERROR);
+            }
+
+            return ERROR(ERROR_NO_ERROR);
+        }
+    }
+
+    *value = 0;
+
+    return ERROR(ERROR_ENTRY_NOT_FOUND);
 }
 
 #endif
