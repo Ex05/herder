@@ -602,7 +602,14 @@ label_return:
                     }
                 }
 
-                int64_t port = strtol(argumentSetServerExternalPort.value, NULL, 10/*Decimal*/);
+                char* endPtr;
+                const int64_t port = strtol(argumentSetServerExternalPort.value, &endPtr, 10/*Decimal*/);
+
+                if((port == 0 && endPtr == argumentSetServerExternalPort.value) || port == LONG_MIN || port == LONG_MAX || port <= 0 || port > UINT16_MAX){
+                    UTIL_LOG_CONSOLE_(LOG_ERR, "'%s' is not a valid number.", argumentSetServerExternalPort.value);
+
+                    goto label_exit;
+                }
 
                 int8_t* buffer = alloca(sizeof(uint64_t));
                 util_uint64ToByteArray(buffer, port);
