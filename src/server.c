@@ -40,6 +40,8 @@ local ERROR_CODE server_getFile(HerderServer*, CacheObject**, char*, const uint_
 
 local void server_daemonize(const char* workingDirectory);
 
+local ERROR_CODE server_SetRootDirectory(Argument*, PropertyFile*, Property*);
+
 local HerderServer server;
 
 local ARRAY_LIST_EXPAND_FUNCTION(server_expandContextList){
@@ -524,53 +526,10 @@ label_return:
         if(argumentParser_contains(&parser, &argumentSetServerRootDirectory)){
             noValidArgument = false;
 
-            // Note: Make sure 'slashTerminated' is clamped to '0 - 1' so we can use it later to add/subtract depending on wether the string was slash termianted or not. (Jan - 2018.10.20)
-            const bool slashTerminated = (argumentSetServerRootDirectory.value[argumentSetServerRootDirectory.valueLength - 1] == '/') & 0x01;
-
-            const uint_fast64_t serverRootDirectoryLength = argumentSetServerRootDirectory.valueLength + !slashTerminated;
-
-            char* serverRootDirectoryString;
-            if(slashTerminated){
-                serverRootDirectoryString = argumentSetServerRootDirectory.value;
-            }else{
-                serverRootDirectoryString = alloca(sizeof(*serverRootDirectoryString) * (serverRootDirectoryLength + 1));
-                memcpy(serverRootDirectoryString, argumentSetServerRootDirectory.value, argumentSetServerRootDirectory.valueLength);
-                serverRootDirectoryString[serverRootDirectoryLength - 1] = '/';
-                serverRootDirectoryString[serverRootDirectoryLength] = '\0';
+            if((error = server_SetRootDirectory(&argumentSetServerRootDirectory, &propertyFile, serverRootDirectory)) == ERROR_NO_ERROR){
+                 UTIL_LOG_CONSOLE_(LOG_INFO, "Successfully set '%s' to \"%s\".", PROPERTY_SERVER_ROOT_DIRECTORY_NAME , (char*) serverRootDirectory->buffer);
             }
 
-		    if(ARGUMENT_PARSER_ARGUMENT_HAS_VALUE(argumentSetServerRootDirectory)){
-                if(PROPERTY_IS_NOT_SET(serverRootDirectory)){
-                    if((error = propertyFile_addProperty(&propertyFile, &serverRootDirectory, PROPERTY_SERVER_ROOT_DIRECTORY_NAME, serverRootDirectoryLength + 1)) != ERROR_NO_ERROR){
-                        UTIL_LOG_CONSOLE_(LOG_ERR, "ERROR: Failed to set library diorectory '%s'.", util_toErrorString(error));
-
-                        goto label_exit;
-                    }
-                }else{
-                    if(serverRootDirectory->entry->length != serverRootDirectoryLength + 1){
-                        if(propertyFile_removeProperty(serverRootDirectory) != ERROR_NO_ERROR){
-                            UTIL_LOG_CONSOLE_(LOG_ERR, "ERROR: Failed to remove old property '%s' from property file.", PROPERTY_SERVER_ROOT_DIRECTORY_NAME);
-
-                            goto label_exit;
-                        }
-
-                        if(propertyFile_addProperty(&propertyFile, &serverRootDirectory, PROPERTY_SERVER_ROOT_DIRECTORY_NAME, serverRootDirectoryLength + 1) != ERROR_NO_ERROR){
-                            UTIL_LOG_CONSOLE_(LOG_ERR, "ERROR: Failed to add proeprty '%s' to property file.", PROPERTY_SERVER_ROOT_DIRECTORY_NAME);
-
-                            goto label_exit;
-                        }
-                    }
-                }
-
-                if(propertyFile_setBuffer(serverRootDirectory, (int8_t*) serverRootDirectoryString) != ERROR_NO_ERROR){
-                    UTIL_LOG_CONSOLE_(LOG_ERR, "ERROR: Failed to update property '%s' to property file.", PROPERTY_SERVER_ROOT_DIRECTORY_NAME);
-                }else{
-                    UTIL_LOG_CONSOLE_(LOG_INFO, "Successfully set '%s' to \"%s\".", PROPERTY_SERVER_ROOT_DIRECTORY_NAME , (char*) serverRootDirectory->buffer);
-                }
-            }else{
-			    UTIL_LOG_CONSOLE(LOG_INFO, "Invalid command. Usage --setServerRootDirectory <path>.");
-		    }
-            
             goto label_exit;
         }
 
@@ -1070,6 +1029,51 @@ inline void server_daemonize(const char* workingDirectory){
     if(sigaction(SIGTERM, &action, NULL) != 0) {
 		UTIL_LOG_WARNING("Failed to append signal handler. [SIGTERM]"); 
 	}
+}
+
+inline ERROR_CODE server_SetRootDirectory(Argument* argumentSetServerRootDirectory, PropertyFile* propertyFile, Property* serverRootDirectory){
+    // Note: Make sure 'slashTerminated' is clamped to '0 - 1' so we can use it later to add/subtract depending on wether the string was slash termianted or not. (Jan - 2018.10.20)
+    const bool slashTerminated = (argumentSetServerRootDirectory->value[argumentSetServerRootDirectory->valueLength - 1] == '/') & 0x01;
+
+    const uint_fast64_t serverRootDirectoryLength = argumentSetServerRootDirectory->valueLength + !slashTerminated;
+
+    char* serverRootDirectoryString;
+    if(slashTerminated){
+        serverRootDirectoryString = argumentSetServerRootDirectory->value;
+    }else{
+        serverRootDirectoryString = alloca(sizeof(*serverRootDirectoryString) * (serverRootDirectoryLength + 1));
+        memcpy(serverRootDirectoryString, argumentSetServerRootDirectory->value, argumentSetServerRootDirectory->valueLength);
+        serverRootDirectoryString[serverRootDirectoryLength - 1] = '/';
+        serverRootDirectoryString[serverRootDirectoryLength] = '\0';
+    }
+
+    if(ARGUMENT_PARSER_ARGUMENT_HAS_VALUE((*argumentSetServerRootDirectory))){
+        if(PROPERTY_IS_NOT_SET(serverRootDirectory)){
+            if(propertyFile_addProperty(propertyFile, &serverRootDirectory, PROPERTY_SERVER_ROOT_DIRECTORY_NAME, serverRootDirectoryLength + 1) != ERROR_NO_ERROR){
+                return ERROR_(ERROR_FAILED_TO_ADD_PROPERTY, "'%s'", PROPERTY_SERVER_ROOT_DIRECTORY_NAME);
+            }
+        }else{
+            if(serverRootDirectory->entry->length != serverRootDirectoryLength + 1){
+                if(propertyFile_removeProperty(serverRootDirectory) != ERROR_NO_ERROR){
+                    return ERROR_(ERROR_FAILED_TO_REMOVE_PROPERTY, "'%s'", PROPERTY_SERVER_ROOT_DIRECTORY_NAME);
+                }
+
+                if(propertyFile_addProperty(propertyFile, &serverRootDirectory, PROPERTY_SERVER_ROOT_DIRECTORY_NAME, serverRootDirectoryLength + 1) != ERROR_NO_ERROR){
+                    return ERROR_(ERROR_FAILED_TO_ADD_PROPERTY, "'%s'", PROPERTY_SERVER_ROOT_DIRECTORY_NAME);
+                }
+            }
+        }
+
+        if(propertyFile_setBuffer(serverRootDirectory, (int8_t*) serverRootDirectoryString) != ERROR_NO_ERROR){
+            return ERROR_(ERROR_FAILED_TO_UPDATE_PROPERTY, "'%s'", PROPERTY_SERVER_ROOT_DIRECTORY_NAME);
+        }
+    }else{
+        UTIL_LOG_CONSOLE(LOG_INFO, "Invalid command. Usage --setServerRootDirectory <path>.");
+
+        return ERROR(ERROR_INVALID_COMMAND_USAGE);
+    }
+
+    return ERROR(ERROR_NO_ERROR);
 }
 
 #endif
