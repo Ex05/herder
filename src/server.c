@@ -529,7 +529,7 @@ label_return:
             noValidArgument = false;
 
             if((error = server_setRootDirectory(&argumentSetServerRootDirectory, &propertyFile, serverRootDirectory)) == ERROR_NO_ERROR){
-                UTIL_LOG_CONSOLE_(LOG_INFO, "Successfully set '%s' to \"%" PRIdFAST64 "\".", PROPERTY_SERVER_EXTERNAL_PORT_NAME , util_byteArrayTo_uint64(serverExternalPort->buffer));
+                UTIL_LOG_CONSOLE_(LOG_INFO, "Successfully set '%s' to '%s'.", PROPERTY_SERVER_EXTERNAL_PORT_NAME , (char*)serverExternalPort->buffer);
             }
 
             goto label_exit;
@@ -539,7 +539,7 @@ label_return:
             noValidArgument = false;
 
 		     if((error = server_setServerExternalPort(&argumentSetServerExternalPort, &propertyFile, serverExternalPort)) == ERROR_NO_ERROR){
-                UTIL_LOG_CONSOLE_(LOG_INFO, "Successfully set '%s' to \"%" PRIdFAST64 "\".", PROPERTY_SERVER_EXTERNAL_PORT_NAME , util_byteArrayTo_uint64(serverExternalPort->buffer));
+                UTIL_LOG_CONSOLE_(LOG_INFO, "Successfully set '%s' to '%" PRIdFAST64 "'.", PROPERTY_SERVER_EXTERNAL_PORT_NAME , util_byteArrayTo_uint64(serverExternalPort->buffer));
             }
         }
 
