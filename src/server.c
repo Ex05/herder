@@ -40,7 +40,9 @@ local ERROR_CODE server_getFile(HerderServer*, CacheObject**, char*, const uint_
 
 local void server_daemonize(const char* workingDirectory);
 
-local ERROR_CODE server_SetRootDirectory(Argument*, PropertyFile*, Property*);
+local ERROR_CODE server_setRootDirectory(Argument*, PropertyFile*, Property*);
+
+local ERROR_CODE server_setServerExternalPort(Argument*, PropertyFile*, Property*);
 
 local HerderServer server;
 
@@ -526,8 +528,8 @@ label_return:
         if(argumentParser_contains(&parser, &argumentSetServerRootDirectory)){
             noValidArgument = false;
 
-            if((error = server_SetRootDirectory(&argumentSetServerRootDirectory, &propertyFile, serverRootDirectory)) == ERROR_NO_ERROR){
-                 UTIL_LOG_CONSOLE_(LOG_INFO, "Successfully set '%s' to \"%s\".", PROPERTY_SERVER_ROOT_DIRECTORY_NAME , (char*) serverRootDirectory->buffer);
+            if((error = server_setRootDirectory(&argumentSetServerRootDirectory, &propertyFile, serverRootDirectory)) == ERROR_NO_ERROR){
+                UTIL_LOG_CONSOLE_(LOG_INFO, "Successfully set '%s' to \"%" PRIdFAST64 "\".", PROPERTY_SERVER_EXTERNAL_PORT_NAME , util_byteArrayTo_uint64(serverExternalPort->buffer));
             }
 
             goto label_exit;
@@ -536,51 +538,9 @@ label_return:
         if(argumentParser_contains(&parser, &argumentSetServerExternalPort)){
             noValidArgument = false;
 
-		    if(ARGUMENT_PARSER_ARGUMENT_HAS_VALUE(argumentSetServerExternalPort)){
-                if(PROPERTY_IS_NOT_SET(serverExternalPort)){
-                    if((error = propertyFile_addProperty(&propertyFile, &serverExternalPort, PROPERTY_SERVER_EXTERNAL_PORT_NAME, sizeof(uint64_t))) != ERROR_NO_ERROR){
-                        UTIL_LOG_CONSOLE_(LOG_ERR, "ERROR: Failed to set server external port '%s'.", util_toErrorString(error));
-
-                        goto label_exit;
-                    }
-                }else{
-                    if(serverExternalPort->entry->length != sizeof(uint64_t)){
-                        if(propertyFile_removeProperty(serverExternalPort) != ERROR_NO_ERROR){
-                            UTIL_LOG_CONSOLE_(LOG_ERR, "ERROR: Failed to remove old property '%s' from property file.", PROPERTY_SERVER_EXTERNAL_PORT_NAME);
-
-                            goto label_exit;
-                        }
-
-                        if(propertyFile_addProperty(&propertyFile, &serverExternalPort, PROPERTY_SERVER_EXTERNAL_PORT_NAME, sizeof(uint64_t)) != ERROR_NO_ERROR){
-                            UTIL_LOG_CONSOLE_(LOG_ERR, "ERROR: Failed to add property '%s' to property file.", PROPERTY_SERVER_EXTERNAL_PORT_NAME);
-
-                            goto label_exit;
-                        }
-                    }
-                }
-
-                char* endPtr;
-                const int64_t port = strtol(argumentSetServerExternalPort.value, &endPtr, 10/*Decimal*/);
-
-                if((port == 0 && endPtr == argumentSetServerExternalPort.value) || port == LONG_MIN || port == LONG_MAX || port <= 0 || port > UINT16_MAX){
-                    UTIL_LOG_CONSOLE_(LOG_ERR, "'%s' is not a valid number.", argumentSetServerExternalPort.value);
-
-                    goto label_exit;
-                }
-
-                int8_t* buffer = alloca(sizeof(uint64_t));
-                util_uint64ToByteArray(buffer, port);
-
-                if(propertyFile_setBuffer(serverExternalPort, buffer) != ERROR_NO_ERROR){
-                    UTIL_LOG_CONSOLE_(LOG_ERR, "ERROR: Failed to update property '%s' to property file.", PROPERTY_SERVER_EXTERNAL_PORT_NAME);
-                }else{
-                    UTIL_LOG_CONSOLE_(LOG_INFO, "Successfully set '%s' to \"%" PRIdFAST64 "\".", PROPERTY_SERVER_EXTERNAL_PORT_NAME , util_byteArrayTo_uint64(serverExternalPort->buffer));
-                }
-            }else{
-			    UTIL_LOG_CONSOLE(LOG_INFO, "Invalid command. Usage --setServerExternalPort <port>.");
-		    }
-            
-            goto label_exit;
+		     if((error = server_setServerExternalPort(&argumentSetServerExternalPort, &propertyFile, serverExternalPort)) == ERROR_NO_ERROR){
+                UTIL_LOG_CONSOLE_(LOG_INFO, "Successfully set '%s' to \"%" PRIdFAST64 "\".", PROPERTY_SERVER_EXTERNAL_PORT_NAME , util_byteArrayTo_uint64(serverExternalPort->buffer));
+            }
         }
 
         if(argumentParser_contains(&parser, &argumentShowSettings)){
@@ -1031,7 +991,7 @@ inline void server_daemonize(const char* workingDirectory){
 	}
 }
 
-inline ERROR_CODE server_SetRootDirectory(Argument* argumentSetServerRootDirectory, PropertyFile* propertyFile, Property* serverRootDirectory){
+inline ERROR_CODE server_setRootDirectory(Argument* argumentSetServerRootDirectory, PropertyFile* propertyFile, Property* serverRootDirectory){
     // Note: Make sure 'slashTerminated' is clamped to '0 - 1' so we can use it later to add/subtract depending on wether the string was slash termianted or not. (Jan - 2018.10.20)
     const bool slashTerminated = (argumentSetServerRootDirectory->value[argumentSetServerRootDirectory->valueLength - 1] == '/') & 0x01;
 
@@ -1074,6 +1034,48 @@ inline ERROR_CODE server_SetRootDirectory(Argument* argumentSetServerRootDirecto
     }
 
     return ERROR(ERROR_NO_ERROR);
+}
+
+inline ERROR_CODE server_setServerExternalPort(Argument* argumentSetServerExternalPort, PropertyFile* propertyFile, Property* serverExternalPort){
+    if(ARGUMENT_PARSER_ARGUMENT_HAS_VALUE((*argumentSetServerExternalPort))){
+        if(PROPERTY_IS_NOT_SET(serverExternalPort)){
+            if(propertyFile_addProperty(propertyFile, &serverExternalPort, PROPERTY_SERVER_EXTERNAL_PORT_NAME, sizeof(uint64_t)) != ERROR_NO_ERROR){
+                return ERROR_(ERROR_FAILED_TO_ADD_PROPERTY, "'%s'", PROPERTY_SERVER_EXTERNAL_PORT_NAME);
+            }
+        }else{
+            if(serverExternalPort->entry->length != sizeof(uint64_t)){
+                if(propertyFile_removeProperty(serverExternalPort) != ERROR_NO_ERROR){
+                    return ERROR_(ERROR_FAILED_TO_REMOVE_PROPERTY, "'%s'", PROPERTY_SERVER_EXTERNAL_PORT_NAME);
+                }
+
+                if(propertyFile_addProperty(propertyFile, &serverExternalPort, PROPERTY_SERVER_EXTERNAL_PORT_NAME, sizeof(uint64_t)) != ERROR_NO_ERROR){
+                    return ERROR_(ERROR_FAILED_TO_ADD_PROPERTY, "'%s'", PROPERTY_SERVER_EXTERNAL_PORT_NAME);
+                }
+            }
+        }
+
+        int64_t port;
+        if(util_stringToInt(argumentSetServerExternalPort->value, &port) != ERROR_NO_ERROR){
+
+        }else{
+            if(port <= 0 || port > UINT16_MAX){
+                return ERROR_(ERROR_INVALID_VALUE, "Port value must be in range of 0-%" PRIu16 ".", UINT16_MAX);
+            }
+        }
+
+        int8_t* buffer = alloca(sizeof(uint64_t));
+        util_uint64ToByteArray(buffer, port);
+
+        if(propertyFile_setBuffer(serverExternalPort, buffer) != ERROR_NO_ERROR){
+            return ERROR_(ERROR_FAILED_TO_UPDATE_PROPERTY, "'%s'", PROPERTY_SERVER_EXTERNAL_PORT_NAME);
+        }
+    }else{
+        UTIL_LOG_CONSOLE(LOG_INFO, "Invalid command. Usage --setServerExternalPort <port>.");
+
+        return ERROR(ERROR_INVALID_COMMAND_USAGE);
+    }
+
+   return ERROR(ERROR_NO_ERROR);
 }
 
 #endif
