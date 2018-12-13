@@ -485,14 +485,14 @@ label_return:
             propertyFile_create(propertyFilePath, 8);
         }
 
-        PropertyFile propertyFile;
-        propertyFile_init(&propertyFile, propertyFilePath);
+        PropertyFile properties;
+        propertyFile_init(&properties, propertyFilePath);
 
         Property* serverRootDirectory;
-        propertyFile_getProperty(&propertyFile, &serverRootDirectory, PROPERTY_SERVER_ROOT_DIRECTORY_NAME);
+        propertyFile_getProperty(&properties, &serverRootDirectory, PROPERTY_SERVER_ROOT_DIRECTORY_NAME);
 
         Property* serverExternalPort;
-        propertyFile_getProperty(&propertyFile, &serverExternalPort, PROPERTY_SERVER_EXTERNAL_PORT_NAME);
+        propertyFile_getProperty(&properties, &serverExternalPort, PROPERTY_SERVER_EXTERNAL_PORT_NAME);
 
         ArgumentParser parser;
         argumentParser_init(&parser);
@@ -528,7 +528,7 @@ label_return:
         if(argumentParser_contains(&parser, &argumentSetServerRootDirectory)){
             noValidArgument = false;
 
-            if((error = server_setRootDirectory(&argumentSetServerRootDirectory, &propertyFile, serverRootDirectory)) == ERROR_NO_ERROR){
+            if((error = server_setRootDirectory(&argumentSetServerRootDirectory, &properties, serverRootDirectory)) == ERROR_NO_ERROR){
                 UTIL_LOG_CONSOLE_(LOG_INFO, "Successfully set '%s' to '%s'.", PROPERTY_SERVER_EXTERNAL_PORT_NAME , (char*)serverExternalPort->buffer);
             }
 
@@ -538,7 +538,7 @@ label_return:
         if(argumentParser_contains(&parser, &argumentSetServerExternalPort)){
             noValidArgument = false;
 
-		     if((error = server_setServerExternalPort(&argumentSetServerExternalPort, &propertyFile, serverExternalPort)) == ERROR_NO_ERROR){
+		     if((error = server_setServerExternalPort(&argumentSetServerExternalPort, &properties, serverExternalPort)) == ERROR_NO_ERROR){
                 UTIL_LOG_CONSOLE_(LOG_INFO, "Successfully set '%s' to '%" PRIdFAST64 "'.", PROPERTY_SERVER_EXTERNAL_PORT_NAME , util_byteArrayTo_uint64(serverExternalPort->buffer));
             }
         }
@@ -636,7 +636,7 @@ label_return:
 
         util_deleteFile(serverDaemonLockFileName);
 
-        propertyFile_free(&propertyFile);
+        propertyFile_free(&properties);
 
 		closelog();
 

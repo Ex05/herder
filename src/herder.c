@@ -46,6 +46,8 @@ local ERROR_CODE herder_extractShowInfo(Property*, Property*, EpisodeInfo**, cha
 
 local ERROR_CODE herder_addEpisode(Property*, Property*, Property*, char*, const uint_fast64_t);
 
+local ERROR_CODE herder_setImportDirectory(Argument*, PropertyFile*, Property*);
+
 // TODO:(jan) Make custom entry point for the client build, so we won't have to use 'main'.
 #ifndef TEST_BUILD
 	int main(const int argc, const char** argv){
@@ -122,29 +124,15 @@ local ERROR_CODE herder_addEpisode(Property*, Property*, Property*, char*, const
 
     #define REMOTE_HOST_PROPERTIES_SET() ((propertyFile_propertySet(remoteHost, PROPERTY_REMOTE_HOST_NAME) == ERROR_NO_ERROR) && (propertyFile_propertySet(remotePort, PROPERTY_REMOTE_PORT_NAME) == ERROR_NO_ERROR))
 
-	if(argumentParser_contains(&parser, &argumentSetImportDirectory)){
-         noValidArgument = false;
+    if(argumentParser_contains(&parser, &argumentSetImportDirectory)){
+        noValidArgument = false;
 
-         if(ARGUMENT_PARSER_ARGUMENT_HAS_VALUE(argumentSetImportDirectory)){
-            if(PROPERTY_IS_NOT_SET(importDirectory)){
-                propertyFile_addProperty(&properties, &importDirectory, PROPERTY_IMPORT_DIRECTORY_NAME, argumentSetImportDirectory.valueLength + 1);
-            }else{
-                if(importDirectory->entry->length != argumentSetImportDirectory.valueLength + 1){
-                    propertyFile_removeProperty(importDirectory);
-
-                    importDirectory = NULL;
-
-                    propertyFile_addProperty(&properties, &importDirectory, PROPERTY_IMPORT_DIRECTORY_NAME, argumentSetImportDirectory.valueLength + 1);
-                }
-            }
-
-            propertyFile_setBuffer(importDirectory, (int8_t*) argumentSetImportDirectory.value);
-
-            printf("%s(\"%s\").\n", "setImportDirectory", (char*) importDirectory->buffer);
-        }else{
-            UTIL_LOG_CONSOLE(LOG_INFO, "Invalid command. Usage --setImportDirectory <path>.");
+        if((error = herder_setImportDirectory(&argumentSetImportDirectory, &properties, importDirectory)) == ERROR_NO_ERROR){
+            UTIL_LOG_CONSOLE_(LOG_INFO, "Successfully set '%s' to '%s'.", PROPERTY_IMPORT_DIRECTORY_NAME , (char*)importDirectory->buffer);
         }
-	}
+
+        goto label_free;
+    }
 
 	if(argumentParser_contains(&parser, &argumentSetRemoteHost)){
          noValidArgument = false;
@@ -907,6 +895,51 @@ label_unMap:
     }
     
     return ERROR(error);
+}
+
+inline ERROR_CODE herder_setImportDirectory(Argument* argumentSetImportDirectory, PropertyFile* propertyFile, Property* importDirectory){
+    // Note: Make sure 'slashTerminated' is clamped to '0 - 1' so we can use it later to add/subtract depending on wether the string was slash termianted or not. (Jan - 2018.10.20)
+    const bool slashTerminated = (argumentSetImportDirectory->value[argumentSetImportDirectory->valueLength - 1] == '/') & 0x01;
+
+    const uint_fast64_t importDirectoryLength = argumentSetImportDirectory->valueLength + !slashTerminated;
+
+    char* importDirectoryString;
+    if(slashTerminated){
+        importDirectoryString = argumentSetImportDirectory->value;
+    }else{
+        importDirectoryString = alloca(sizeof(*importDirectoryString) * (importDirectoryLength + 1));
+        memcpy(importDirectoryString, argumentSetImportDirectory->value, argumentSetImportDirectory->valueLength);
+        importDirectoryString[importDirectoryLength - 1] = '/';
+        importDirectoryString[importDirectoryLength] = '\0';
+    }
+
+    if(ARGUMENT_PARSER_ARGUMENT_HAS_VALUE((*argumentSetImportDirectory))){
+        if(PROPERTY_IS_NOT_SET(importDirectory)){
+            if(propertyFile_addProperty(propertyFile, &importDirectory, PROPERTY_IMPORT_DIRECTORY_NAME, importDirectoryLength + 1) != ERROR_NO_ERROR){
+                return ERROR_(ERROR_FAILED_TO_ADD_PROPERTY, "'%s'", PROPERTY_IMPORT_DIRECTORY_NAME);
+            }
+        }else{
+            if(importDirectory->entry->length != importDirectoryLength + 1){
+                if(propertyFile_removeProperty(importDirectory) != ERROR_NO_ERROR){
+                    return ERROR_(ERROR_FAILED_TO_REMOVE_PROPERTY, "'%s'", PROPERTY_IMPORT_DIRECTORY_NAME);
+                }
+
+                if(propertyFile_addProperty(propertyFile, &importDirectory, PROPERTY_IMPORT_DIRECTORY_NAME, importDirectoryLength + 1) != ERROR_NO_ERROR){
+                    return ERROR_(ERROR_FAILED_TO_ADD_PROPERTY, "'%s'", PROPERTY_IMPORT_DIRECTORY_NAME);
+                }
+            }
+        }
+
+        if(propertyFile_setBuffer(importDirectory, (int8_t*) importDirectoryString) != ERROR_NO_ERROR){
+            return ERROR_(ERROR_FAILED_TO_UPDATE_PROPERTY, "'%s'", PROPERTY_IMPORT_DIRECTORY_NAME);
+        }
+    }else{
+        UTIL_LOG_CONSOLE(LOG_INFO, "Invalid command. Usage --setImportDirectory <path>.");
+
+        return ERROR(ERROR_INVALID_COMMAND_USAGE);
+    }
+
+    return ERROR(ERROR_NO_ERROR);
 }
 
 #undef HERDER_PROGRAM_NAME
