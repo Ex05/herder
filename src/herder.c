@@ -50,6 +50,8 @@ local ERROR_CODE herder_setImportDirectory(Argument*, PropertyFile*, Property*);
 
 local ERROR_CODE herder_setRemoteHost(Argument*, PropertyFile*, Property*);
 
+local ERROR_CODE herder_setRemoteHostPort(Argument*, PropertyFile*, Property*);
+
 // TODO:(jan) Make custom entry point for the client build, so we won't have to use 'main'.
 #ifndef TEST_BUILD
 	int main(const int argc, const char** argv){
@@ -149,31 +151,11 @@ local ERROR_CODE herder_setRemoteHost(Argument*, PropertyFile*, Property*);
     if(argumentParser_contains(&parser, &argumentSetRemoteHostPort)){
         noValidArgument = false;
 
-         if(ARGUMENT_PARSER_ARGUMENT_HAS_VALUE(argumentSetRemoteHostPort)){
-            if(PROPERTY_IS_NOT_SET(remotePort)){
-                propertyFile_addProperty(&properties, &remotePort, PROPERTY_REMOTE_PORT_NAME, sizeof(uint16_t));
-            }
-
-            errno = 0;
-
-            char* endPtr;
-            long port = strtol(argumentSetRemoteHostPort.value, &endPtr, 10/*Decimal*/);
-
-            if((port == 0 && endPtr == argumentSetRemoteHostPort.value) || (errno == ERANGE && (port == LONG_MIN || port == LONG_MAX))){
-                ERROR(ERROR_INVALID_STATUS_CODE);
-
-                goto label_free;
-            }
-
-            int8_t* buffer = alloca(sizeof(uint16_t));
-            util_uint16ToByteArray(buffer, port);
-
-            propertyFile_setBuffer(remotePort, buffer);
-
-            printf("%s(\"%ld\").\n", "setRemoteHostPort", port);
-        }else{
-            UTIL_LOG_CONSOLE(LOG_INFO, "Invalid command. Usage --setRemotePort <port>.");
+		if((error = herder_setRemoteHostPort(&argumentSetRemoteHostPort, &properties, remotePort)) == ERROR_NO_ERROR){
+            UTIL_LOG_CONSOLE_(LOG_INFO, "Successfully set '%s' to '%" PRIdFAST64 "'.", PROPERTY_REMOTE_PORT_NAME , util_byteArrayTo_uint64(remotePort->buffer));
         }
+
+        goto label_free;
     }
 
     if(argumentParser_contains(&parser, &argumentSetLibraryDirectory)){
@@ -958,6 +940,48 @@ inline ERROR_CODE herder_setRemoteHost(Argument* argumentSetRemoteHost, Property
     }
 
     return ERROR(ERROR_NO_ERROR);    
+}
+
+inline ERROR_CODE herder_setRemoteHostPort(Argument* argumentSetRemoteHostPort, PropertyFile* propertyFile, Property* remotePort){
+    if(ARGUMENT_PARSER_ARGUMENT_HAS_VALUE((*argumentSetRemoteHostPort))){
+        if(PROPERTY_IS_NOT_SET(remotePort)){
+            if(propertyFile_addProperty(propertyFile, &remotePort, PROPERTY_REMOTE_PORT_NAME, sizeof(uint64_t)) != ERROR_NO_ERROR){
+                return ERROR_(ERROR_FAILED_TO_ADD_PROPERTY, "'%s'", PROPERTY_REMOTE_PORT_NAME);
+            }
+        }else{
+            if(remotePort->entry->length != sizeof(uint64_t)){
+                if(propertyFile_removeProperty(remotePort) != ERROR_NO_ERROR){
+                    return ERROR_(ERROR_FAILED_TO_REMOVE_PROPERTY, "'%s'", PROPERTY_REMOTE_PORT_NAME);
+                }
+
+                if(propertyFile_addProperty(propertyFile, &remotePort, PROPERTY_REMOTE_PORT_NAME, sizeof(uint64_t)) != ERROR_NO_ERROR){
+                    return ERROR_(ERROR_FAILED_TO_ADD_PROPERTY, "'%s'", PROPERTY_REMOTE_PORT_NAME);
+                }
+            }
+        }
+
+        int64_t port;
+        if(util_stringToInt(argumentSetRemoteHostPort->value, &port) != ERROR_NO_ERROR){
+
+        }else{
+            if(port <= 0 || port > UINT16_MAX){
+                return ERROR_(ERROR_INVALID_VALUE, "Port value must be in range of 0-%" PRIu16 ".", UINT16_MAX);
+            }
+        }
+
+        int8_t* buffer = alloca(sizeof(uint64_t));
+        util_uint64ToByteArray(buffer, port);
+
+        if(propertyFile_setBuffer(remotePort, buffer) != ERROR_NO_ERROR){
+            return ERROR_(ERROR_FAILED_TO_UPDATE_PROPERTY, "'%s'", PROPERTY_REMOTE_PORT_NAME);
+        }
+    }else{
+        UTIL_LOG_CONSOLE(LOG_INFO, "Invalid command. Usage --setRemotePort <port>.");
+
+        return ERROR(ERROR_INVALID_COMMAND_USAGE);
+    }
+
+   return ERROR(ERROR_NO_ERROR);
 }
 
 #undef HERDER_PROGRAM_NAME
