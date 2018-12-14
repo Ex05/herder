@@ -48,6 +48,8 @@ local ERROR_CODE herder_addEpisode(Property*, Property*, Property*, char*, const
 
 local ERROR_CODE herder_setImportDirectory(Argument*, PropertyFile*, Property*);
 
+local ERROR_CODE herder_setRemoteHost(Argument*, PropertyFile*, Property*);
+
 // TODO:(jan) Make custom entry point for the client build, so we won't have to use 'main'.
 #ifndef TEST_BUILD
 	int main(const int argc, const char** argv){
@@ -128,34 +130,20 @@ local ERROR_CODE herder_setImportDirectory(Argument*, PropertyFile*, Property*);
         noValidArgument = false;
 
         if((error = herder_setImportDirectory(&argumentSetImportDirectory, &properties, importDirectory)) == ERROR_NO_ERROR){
-            UTIL_LOG_CONSOLE_(LOG_INFO, "Successfully set '%s' to '%s'.", PROPERTY_IMPORT_DIRECTORY_NAME , (char*)importDirectory->buffer);
+            UTIL_LOG_CONSOLE_(LOG_INFO, "Successfully set '%s' to '%s'.", PROPERTY_IMPORT_DIRECTORY_NAME , (char*) importDirectory->buffer);
         }
 
         goto label_free;
     }
 
 	if(argumentParser_contains(&parser, &argumentSetRemoteHost)){
-         noValidArgument = false;
+        noValidArgument = false;
 
-         if(ARGUMENT_PARSER_ARGUMENT_HAS_VALUE(argumentSetRemoteHost)){
-            if(PROPERTY_IS_NOT_SET(remoteHost)){
-                propertyFile_addProperty(&properties, &remoteHost, PROPERTY_REMOTE_HOST_NAME, argumentSetRemoteHost.valueLength + 1);
-            }else{
-                if(remoteHost->entry->length != argumentSetRemoteHost.valueLength + 1){
-                    propertyFile_removeProperty(remoteHost);
-
-                    remoteHost = NULL;
-
-                    propertyFile_addProperty(&properties, &remoteHost, PROPERTY_REMOTE_HOST_NAME, argumentSetRemoteHost.valueLength + 1);
-                }
-            }
-
-            propertyFile_setBuffer(remoteHost, (int8_t*) argumentSetRemoteHost.value);
-
-            printf("%s(\"%s\").\n", "setRemoteHost", (char*) remoteHost->buffer);
-        }else{
-            UTIL_LOG_CONSOLE(LOG_INFO, "Invalid command. Usage --setRemoteHost <URL>.");
+        if((error = herder_setRemoteHost(&argumentSetImportDirectory, &properties, remoteHost)) == ERROR_NO_ERROR){
+            UTIL_LOG_CONSOLE_(LOG_INFO, "Successfully set '%s' to '%s'.", PROPERTY_REMOTE_HOST_NAME, (char*) remoteHost->buffer);
         }
+
+        goto label_free;
     }
 
     if(argumentParser_contains(&parser, &argumentSetRemoteHostPort)){
@@ -940,6 +928,36 @@ inline ERROR_CODE herder_setImportDirectory(Argument* argumentSetImportDirectory
     }
 
     return ERROR(ERROR_NO_ERROR);
+}
+
+inline ERROR_CODE herder_setRemoteHost(Argument* argumentSetRemoteHost, PropertyFile* propertyFile, Property* remoteHost){
+    if(ARGUMENT_PARSER_ARGUMENT_HAS_VALUE((*argumentSetRemoteHost))){
+        if(PROPERTY_IS_NOT_SET(remoteHost)){
+            if(propertyFile_addProperty(propertyFile, &remoteHost, PROPERTY_REMOTE_HOST_NAME, argumentSetRemoteHost->valueLength + 1) != ERROR_NO_ERROR){
+                return ERROR_(ERROR_FAILED_TO_ADD_PROPERTY, "'%s'", PROPERTY_REMOTE_HOST_NAME);
+            }
+        }else{
+            if(remoteHost->entry->length != argumentSetRemoteHost->valueLength + 1){
+                if(propertyFile_removeProperty(remoteHost) != ERROR_NO_ERROR){
+                    return ERROR_(ERROR_FAILED_TO_REMOVE_PROPERTY, "'%s'", PROPERTY_REMOTE_HOST_NAME);
+                }
+
+                if(propertyFile_addProperty(propertyFile, &remoteHost, PROPERTY_REMOTE_HOST_NAME, argumentSetRemoteHost->valueLength + 1) != ERROR_NO_ERROR){
+                    return ERROR_(ERROR_FAILED_TO_ADD_PROPERTY, "'%s'", PROPERTY_REMOTE_HOST_NAME);
+                }
+            }
+        }
+
+        if(propertyFile_setBuffer(remoteHost, (int8_t*) argumentSetRemoteHost->value) != ERROR_NO_ERROR){
+            return ERROR_(ERROR_FAILED_TO_UPDATE_PROPERTY, "'%s'", PROPERTY_REMOTE_HOST_NAME);
+        }
+    }else{
+        UTIL_LOG_CONSOLE(LOG_INFO, "Invalid command. Usage --setRemoteHost <URL>.");
+
+        return ERROR(ERROR_INVALID_COMMAND_USAGE);
+    }
+
+    return ERROR(ERROR_NO_ERROR);    
 }
 
 #undef HERDER_PROGRAM_NAME
