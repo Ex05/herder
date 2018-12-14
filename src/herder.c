@@ -961,8 +961,9 @@ inline ERROR_CODE herder_setRemoteHostPort(Argument* argumentSetRemoteHostPort, 
         }
 
         int64_t port;
-        if(util_stringToInt(argumentSetRemoteHostPort->value, &port) != ERROR_NO_ERROR){
-
+        ERROR_CODE error;
+        if((error = util_stringToInt(argumentSetRemoteHostPort->value, &port)) != ERROR_NO_ERROR){
+            return ERROR(error);
         }else{
             if(port <= 0 || port > UINT16_MAX){
                 return ERROR_(ERROR_INVALID_VALUE, "Port value must be in range of 0-%" PRIu16 ".", UINT16_MAX);
