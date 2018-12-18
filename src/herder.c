@@ -58,6 +58,8 @@ local ERROR_CODE herder_setLibraryDirectory(Argument*, PropertyFile*, Property*)
 
 local ERROR_CODE herder_import(Argument*, PropertyFile*);
 
+local ERROR_CODE herder_killDaemon(Argument*, PropertyFile*);
+
 // TODO:(jan) Make custom entry point for the client build, so we won't have to use 'main'.
 #ifndef TEST_BUILD
 	int main(const int argc, const char** argv){
@@ -184,12 +186,12 @@ local ERROR_CODE herder_import(Argument*, PropertyFile*);
 
     if(argumentParser_contains(&parser, &argumentKillDeamon)){
         noValidArgument = false;
-
-        if(REMOTE_HOST_PROPERTIES_SET()){
-            UTIL_LOG_CONSOLE(LOG_CRIT, "Kill daemon.");
-
-            UTIL_LOG_CRITICAL("Function not implemented.");
+   
+        if((error = herder_killDaemon(&argumentKillDeamon, &properties)) == ERROR_NO_ERROR){
+            // TODO: Add handling of error or success case (Jan - 2018.12.18)
         }
+
+        goto label_free;
     }
 
     if(argumentParser_contains(&parser, &argumentShowInfo)){
@@ -994,6 +996,9 @@ inline ERROR_CODE herder_import(Argument* argumentImport, PropertyFile* property
     return ERROR(ERROR_FUNCTION_NOT_IMPLEMENTED);
 }
 
+inline ERROR_CODE herder_killDaemon(Argument* argumentImport, PropertyFile* propertyFile){
+    return ERROR(ERROR_FUNCTION_NOT_IMPLEMENTED);
+}
 
 #undef HERDER_PROGRAM_NAME
 
