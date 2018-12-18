@@ -117,6 +117,7 @@ local const char* UTIL_ERROR_CODE_MESSAGE_MAPPING_ARRAY[] = {
     "ERROR_FAILED_TO_UPDATE_PROPERTY",
     "ERROR_INVALID_STRING",
     "ERROR_INVALID_VALUE",
+    "ERROR_FUNCTION_NOT_IMPLEMENTED"
 };
 
 inline const char* util_toErrorString(const ERROR_CODE errorCode){

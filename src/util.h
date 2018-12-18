@@ -103,6 +103,7 @@ typedef enum{
     ERROR_FAILED_TO_UPDATE_PROPERTY,
     ERROR_INVALID_STRING,
     ERROR_INVALID_VALUE,
+    ERROR_FUNCTION_NOT_IMPLEMENTED
 }ERROR_CODE;
 
 ERROR_CODE util_formatNumber(char*, uint_fast64_t*, const int_fast64_t);
