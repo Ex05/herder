@@ -60,6 +60,8 @@ local ERROR_CODE herder_import(Argument*, PropertyFile*);
 
 local ERROR_CODE herder_killDaemon(Argument*, PropertyFile*);
 
+local ERROR_CODE herder_showInfo(Argument*, PropertyFile*, Property*, Property*);
+
 // TODO:(jan) Make custom entry point for the client build, so we won't have to use 'main'.
 #ifndef TEST_BUILD
 	int main(const int argc, const char** argv){
@@ -197,23 +199,15 @@ local ERROR_CODE herder_killDaemon(Argument*, PropertyFile*);
     if(argumentParser_contains(&parser, &argumentShowInfo)){
         noValidArgument = false;
 
-        if(REMOTE_HOST_PROPERTIES_SET()){
-            if(!ARGUMENT_PARSER_ARGUMENT_HAS_VALUE(argumentShowInfo)){
-                UTIL_LOG_CONSOLE(LOG_INFO, "Please provide a show name. Use '--help' to see the help menu.");
+        if((error = herder_showInfo(&argumentShowInfo, &properties, remoteHost, remotePort)) != ERROR_NO_ERROR){
+            if(error == ERROR_UNKNOWN_SHOW){
+                UTIL_LOG_CONSOLE_(LOG_INFO, "Unknown show '%s'.", argumentShowInfo.value);
             }else{
-                if(REMOTE_HOST_PROPERTIES_SET()){
-                    error = herder_pullShowInfo(remoteHost, remotePort, argumentShowInfo.value, argumentShowInfo.valueLength);
-                    
-                    if(error == ERROR_UNKNOWN_SHOW){
-                        UTIL_LOG_CONSOLE_(LOG_INFO, "Unknown show '%s'.", argumentShowInfo.value);
-                    }else{
-                        if(error != ERROR_NO_ERROR){
-                            UTIL_LOG_CONSOLE_(LOG_ERR, "Failed to fetch show info for show '%s'. [%s]", argumentShowInfo.value,util_toErrorString(error));
-                        }
-                    }
-                }
+                 UTIL_LOG_CONSOLE_(LOG_ERR, "Failed to fetch show info for show '%s'. [%s]", argumentShowInfo.value,util_toErrorString(error));
             }
         }
+
+        goto label_free;
     }
 
     if(argumentParser_contains(&parser, &argumentListShows)){
@@ -276,8 +270,6 @@ label_free:
 
 	return EXIT_SUCCESS;
 }
-
-#undef REMOTE_HOST_PROPERTIES_SET
 
 inline void herder_printHelp(void){
     printf("Usage: herder --[command]/-[alias] <arguments>.\n\n");
@@ -1000,7 +992,23 @@ inline ERROR_CODE herder_killDaemon(Argument* argumentImport, PropertyFile* prop
     return ERROR(ERROR_FUNCTION_NOT_IMPLEMENTED);
 }
 
+inline ERROR_CODE herder_showInfo(Argument* argumentShowInfo, PropertyFile* propertyFile, Property* remoteHost, Property* remotePort){
+    if(REMOTE_HOST_PROPERTIES_SET()){
+        if(!ARGUMENT_PARSER_ARGUMENT_HAS_VALUE((*argumentShowInfo))){
+            UTIL_LOG_CONSOLE(LOG_INFO, "Invalid command. Usage --info <name>.");
+
+            return ERROR(ERROR_INVALID_COMMAND_USAGE);
+        }else{
+            return ERROR(herder_pullShowInfo(remoteHost, remotePort, argumentShowInfo->value, argumentShowInfo->valueLength));
+        }
+    }else{
+        return ERROR(ERROR_PROPERTY_NOT_SET);
+    }
+}
+
 #undef HERDER_PROGRAM_NAME
+
+#undef REMOTE_HOST_PROPERTIES_SET
 
 #undef PROPERTY_IMPORT_DIRECTORY_NAME
 #undef PROPERTY_REMOTE_HOST_NAME
