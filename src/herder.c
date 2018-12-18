@@ -62,6 +62,8 @@ local ERROR_CODE herder_killDaemon(Argument*, PropertyFile*);
 
 local ERROR_CODE herder_showInfo(Argument*, PropertyFile*, Property*, Property*);
 
+local ERROR_CODE herder_argumentAdd(Argument*, PropertyFile*, Property*, Property*);
+
 // TODO:(jan) Make custom entry point for the client build, so we won't have to use 'main'.
 #ifndef TEST_BUILD
 	int main(const int argc, const char** argv){
@@ -227,18 +229,11 @@ local ERROR_CODE herder_showInfo(Argument*, PropertyFile*, Property*, Property*)
     if(argumentParser_contains(&parser, &argumentAddShow)){
         noValidArgument = false;
 
-        if(!ARGUMENT_PARSER_ARGUMENT_HAS_VALUE(argumentAddShow)){
-            UTIL_LOG_CONSOLE(LOG_INFO, "Please provide a show name. Use '--help' to see the help menu.");
-        }else{
-            if(REMOTE_HOST_PROPERTIES_SET()){
-                ERROR_CODE error;
-                if((error = herder_addShow(remoteHost, remotePort, argumentAddShow.value, argumentAddShow.valueLength)) != ERROR_NO_ERROR){
-                    UTIL_LOG_CONSOLE_(LOG_ERR, "Failed to add show '%s' to the library. [%s]", argumentAddShow.value, util_toErrorString(error));
-                }else{
-                    UTIL_LOG_CONSOLE_(LOG_INFO, "Added '%s' to the library.", argumentAddShow.value);
-                }
-            }
+        if((error = herder_argumentAdd(&argumentAddShow, &properties, remoteHost, remotePort)) == ERROR_NO_ERROR){
+            UTIL_LOG_CONSOLE_(LOG_INFO, "Added '%s' to the library.", argumentAddShow.value);
         }
+
+        goto label_free;
     }
 
     if(argumentParser_contains(&parser, &argumentAdd)){
@@ -1003,6 +998,20 @@ inline ERROR_CODE herder_showInfo(Argument* argumentShowInfo, PropertyFile* prop
         }
     }else{
         return ERROR(ERROR_PROPERTY_NOT_SET);
+    }
+}
+
+inline ERROR_CODE herder_argumentAdd(Argument* argumentAddShow, PropertyFile* propertyFile, Property* remoteHost, Property* remotePort){
+    if(!ARGUMENT_PARSER_ARGUMENT_HAS_VALUE((*argumentAddShow))){
+        UTIL_LOG_CONSOLE(LOG_INFO, "Invalid command. Usage -a, --add <file>.");
+
+        return ERROR(ERROR_INVALID_COMMAND_USAGE);
+    }else{
+        if(REMOTE_HOST_PROPERTIES_SET()){
+            return ERROR(herder_addShow(remoteHost, remotePort, argumentAddShow->value,argumentAddShow->valueLength));
+        }else{
+            return ERROR(ERROR_PROPERTY_NOT_SET);
+        }
     }
 }
 
