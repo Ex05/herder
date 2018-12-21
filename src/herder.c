@@ -62,6 +62,8 @@ local ERROR_CODE herder_killDaemon(Argument*, PropertyFile*);
 
 local ERROR_CODE herder_showInfo(Argument*, PropertyFile*, Property*, Property*);
 
+local ERROR_CODE herder_argumentListShows(Argument*, PropertyFile*, Property*, Property*);
+
 local ERROR_CODE herder_argumentAdd(Argument*, PropertyFile*, Property*, Property*);
 
 // TODO:(jan) Make custom entry point for the client build, so we won't have to use 'main'.
@@ -182,7 +184,7 @@ local ERROR_CODE herder_argumentAdd(Argument*, PropertyFile*, Property*, Propert
        noValidArgument = false;
 
         if((error = herder_import(&argumentImport, &properties)) == ERROR_NO_ERROR){
-            // TODO: Add handling of error or success case (Jan - 2018.12.18)
+            // TODO: Add handling of error or success case. (Jan - 2018.12.18)
         }
 
         goto label_free;
@@ -192,7 +194,7 @@ local ERROR_CODE herder_argumentAdd(Argument*, PropertyFile*, Property*, Propert
         noValidArgument = false;
    
         if((error = herder_killDaemon(&argumentKillDeamon, &properties)) == ERROR_NO_ERROR){
-            // TODO: Add handling of error or success case (Jan - 2018.12.18)
+            // TODO: Add handling of error or success case. (Jan - 2018.12.18)
         }
 
         goto label_free;
@@ -215,14 +217,8 @@ local ERROR_CODE herder_argumentAdd(Argument*, PropertyFile*, Property*, Propert
     if(argumentParser_contains(&parser, &argumentListShows)){
         noValidArgument = false;
 
-        if(ARGUMENT_PARSER_ARGUMENT_HAS_VALUE(argumentListShows)){
-            UTIL_LOG_CONSOLE(LOG_INFO, "Invalid command. Use '--help' to see the help menu.");
-        }else{
-            if(REMOTE_HOST_PROPERTIES_SET()){
-                if((error = herder_listShows(remoteHost, remotePort)) != ERROR_NO_ERROR){
-                    UTIL_LOG_CONSOLE_(LOG_ERR, "Failed to fetch list of all shows. [%s]", util_toErrorString(error));
-                }
-            }
+        if((error = herder_argumentListShows(&argumentListShows, &properties, remoteHost, remotePort)) == ERROR_NO_ERROR){
+            // TODO: Add handling of error or success case. (Jan - 2018.12.18)
         }
     }
 
@@ -999,6 +995,21 @@ inline ERROR_CODE herder_showInfo(Argument* argumentShowInfo, PropertyFile* prop
     }else{
         return ERROR(ERROR_PROPERTY_NOT_SET);
     }
+}
+
+inline ERROR_CODE herder_argumentListShows(Argument* argumentListShows, PropertyFile* propertyFile, Property* remoteHost, Property* remotePort){
+
+     if(ARGUMENT_PARSER_ARGUMENT_HAS_VALUE((*argumentListShows))){
+            UTIL_LOG_CONSOLE(LOG_INFO, "Invalid command. Usage -l, --list <show>.");
+
+            return ERROR(ERROR_INVALID_COMMAND_USAGE);
+        }else{
+            if(REMOTE_HOST_PROPERTIES_SET()){
+                return ERROR(herder_listShows(remoteHost, remotePort));
+            }else{
+                return ERROR(ERROR_PROPERTY_NOT_SET);
+            }
+        }
 }
 
 inline ERROR_CODE herder_argumentAdd(Argument* argumentAddShow, PropertyFile* propertyFile, Property* remoteHost, Property* remotePort){
