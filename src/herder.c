@@ -48,19 +48,19 @@ local ERROR_CODE herder_extractShowInfo(Property*, Property*, EpisodeInfo**, cha
 
 local ERROR_CODE herder_addEpisode(Property*, Property*, Property*, char*, const uint_fast64_t);
 
-local ERROR_CODE herder_setImportDirectory(Argument*, PropertyFile*, Property*);
+local ERROR_CODE herder_argumentSetImportDirectory(Argument*, PropertyFile*, Property*);
 
-local ERROR_CODE herder_setRemoteHost(Argument*, PropertyFile*, Property*);
+local ERROR_CODE herder_argumentSetRemoteHost(Argument*, PropertyFile*, Property*);
 
-local ERROR_CODE herder_setRemoteHostPort(Argument*, PropertyFile*, Property*);
+local ERROR_CODE herder_argumentSetRemoteHostPort(Argument*, PropertyFile*, Property*);
 
-local ERROR_CODE herder_setLibraryDirectory(Argument*, PropertyFile*, Property*);
+local ERROR_CODE herder_argumentSetLibraryDirectory(Argument*, PropertyFile*, Property*);
 
-local ERROR_CODE herder_import(Argument*, PropertyFile*);
+local ERROR_CODE herder_argumentImport(Argument*, PropertyFile*);
 
-local ERROR_CODE herder_killDaemon(Argument*, PropertyFile*);
+local ERROR_CODE herder_argumentKillDaemon(Argument*, PropertyFile*);
 
-local ERROR_CODE herder_showInfo(Argument*, PropertyFile*, Property*, Property*);
+local ERROR_CODE herder_argumentShowInfo(Argument*, PropertyFile*, Property*, Property*);
 
 local ERROR_CODE herder_argumentListShows(Argument*, PropertyFile*, Property*, Property*);
 
@@ -143,7 +143,7 @@ local ERROR_CODE herder_argumentAdd(Argument*, PropertyFile*, Property*, Propert
     if(argumentParser_contains(&parser, &argumentSetImportDirectory)){
         noValidArgument = false;
 
-        if((error = herder_setImportDirectory(&argumentSetImportDirectory, &properties, importDirectory)) == ERROR_NO_ERROR){
+        if((error = herder_argumentSetImportDirectory(&argumentSetImportDirectory, &properties, importDirectory)) == ERROR_NO_ERROR){
             UTIL_LOG_CONSOLE_(LOG_INFO, "Successfully set '%s' to '%s'.", PROPERTY_IMPORT_DIRECTORY_NAME , (char*) importDirectory->buffer);
         }
 
@@ -153,7 +153,7 @@ local ERROR_CODE herder_argumentAdd(Argument*, PropertyFile*, Property*, Propert
 	if(argumentParser_contains(&parser, &argumentSetRemoteHost)){
         noValidArgument = false;
 
-        if((error = herder_setRemoteHost(&argumentSetImportDirectory, &properties, remoteHost)) == ERROR_NO_ERROR){
+        if((error = herder_argumentSetRemoteHost(&argumentSetImportDirectory, &properties, remoteHost)) == ERROR_NO_ERROR){
             UTIL_LOG_CONSOLE_(LOG_INFO, "Successfully set '%s' to '%s'.", PROPERTY_REMOTE_HOST_NAME, (char*) remoteHost->buffer);
         }
 
@@ -163,7 +163,7 @@ local ERROR_CODE herder_argumentAdd(Argument*, PropertyFile*, Property*, Propert
     if(argumentParser_contains(&parser, &argumentSetRemoteHostPort)){
         noValidArgument = false;
 
-		if((error = herder_setRemoteHostPort(&argumentSetRemoteHostPort, &properties, remotePort)) == ERROR_NO_ERROR){
+		if((error = herder_argumentSetRemoteHostPort(&argumentSetRemoteHostPort, &properties, remotePort)) == ERROR_NO_ERROR){
             UTIL_LOG_CONSOLE_(LOG_INFO, "Successfully set '%s' to '%" PRIdFAST64 "'.", PROPERTY_REMOTE_PORT_NAME , util_byteArrayTo_uint64(remotePort->buffer));
         }
 
@@ -173,7 +173,7 @@ local ERROR_CODE herder_argumentAdd(Argument*, PropertyFile*, Property*, Propert
      if(argumentParser_contains(&parser, &argumentSetLibraryDirectory)){
         noValidArgument = false;
 
-        if((error = herder_setImportDirectory(&argumentSetLibraryDirectory, &properties, libraryDirectory)) == ERROR_NO_ERROR){
+        if((error = herder_argumentSetImportDirectory(&argumentSetLibraryDirectory, &properties, libraryDirectory)) == ERROR_NO_ERROR){
             UTIL_LOG_CONSOLE_(LOG_INFO, "Successfully set '%s' to '%s'.", PROPERTY_LIBRARY_DIRECTORY_NAME , (char*) libraryDirectory->buffer);
         }
 
@@ -183,7 +183,7 @@ local ERROR_CODE herder_argumentAdd(Argument*, PropertyFile*, Property*, Propert
     if(argumentParser_contains(&parser, &argumentImport)){
        noValidArgument = false;
 
-        if((error = herder_import(&argumentImport, &properties)) == ERROR_NO_ERROR){
+        if((error = herder_argumentImport(&argumentImport, &properties)) == ERROR_NO_ERROR){
             // TODO: Add handling of error or success case. (Jan - 2018.12.18)
         }
 
@@ -193,7 +193,7 @@ local ERROR_CODE herder_argumentAdd(Argument*, PropertyFile*, Property*, Propert
     if(argumentParser_contains(&parser, &argumentKillDeamon)){
         noValidArgument = false;
    
-        if((error = herder_killDaemon(&argumentKillDeamon, &properties)) == ERROR_NO_ERROR){
+        if((error = herder_argumentKillDaemon(&argumentKillDeamon, &properties)) == ERROR_NO_ERROR){
             // TODO: Add handling of error or success case. (Jan - 2018.12.18)
         }
 
@@ -203,7 +203,7 @@ local ERROR_CODE herder_argumentAdd(Argument*, PropertyFile*, Property*, Propert
     if(argumentParser_contains(&parser, &argumentShowInfo)){
         noValidArgument = false;
 
-        if((error = herder_showInfo(&argumentShowInfo, &properties, remoteHost, remotePort)) != ERROR_NO_ERROR){
+        if((error = herder_argumentShowInfo(&argumentShowInfo, &properties, remoteHost, remotePort)) != ERROR_NO_ERROR){
             if(error == ERROR_UNKNOWN_SHOW){
                 UTIL_LOG_CONSOLE_(LOG_INFO, "Unknown show '%s'.", argumentShowInfo.value);
             }else{
@@ -812,7 +812,7 @@ label_unMap:
     return ERROR(error);
 }
 
-inline ERROR_CODE herder_setImportDirectory(Argument* argumentSetImportDirectory, PropertyFile* propertyFile, Property* importDirectory){
+inline ERROR_CODE herder_argumentSetImportDirectory(Argument* argumentSetImportDirectory, PropertyFile* propertyFile, Property* importDirectory){
     // Note: Make sure 'slashTerminated' is clamped to '0 - 1' so we can use it later to add/subtract depending on wether the string was slash termianted or not. (Jan - 2018.10.20)
     const bool slashTerminated = (argumentSetImportDirectory->value[argumentSetImportDirectory->valueLength - 1] == '/') & 0x01;
 
@@ -857,7 +857,7 @@ inline ERROR_CODE herder_setImportDirectory(Argument* argumentSetImportDirectory
     return ERROR(ERROR_NO_ERROR);
 }
 
-inline ERROR_CODE herder_setRemoteHost(Argument* argumentSetRemoteHost, PropertyFile* propertyFile, Property* remoteHost){
+inline ERROR_CODE herder_argumentSetRemoteHost(Argument* argumentSetRemoteHost, PropertyFile* propertyFile, Property* remoteHost){
     if(ARGUMENT_PARSER_ARGUMENT_HAS_VALUE((*argumentSetRemoteHost))){
         if(PROPERTY_IS_NOT_SET(remoteHost)){
             if(propertyFile_addProperty(propertyFile, &remoteHost, PROPERTY_REMOTE_HOST_NAME, argumentSetRemoteHost->valueLength + 1) != ERROR_NO_ERROR){
@@ -887,7 +887,7 @@ inline ERROR_CODE herder_setRemoteHost(Argument* argumentSetRemoteHost, Property
     return ERROR(ERROR_NO_ERROR);    
 }
 
-inline ERROR_CODE herder_setRemoteHostPort(Argument* argumentSetRemoteHostPort, PropertyFile* propertyFile, Property* remotePort){
+inline ERROR_CODE herder_argumentSetRemoteHostPort(Argument* argumentSetRemoteHostPort, PropertyFile* propertyFile, Property* remotePort){
     if(ARGUMENT_PARSER_ARGUMENT_HAS_VALUE((*argumentSetRemoteHostPort))){
         if(PROPERTY_IS_NOT_SET(remotePort)){
             if(propertyFile_addProperty(propertyFile, &remotePort, PROPERTY_REMOTE_PORT_NAME, sizeof(uint64_t)) != ERROR_NO_ERROR){
@@ -930,7 +930,7 @@ inline ERROR_CODE herder_setRemoteHostPort(Argument* argumentSetRemoteHostPort, 
    return ERROR(ERROR_NO_ERROR);
 }
 
-inline ERROR_CODE herder_setLibraryDirectory(Argument* argumentSetLibraryDirectory, PropertyFile* propertyFile, Property* libraryDirectory){
+inline ERROR_CODE herder_argumentSetLibraryDirectory(Argument* argumentSetLibraryDirectory, PropertyFile* propertyFile, Property* libraryDirectory){
     // Note: Make sure 'slashTerminated' is clamped to '0 - 1' so we can use it later to add/subtract depending on wether the string was slash termianted or not. (Jan - 2018.10.20)
     const bool slashTerminated = (argumentSetLibraryDirectory->value[argumentSetLibraryDirectory->valueLength - 1] == '/') & 0x01;
 
@@ -975,15 +975,15 @@ inline ERROR_CODE herder_setLibraryDirectory(Argument* argumentSetLibraryDirecto
     return ERROR(ERROR_NO_ERROR);
 }
 
-inline ERROR_CODE herder_import(Argument* argumentImport, PropertyFile* propertyFile){
+inline ERROR_CODE herder_argumentImport(Argument* argumentImport, PropertyFile* propertyFile){
     return ERROR(ERROR_FUNCTION_NOT_IMPLEMENTED);
 }
 
-inline ERROR_CODE herder_killDaemon(Argument* argumentImport, PropertyFile* propertyFile){
+inline ERROR_CODE herder_argumentKillDaemon(Argument* argumentImport, PropertyFile* propertyFile){
     return ERROR(ERROR_FUNCTION_NOT_IMPLEMENTED);
 }
 
-inline ERROR_CODE herder_showInfo(Argument* argumentShowInfo, PropertyFile* propertyFile, Property* remoteHost, Property* remotePort){
+inline ERROR_CODE herder_argumentShowInfo(Argument* argumentShowInfo, PropertyFile* propertyFile, Property* remoteHost, Property* remotePort){
     if(REMOTE_HOST_PROPERTIES_SET()){
         if(!ARGUMENT_PARSER_ARGUMENT_HAS_VALUE((*argumentShowInfo))){
             UTIL_LOG_CONSOLE(LOG_INFO, "Invalid command. Usage --info <name>.");
