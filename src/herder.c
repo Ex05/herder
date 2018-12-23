@@ -32,6 +32,8 @@
     \
     util_replaceAllChars(*path + (*stringLength - ((episodeInfo)->showNameLength + (2 * UTIL_UINT16_STRING_LENGTH) + (episodeInfo)->nameLength + 4)), ' ', '_')
 
+#define REMOTE_HOST_PROPERTIES_SET() ((propertyFile_propertySet(remoteHost, PROPERTY_REMOTE_HOST_NAME) == ERROR_NO_ERROR) && (propertyFile_propertySet(remotePort, PROPERTY_REMOTE_PORT_NAME) == ERROR_NO_ERROR))
+
 local void herder_printHelp(void);
 
 local ERROR_CODE herder_listShows(Property*, Property*);
@@ -45,6 +47,24 @@ local ERROR_CODE herder_pullShowInfo(Property*, Property*, char*, const uint_fas
 local ERROR_CODE herder_extractShowInfo(Property*, Property*, EpisodeInfo**, char*, const uint_fast64_t);
 
 local ERROR_CODE herder_addEpisode(Property*, Property*, Property*, char*, const uint_fast64_t);
+
+local ERROR_CODE herder_argumentSetImportDirectory(Argument*, PropertyFile*, Property*);
+
+local ERROR_CODE herder_argumentSetRemoteHost(Argument*, PropertyFile*, Property*);
+
+local ERROR_CODE herder_argumentSetRemoteHostPort(Argument*, PropertyFile*, Property*);
+
+local ERROR_CODE herder_argumentSetLibraryDirectory(Argument*, PropertyFile*, Property*);
+
+local ERROR_CODE herder_argumentImport(Argument*, PropertyFile*);
+
+local ERROR_CODE herder_argumentKillDaemon(Argument*, PropertyFile*);
+
+local ERROR_CODE herder_argumentShowInfo(Argument*, PropertyFile*, Property*, Property*);
+
+local ERROR_CODE herder_argumentListShows(Argument*, PropertyFile*, Property*, Property*);
+
+local ERROR_CODE herder_argumentAdd(Argument*, PropertyFile*, Property*, Property*);
 
 // TODO:(jan) Make custom entry point for the client build, so we won't have to use 'main'.
 #ifndef TEST_BUILD
@@ -120,211 +140,96 @@ local ERROR_CODE herder_addEpisode(Property*, Property*, Property*, char*, const
     __UTIL_SUPPRESS_NEXT_ERROR_OF_TYPE__(ERROR_ENTRY_NOT_FOUND);
     propertyFile_getProperty(&properties, &libraryDirectory, PROPERTY_LIBRARY_DIRECTORY_NAME);
 
-    #define REMOTE_HOST_PROPERTIES_SET() ((propertyFile_propertySet(remoteHost, PROPERTY_REMOTE_HOST_NAME) == ERROR_NO_ERROR) && (propertyFile_propertySet(remotePort, PROPERTY_REMOTE_PORT_NAME) == ERROR_NO_ERROR))
+    if(argumentParser_contains(&parser, &argumentSetImportDirectory)){
+        noValidArgument = false;
 
-	if(argumentParser_contains(&parser, &argumentSetImportDirectory)){
-         noValidArgument = false;
-
-         if(ARGUMENT_PARSER_ARGUMENT_HAS_VALUE(argumentSetImportDirectory)){
-            if(PROPERTY_IS_NOT_SET(importDirectory)){
-                propertyFile_addProperty(&properties, &importDirectory, PROPERTY_IMPORT_DIRECTORY_NAME, argumentSetImportDirectory.valueLength + 1);
-            }else{
-                if(importDirectory->entry->length != argumentSetImportDirectory.valueLength + 1){
-                    propertyFile_removeProperty(importDirectory);
-
-                    importDirectory = NULL;
-
-                    propertyFile_addProperty(&properties, &importDirectory, PROPERTY_IMPORT_DIRECTORY_NAME, argumentSetImportDirectory.valueLength + 1);
-                }
-            }
-
-            propertyFile_setBuffer(importDirectory, (int8_t*) argumentSetImportDirectory.value);
-
-            printf("%s(\"%s\").\n", "setImportDirectory", (char*) importDirectory->buffer);
-        }else{
-            UTIL_LOG_CONSOLE(LOG_INFO, "Invalid command. Usage --setImportDirectory <path>.");
+        if((error = herder_argumentSetImportDirectory(&argumentSetImportDirectory, &properties, importDirectory)) == ERROR_NO_ERROR){
+            UTIL_LOG_CONSOLE_(LOG_INFO, "Successfully set '%s' to '%s'.", PROPERTY_IMPORT_DIRECTORY_NAME , (char*) importDirectory->buffer);
         }
-	}
+
+        goto label_free;
+    }
 
 	if(argumentParser_contains(&parser, &argumentSetRemoteHost)){
-         noValidArgument = false;
+        noValidArgument = false;
 
-         if(ARGUMENT_PARSER_ARGUMENT_HAS_VALUE(argumentSetRemoteHost)){
-            if(PROPERTY_IS_NOT_SET(remoteHost)){
-                propertyFile_addProperty(&properties, &remoteHost, PROPERTY_REMOTE_HOST_NAME, argumentSetRemoteHost.valueLength + 1);
-            }else{
-                if(remoteHost->entry->length != argumentSetRemoteHost.valueLength + 1){
-                    propertyFile_removeProperty(remoteHost);
-
-                    remoteHost = NULL;
-
-                    propertyFile_addProperty(&properties, &remoteHost, PROPERTY_REMOTE_HOST_NAME, argumentSetRemoteHost.valueLength + 1);
-                }
-            }
-
-            propertyFile_setBuffer(remoteHost, (int8_t*) argumentSetRemoteHost.value);
-
-            printf("%s(\"%s\").\n", "setRemoteHost", (char*) remoteHost->buffer);
-        }else{
-            UTIL_LOG_CONSOLE(LOG_INFO, "Invalid command. Usage --setRemoteHost <URL>.");
+        if((error = herder_argumentSetRemoteHost(&argumentSetImportDirectory, &properties, remoteHost)) == ERROR_NO_ERROR){
+            UTIL_LOG_CONSOLE_(LOG_INFO, "Successfully set '%s' to '%s'.", PROPERTY_REMOTE_HOST_NAME, (char*) remoteHost->buffer);
         }
+
+        goto label_free;
     }
 
     if(argumentParser_contains(&parser, &argumentSetRemoteHostPort)){
         noValidArgument = false;
 
-         if(ARGUMENT_PARSER_ARGUMENT_HAS_VALUE(argumentSetRemoteHostPort)){
-            if(PROPERTY_IS_NOT_SET(remotePort)){
-                propertyFile_addProperty(&properties, &remotePort, PROPERTY_REMOTE_PORT_NAME, sizeof(uint16_t));
-            }
-
-            errno = 0;
-
-            char* endPtr;
-            long port = strtol(argumentSetRemoteHostPort.value, &endPtr, 10/*Decimal*/);
-
-            if((port == 0 && endPtr == argumentSetRemoteHostPort.value) || (errno == ERANGE && (port == LONG_MIN || port == LONG_MAX))){
-                ERROR(ERROR_INVALID_STATUS_CODE);
-
-                goto label_free;
-            }
-
-            int8_t* buffer = alloca(sizeof(uint16_t));
-            util_uint16ToByteArray(buffer, port);
-
-            propertyFile_setBuffer(remotePort, buffer);
-
-            printf("%s(\"%ld\").\n", "setRemoteHostPort", port);
-        }else{
-            UTIL_LOG_CONSOLE(LOG_INFO, "Invalid command. Usage --setRemotePort <port>.");
+		if((error = herder_argumentSetRemoteHostPort(&argumentSetRemoteHostPort, &properties, remotePort)) == ERROR_NO_ERROR){
+            UTIL_LOG_CONSOLE_(LOG_INFO, "Successfully set '%s' to '%" PRIdFAST64 "'.", PROPERTY_REMOTE_PORT_NAME , util_byteArrayTo_uint64(remotePort->buffer));
         }
+
+        goto label_free;
     }
 
-    if(argumentParser_contains(&parser, &argumentSetLibraryDirectory)){
+     if(argumentParser_contains(&parser, &argumentSetLibraryDirectory)){
         noValidArgument = false;
 
-        char* libraryDirectoryString;
-        uint_fast64_t libraryDirectoryStringLength;
-        if(argumentSetLibraryDirectory.value[argumentSetLibraryDirectory.valueLength] != '/'){
-            libraryDirectoryStringLength = argumentSetLibraryDirectory.valueLength + 1/*'/'*/ ;
-
-            libraryDirectoryString = alloca(libraryDirectoryStringLength + 1);
-            strncpy(libraryDirectoryString, argumentSetLibraryDirectory.value, argumentSetLibraryDirectory.valueLength);
-            libraryDirectoryString[libraryDirectoryStringLength - 1] = '/';
-            libraryDirectoryString[libraryDirectoryStringLength] = '\0';
-        }else{
-            libraryDirectoryString = argumentSetLibraryDirectory.value;
-
-            libraryDirectoryStringLength = argumentSetLibraryDirectory.valueLength;
+        if((error = herder_argumentSetImportDirectory(&argumentSetLibraryDirectory, &properties, libraryDirectory)) == ERROR_NO_ERROR){
+            UTIL_LOG_CONSOLE_(LOG_INFO, "Successfully set '%s' to '%s'.", PROPERTY_LIBRARY_DIRECTORY_NAME , (char*) libraryDirectory->buffer);
         }
 
-         if(ARGUMENT_PARSER_ARGUMENT_HAS_VALUE(argumentSetLibraryDirectory)){
-            if(PROPERTY_IS_NOT_SET(libraryDirectory)){
-                propertyFile_addProperty(&properties, &libraryDirectory, PROPERTY_LIBRARY_DIRECTORY_NAME, argumentSetLibraryDirectory.valueLength + 1);
-            }else{
-                if(libraryDirectory->entry->length != argumentSetLibraryDirectory.valueLength + 1){
-                    propertyFile_removeProperty(libraryDirectory);
-
-                    libraryDirectory = NULL;
-
-                    propertyFile_addProperty(&properties, &libraryDirectory, PROPERTY_LIBRARY_DIRECTORY_NAME, argumentSetLibraryDirectory.valueLength + 1);
-                }
-            }
-
-            propertyFile_setBuffer(libraryDirectory, (int8_t*) argumentSetLibraryDirectory.value);
-
-            printf("%s(\"%s\").\n", "setLibraryDirectory", (char*) libraryDirectory->buffer);
-        }else{
-            UTIL_LOG_CONSOLE(LOG_INFO, "Invalid command. Usage --setLibraryDirectory <path>.");
-        }
+        goto label_free;
     }
 
     if(argumentParser_contains(&parser, &argumentImport)){
-        noValidArgument = false;
+       noValidArgument = false;
 
-        if(REMOTE_HOST_PROPERTIES_SET()){
-            // Import from predefined import directory.
-            if(!ARGUMENT_PARSER_ARGUMENT_HAS_VALUE(argumentImport)){
-                // if(herder.importDirectory == NULL){
-                //     UTIL_LOG_CONSOLE(LOG_INFO, "Invalid command. Usage --import optional:<path>.");
-                // }else{
-                //     if(herder_addFromDirectory(&herder, (char*) herder.importDirectory->buffer, herder.importDirectory->entry->length) != ERROR_NO_ERROR){
-                //         UTIL_LOG_ERROR("Failed to addFromDirectory.");
-                //     }
-                // }
-
-                printf("%s.\n", "import");
-            }else{
-                // if(herder_addFromDirectory(&herder, argumentImport.value, argumentImport.valueLength) != ERROR_NO_ERROR){
-                //     UTIL_LOG_ERROR("Failed to addFromDirectory.");
-                // }
-
-                printf("%s(\"%s\").\n", "import", argumentImport.value);
-            }
+        if((error = herder_argumentImport(&argumentImport, &properties)) == ERROR_NO_ERROR){
+            // TODO: Add handling of error or success case. (Jan - 2018.12.18)
         }
+
+        goto label_free;
     }
 
     if(argumentParser_contains(&parser, &argumentKillDeamon)){
         noValidArgument = false;
-
-        if(REMOTE_HOST_PROPERTIES_SET()){
-            UTIL_LOG_CONSOLE(LOG_CRIT, "Kill daemon.");
-
-            UTIL_LOG_CRITICAL("Function not implemented.");
+   
+        if((error = herder_argumentKillDaemon(&argumentKillDeamon, &properties)) == ERROR_NO_ERROR){
+            // TODO: Add handling of error or success case. (Jan - 2018.12.18)
         }
+
+        goto label_free;
     }
 
     if(argumentParser_contains(&parser, &argumentShowInfo)){
         noValidArgument = false;
 
-        if(REMOTE_HOST_PROPERTIES_SET()){
-            if(!ARGUMENT_PARSER_ARGUMENT_HAS_VALUE(argumentShowInfo)){
-                UTIL_LOG_CONSOLE(LOG_INFO, "Please provide a show name. Use '--help' to see the help menu.");
+        if((error = herder_argumentShowInfo(&argumentShowInfo, &properties, remoteHost, remotePort)) != ERROR_NO_ERROR){
+            if(error == ERROR_UNKNOWN_SHOW){
+                UTIL_LOG_CONSOLE_(LOG_INFO, "Unknown show '%s'.", argumentShowInfo.value);
             }else{
-                if(REMOTE_HOST_PROPERTIES_SET()){
-                    error = herder_pullShowInfo(remoteHost, remotePort, argumentShowInfo.value, argumentShowInfo.valueLength);
-                    
-                    if(error == ERROR_UNKNOWN_SHOW){
-                        UTIL_LOG_CONSOLE_(LOG_INFO, "Unknown show '%s'.", argumentShowInfo.value);
-                    }else{
-                        if(error != ERROR_NO_ERROR){
-                            UTIL_LOG_CONSOLE_(LOG_ERR, "Failed to fetch show info for show '%s'. [%s]", argumentShowInfo.value,util_toErrorString(error));
-                        }
-                    }
-                }
+                 UTIL_LOG_CONSOLE_(LOG_ERR, "Failed to fetch show info for show '%s'. [%s]", argumentShowInfo.value,util_toErrorString(error));
             }
         }
+
+        goto label_free;
     }
 
     if(argumentParser_contains(&parser, &argumentListShows)){
         noValidArgument = false;
 
-        if(ARGUMENT_PARSER_ARGUMENT_HAS_VALUE(argumentListShows)){
-            UTIL_LOG_CONSOLE(LOG_INFO, "Invalid command. Use '--help' to see the help menu.");
-        }else{
-            if(REMOTE_HOST_PROPERTIES_SET()){
-                if((error = herder_listShows(remoteHost, remotePort)) != ERROR_NO_ERROR){
-                    UTIL_LOG_CONSOLE_(LOG_ERR, "Failed to fetch list of all shows. [%s]", util_toErrorString(error));
-                }
-            }
+        if((error = herder_argumentListShows(&argumentListShows, &properties, remoteHost, remotePort)) == ERROR_NO_ERROR){
+            // TODO: Add handling of error or success case. (Jan - 2018.12.18)
         }
     }
 
     if(argumentParser_contains(&parser, &argumentAddShow)){
         noValidArgument = false;
 
-        if(!ARGUMENT_PARSER_ARGUMENT_HAS_VALUE(argumentAddShow)){
-            UTIL_LOG_CONSOLE(LOG_INFO, "Please provide a show name. Use '--help' to see the help menu.");
-        }else{
-            if(REMOTE_HOST_PROPERTIES_SET()){
-                ERROR_CODE error;
-                if((error = herder_addShow(remoteHost, remotePort, argumentAddShow.value, argumentAddShow.valueLength)) != ERROR_NO_ERROR){
-                    UTIL_LOG_CONSOLE_(LOG_ERR, "Failed to add show '%s' to the library. [%s]", argumentAddShow.value, util_toErrorString(error));
-                }else{
-                    UTIL_LOG_CONSOLE_(LOG_INFO, "Added '%s' to the library.", argumentAddShow.value);
-                }
-            }
+        if((error = herder_argumentAdd(&argumentAddShow, &properties, remoteHost, remotePort)) == ERROR_NO_ERROR){
+            UTIL_LOG_CONSOLE_(LOG_INFO, "Added '%s' to the library.", argumentAddShow.value);
         }
+
+        goto label_free;
     }
 
     if(argumentParser_contains(&parser, &argumentAdd)){
@@ -353,8 +258,6 @@ label_free:
 	argumentParser_free(&parser);
 
 	closelog();
-
-#undef REMOTE_HOST_PROPERTIES_SET
 
 	return EXIT_SUCCESS;
 }
@@ -909,7 +812,223 @@ label_unMap:
     return ERROR(error);
 }
 
+inline ERROR_CODE herder_argumentSetImportDirectory(Argument* argumentSetImportDirectory, PropertyFile* propertyFile, Property* importDirectory){
+    // Note: Make sure 'slashTerminated' is clamped to '0 - 1' so we can use it later to add/subtract depending on wether the string was slash termianted or not. (Jan - 2018.10.20)
+    const bool slashTerminated = (argumentSetImportDirectory->value[argumentSetImportDirectory->valueLength - 1] == '/') & 0x01;
+
+    const uint_fast64_t importDirectoryLength = argumentSetImportDirectory->valueLength + !slashTerminated;
+
+    char* importDirectoryString;
+    if(slashTerminated){
+        importDirectoryString = argumentSetImportDirectory->value;
+    }else{
+        importDirectoryString = alloca(sizeof(*importDirectoryString) * (importDirectoryLength + 1));
+        memcpy(importDirectoryString, argumentSetImportDirectory->value, argumentSetImportDirectory->valueLength);
+        importDirectoryString[importDirectoryLength - 1] = '/';
+        importDirectoryString[importDirectoryLength] = '\0';
+    }
+
+    if(ARGUMENT_PARSER_ARGUMENT_HAS_VALUE((*argumentSetImportDirectory))){
+        if(PROPERTY_IS_NOT_SET(importDirectory)){
+            if(propertyFile_addProperty(propertyFile, &importDirectory, PROPERTY_IMPORT_DIRECTORY_NAME, importDirectoryLength + 1) != ERROR_NO_ERROR){
+                return ERROR_(ERROR_FAILED_TO_ADD_PROPERTY, "'%s'", PROPERTY_IMPORT_DIRECTORY_NAME);
+            }
+        }else{
+            if(importDirectory->entry->length != importDirectoryLength + 1){
+                if(propertyFile_removeProperty(importDirectory) != ERROR_NO_ERROR){
+                    return ERROR_(ERROR_FAILED_TO_REMOVE_PROPERTY, "'%s'", PROPERTY_IMPORT_DIRECTORY_NAME);
+                }
+
+                if(propertyFile_addProperty(propertyFile, &importDirectory, PROPERTY_IMPORT_DIRECTORY_NAME, importDirectoryLength + 1) != ERROR_NO_ERROR){
+                    return ERROR_(ERROR_FAILED_TO_ADD_PROPERTY, "'%s'", PROPERTY_IMPORT_DIRECTORY_NAME);
+                }
+            }
+        }
+
+        if(propertyFile_setBuffer(importDirectory, (int8_t*) importDirectoryString) != ERROR_NO_ERROR){
+            return ERROR_(ERROR_FAILED_TO_UPDATE_PROPERTY, "'%s'", PROPERTY_IMPORT_DIRECTORY_NAME);
+        }
+    }else{
+        UTIL_LOG_CONSOLE(LOG_INFO, "Invalid command. Usage --setImportDirectory <path>.");
+
+        return ERROR(ERROR_INVALID_COMMAND_USAGE);
+    }
+
+    return ERROR(ERROR_NO_ERROR);
+}
+
+inline ERROR_CODE herder_argumentSetRemoteHost(Argument* argumentSetRemoteHost, PropertyFile* propertyFile, Property* remoteHost){
+    if(ARGUMENT_PARSER_ARGUMENT_HAS_VALUE((*argumentSetRemoteHost))){
+        if(PROPERTY_IS_NOT_SET(remoteHost)){
+            if(propertyFile_addProperty(propertyFile, &remoteHost, PROPERTY_REMOTE_HOST_NAME, argumentSetRemoteHost->valueLength + 1) != ERROR_NO_ERROR){
+                return ERROR_(ERROR_FAILED_TO_ADD_PROPERTY, "'%s'", PROPERTY_REMOTE_HOST_NAME);
+            }
+        }else{
+            if(remoteHost->entry->length != argumentSetRemoteHost->valueLength + 1){
+                if(propertyFile_removeProperty(remoteHost) != ERROR_NO_ERROR){
+                    return ERROR_(ERROR_FAILED_TO_REMOVE_PROPERTY, "'%s'", PROPERTY_REMOTE_HOST_NAME);
+                }
+
+                if(propertyFile_addProperty(propertyFile, &remoteHost, PROPERTY_REMOTE_HOST_NAME, argumentSetRemoteHost->valueLength + 1) != ERROR_NO_ERROR){
+                    return ERROR_(ERROR_FAILED_TO_ADD_PROPERTY, "'%s'", PROPERTY_REMOTE_HOST_NAME);
+                }
+            }
+        }
+
+        if(propertyFile_setBuffer(remoteHost, (int8_t*) argumentSetRemoteHost->value) != ERROR_NO_ERROR){
+            return ERROR_(ERROR_FAILED_TO_UPDATE_PROPERTY, "'%s'", PROPERTY_REMOTE_HOST_NAME);
+        }
+    }else{
+        UTIL_LOG_CONSOLE(LOG_INFO, "Invalid command. Usage --setRemoteHost <URL>.");
+
+        return ERROR(ERROR_INVALID_COMMAND_USAGE);
+    }
+
+    return ERROR(ERROR_NO_ERROR);    
+}
+
+inline ERROR_CODE herder_argumentSetRemoteHostPort(Argument* argumentSetRemoteHostPort, PropertyFile* propertyFile, Property* remotePort){
+    if(ARGUMENT_PARSER_ARGUMENT_HAS_VALUE((*argumentSetRemoteHostPort))){
+        if(PROPERTY_IS_NOT_SET(remotePort)){
+            if(propertyFile_addProperty(propertyFile, &remotePort, PROPERTY_REMOTE_PORT_NAME, sizeof(uint64_t)) != ERROR_NO_ERROR){
+                return ERROR_(ERROR_FAILED_TO_ADD_PROPERTY, "'%s'", PROPERTY_REMOTE_PORT_NAME);
+            }
+        }else{
+            if(remotePort->entry->length != sizeof(uint64_t)){
+                if(propertyFile_removeProperty(remotePort) != ERROR_NO_ERROR){
+                    return ERROR_(ERROR_FAILED_TO_REMOVE_PROPERTY, "'%s'", PROPERTY_REMOTE_PORT_NAME);
+                }
+
+                if(propertyFile_addProperty(propertyFile, &remotePort, PROPERTY_REMOTE_PORT_NAME, sizeof(uint64_t)) != ERROR_NO_ERROR){
+                    return ERROR_(ERROR_FAILED_TO_ADD_PROPERTY, "'%s'", PROPERTY_REMOTE_PORT_NAME);
+                }
+            }
+        }
+
+        int64_t port;
+        ERROR_CODE error;
+        if((error = util_stringToInt(argumentSetRemoteHostPort->value, &port)) != ERROR_NO_ERROR){
+            return ERROR(error);
+        }else{
+            if(port <= 0 || port > UINT16_MAX){
+                return ERROR_(ERROR_INVALID_VALUE, "Port value must be in range of 0-%" PRIu16 ".", UINT16_MAX);
+            }
+        }
+
+        int8_t* buffer = alloca(sizeof(uint64_t));
+        util_uint64ToByteArray(buffer, port);
+
+        if(propertyFile_setBuffer(remotePort, buffer) != ERROR_NO_ERROR){
+            return ERROR_(ERROR_FAILED_TO_UPDATE_PROPERTY, "'%s'", PROPERTY_REMOTE_PORT_NAME);
+        }
+    }else{
+        UTIL_LOG_CONSOLE(LOG_INFO, "Invalid command. Usage --setRemotePort <port>.");
+
+        return ERROR(ERROR_INVALID_COMMAND_USAGE);
+    }
+
+   return ERROR(ERROR_NO_ERROR);
+}
+
+inline ERROR_CODE herder_argumentSetLibraryDirectory(Argument* argumentSetLibraryDirectory, PropertyFile* propertyFile, Property* libraryDirectory){
+    // Note: Make sure 'slashTerminated' is clamped to '0 - 1' so we can use it later to add/subtract depending on wether the string was slash termianted or not. (Jan - 2018.10.20)
+    const bool slashTerminated = (argumentSetLibraryDirectory->value[argumentSetLibraryDirectory->valueLength - 1] == '/') & 0x01;
+
+    const uint_fast64_t libraryDirectoryLength = argumentSetLibraryDirectory->valueLength + !slashTerminated;
+
+    char* libraryDirectoryString;
+    if(slashTerminated){
+        libraryDirectoryString = argumentSetLibraryDirectory->value;
+    }else{
+        libraryDirectoryString = alloca(sizeof(*libraryDirectoryString) * (libraryDirectoryLength + 1));
+        memcpy(libraryDirectoryString, argumentSetLibraryDirectory->value, argumentSetLibraryDirectory->valueLength);
+        libraryDirectoryString[libraryDirectoryLength - 1] = '/';
+        libraryDirectoryString[libraryDirectoryLength] = '\0';
+    }
+
+    if(ARGUMENT_PARSER_ARGUMENT_HAS_VALUE((*argumentSetLibraryDirectory))){
+        if(PROPERTY_IS_NOT_SET(libraryDirectory)){
+            if(propertyFile_addProperty(propertyFile, &libraryDirectory, PROPERTY_LIBRARY_DIRECTORY_NAME, libraryDirectoryLength + 1) != ERROR_NO_ERROR){
+                return ERROR_(ERROR_FAILED_TO_ADD_PROPERTY, "'%s'", PROPERTY_LIBRARY_DIRECTORY_NAME);
+            }
+        }else{
+            if(libraryDirectory->entry->length != libraryDirectoryLength + 1){
+                if(propertyFile_removeProperty(libraryDirectory) != ERROR_NO_ERROR){
+                    return ERROR_(ERROR_FAILED_TO_REMOVE_PROPERTY, "'%s'", PROPERTY_LIBRARY_DIRECTORY_NAME);
+                }
+
+                if(propertyFile_addProperty(propertyFile, &libraryDirectory, PROPERTY_LIBRARY_DIRECTORY_NAME, libraryDirectoryLength + 1) != ERROR_NO_ERROR){
+                    return ERROR_(ERROR_FAILED_TO_ADD_PROPERTY, "'%s'", PROPERTY_LIBRARY_DIRECTORY_NAME);
+                }
+            }
+        }
+
+        if(propertyFile_setBuffer(libraryDirectory, (int8_t*) libraryDirectoryString) != ERROR_NO_ERROR){
+            return ERROR_(ERROR_FAILED_TO_UPDATE_PROPERTY, "'%s'", PROPERTY_LIBRARY_DIRECTORY_NAME);
+        }
+    }else{
+        UTIL_LOG_CONSOLE(LOG_INFO, "Invalid command. Usage --setImportDirectory <path>.");
+
+        return ERROR(ERROR_INVALID_COMMAND_USAGE);
+    }
+
+    return ERROR(ERROR_NO_ERROR);
+}
+
+inline ERROR_CODE herder_argumentImport(Argument* argumentImport, PropertyFile* propertyFile){
+    return ERROR(ERROR_FUNCTION_NOT_IMPLEMENTED);
+}
+
+inline ERROR_CODE herder_argumentKillDaemon(Argument* argumentImport, PropertyFile* propertyFile){
+    return ERROR(ERROR_FUNCTION_NOT_IMPLEMENTED);
+}
+
+inline ERROR_CODE herder_argumentShowInfo(Argument* argumentShowInfo, PropertyFile* propertyFile, Property* remoteHost, Property* remotePort){
+    if(REMOTE_HOST_PROPERTIES_SET()){
+        if(!ARGUMENT_PARSER_ARGUMENT_HAS_VALUE((*argumentShowInfo))){
+            UTIL_LOG_CONSOLE(LOG_INFO, "Invalid command. Usage --info <name>.");
+
+            return ERROR(ERROR_INVALID_COMMAND_USAGE);
+        }else{
+            return ERROR(herder_pullShowInfo(remoteHost, remotePort, argumentShowInfo->value, argumentShowInfo->valueLength));
+        }
+    }else{
+        return ERROR(ERROR_PROPERTY_NOT_SET);
+    }
+}
+
+inline ERROR_CODE herder_argumentListShows(Argument* argumentListShows, PropertyFile* propertyFile, Property* remoteHost, Property* remotePort){
+
+     if(ARGUMENT_PARSER_ARGUMENT_HAS_VALUE((*argumentListShows))){
+            UTIL_LOG_CONSOLE(LOG_INFO, "Invalid command. Usage -l, --list <show>.");
+
+            return ERROR(ERROR_INVALID_COMMAND_USAGE);
+        }else{
+            if(REMOTE_HOST_PROPERTIES_SET()){
+                return ERROR(herder_listShows(remoteHost, remotePort));
+            }else{
+                return ERROR(ERROR_PROPERTY_NOT_SET);
+            }
+        }
+}
+
+inline ERROR_CODE herder_argumentAdd(Argument* argumentAddShow, PropertyFile* propertyFile, Property* remoteHost, Property* remotePort){
+    if(!ARGUMENT_PARSER_ARGUMENT_HAS_VALUE((*argumentAddShow))){
+        UTIL_LOG_CONSOLE(LOG_INFO, "Invalid command. Usage -a, --add <file>.");
+
+        return ERROR(ERROR_INVALID_COMMAND_USAGE);
+    }else{
+        if(REMOTE_HOST_PROPERTIES_SET()){
+            return ERROR(herder_addShow(remoteHost, remotePort, argumentAddShow->value,argumentAddShow->valueLength));
+        }else{
+            return ERROR(ERROR_PROPERTY_NOT_SET);
+        }
+    }
+}
+
 #undef HERDER_PROGRAM_NAME
+
+#undef REMOTE_HOST_PROPERTIES_SET
 
 #undef PROPERTY_IMPORT_DIRECTORY_NAME
 #undef PROPERTY_REMOTE_HOST_NAME

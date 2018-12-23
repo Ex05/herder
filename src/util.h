@@ -97,6 +97,13 @@ typedef enum{
     ERROR_FAILED_TO_COPY_FILE,
     ERROR_FAILED_TO_DELETEFILE,
     ERROR_CONVERSION_ERROR,
+    ERROR_FAILED_TO_ADD_PROPERTY,
+    ERROR_FAILED_TO_REMOVE_PROPERTY,
+    ERROR_INVALID_COMMAND_USAGE,
+    ERROR_FAILED_TO_UPDATE_PROPERTY,
+    ERROR_INVALID_STRING,
+    ERROR_INVALID_VALUE,
+    ERROR_FUNCTION_NOT_IMPLEMENTED
 }ERROR_CODE;
 
 ERROR_CODE util_formatNumber(char*, uint_fast64_t*, const int_fast64_t);
@@ -284,6 +291,8 @@ char* util_getFileName(char*, const uint_fast64_t);
 char* util_readUserInput(void);
 
 ERROR_CODE util_extractPrefixedNumber(char*, uint_fast64_t, int_fast16_t*, const char);
+
+ERROR_CODE util_stringToInt(const char*, int64_t*);
 
 #undef UTIL_MAX_ERROR_MSG_LENGTH
 

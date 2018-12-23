@@ -111,6 +111,13 @@ local const char* UTIL_ERROR_CODE_MESSAGE_MAPPING_ARRAY[] = {
     "ERROR_FAILED_TO_COPY_FILE",
     "ERROR_FAILED_TO_DELETEFILE",
     "ERROR_CONVERSION_ERROR",
+    "ERROR_FAILED_TO_ADD_PROPERTY",
+    "ERROR_FAILED_TO_REMOVE_PROPERTY",
+    "ERROR_INVALID_COMMAND_USAGE",
+    "ERROR_FAILED_TO_UPDATE_PROPERTY",
+    "ERROR_INVALID_STRING",
+    "ERROR_INVALID_VALUE",
+    "ERROR_FUNCTION_NOT_IMPLEMENTED"
 };
 
 inline const char* util_toErrorString(const ERROR_CODE errorCode){
@@ -613,10 +620,8 @@ inline ERROR_CODE util_extractPrefixedNumber(char* s, uint_fast64_t stringLength
             char* endPtr;
             *value = strtol(numberString, &endPtr, 10);
 
-            if((*value == 0 && endPtr == numberString) || *value == LONG_MIN || *value == LONG_MAX || *value <= 0 || *value > UINT16_MAX){
-                UTIL_LOG_CONSOLE_(LOG_ERR, "'%s' is not a valid number.", numberString);
-
-                return ERROR(ERROR_CONVERSION_ERROR);
+            if((*value == 0 && endPtr == numberString) || *value == LONG_MIN || *value == LONG_MAX){
+                return ERROR_(ERROR_CONVERSION_ERROR, "'%s' is not a valid number.", numberString);
             }
 
             return ERROR(ERROR_NO_ERROR);
@@ -626,6 +631,17 @@ inline ERROR_CODE util_extractPrefixedNumber(char* s, uint_fast64_t stringLength
     *value = 0;
 
     return ERROR(ERROR_ENTRY_NOT_FOUND);
+}
+
+inline ERROR_CODE util_stringToInt(const char* s, int64_t* value){
+    char* endPtr;
+    *value = strtol(s, &endPtr, 10/*Decimal*/);
+
+    if((*value == 0 && endPtr == s) || *value == LONG_MIN || *value == LONG_MAX){
+        return ERROR_(ERROR_INVALID_STRING, "'%s' is not a valid number.", s);
+    }
+
+    return ERROR(ERROR_NO_ERROR);
 }
 
 #endif
