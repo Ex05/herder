@@ -836,9 +836,7 @@ inline ERROR_CODE server_getContext(HerderServer* server, ContextHandler** conte
     char* baseDirectory;
     uint_fast64_t baseDirectoryLength;
     if(util_getBaseDirectory(&baseDirectory, &baseDirectoryLength, request->requestURL, request->urlLength) != ERROR_NO_ERROR){
-        UTIL_LOG_ERROR_("Failed to find baseDirectory URL:'%s'.",request->requestURL);
-
-        return ERROR(ERROR_INVALID_REQUEST_URL);
+        return ERROR_(ERROR_INVALID_REQUEST_URL, "Failed to find baseDirectory URL:'%s'.",request->requestURL);
     }
     
     ArrayListIterator it;
