@@ -728,7 +728,17 @@ ERROR_CODE http_receiveRequest(HTTP_Request* request, const int_fast32_t connect
             }
 
             request->urlLength = posSplitEnd;
+
+            if(request->urlLength == 0){
+                return ERROR_(ERROR_INVALID_REQUEST_URL, "URL length can't be '%" PRIuFAST16 "'.", request->urlLength);
+            }
+
             request->requestURL = malloc(sizeof(*request->requestURL) * request->urlLength);
+
+            if(request->requestURL == NULL){
+                return ERROR(ERROR_OUT_OF_MEMORY);
+            }
+
             memcpy(request->requestURL, buffer + posSplitBegin, request->urlLength);
         
             posSplitBegin += posSplitEnd + 1;
