@@ -39,7 +39,7 @@ typedef struct{
     ContextHandler* contextHandler;
 }Context;
 
-ERROR_CODE server_init(HerderServer*, const char*, const uint_fast64_t, const char*, const uint_fast64_t, int_fast32_t);
+ERROR_CODE server_init(HerderServer*, const char*, const uint_fast64_t, int_fast32_t);
 
 ERROR_CODE server_start(HerderServer*);
 

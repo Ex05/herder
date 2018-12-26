@@ -1301,7 +1301,7 @@ TEST_TEST_FUNCTION(server_addContext){
 
     HerderServer server;
     ERROR_CODE error;
-    if((error = server_init(&server, serverRootDirectory, serverRootDirectoryLength, serverRootDirectory, serverRootDirectoryLength, 8088) != ERROR_NO_ERROR)){
+    if((error = server_init(&server, serverRootDirectory, serverRootDirectoryLength, 8088) != ERROR_NO_ERROR)){
         ret = false;
 
         goto label_free;
@@ -1382,7 +1382,7 @@ local THREAD_POOL_RUNNABLE(server_thread){
 
     HerderServer server;
     ERROR_CODE error;
-    if((error = server_init(&server, serverRootDirectory, serverRootDirectoryLength, serverRootDirectory, serverRootDirectoryLength, 8888) != ERROR_NO_ERROR)){
+    if((error = server_init(&server, serverRootDirectory, serverRootDirectoryLength, 8888) != ERROR_NO_ERROR)){
         goto label_free;    
     }
 

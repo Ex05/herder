@@ -112,7 +112,7 @@ inline ERROR_CODE cache_load(Cache* cache, CacheObject** cacheObject, char* file
 	struct stat fileInfo;
     
     if(lstat(fileLocation, &fileInfo) == -1){
-        return ERROR(ERROR_FAILED_TO_RETRIEV_FILE_INFO);
+        return ERROR_(ERROR_FAILED_TO_RETRIEV_FILE_INFO, "File:'%s'", fileLocation);
     }
 
     if(!S_ISREG(fileInfo.st_mode)){

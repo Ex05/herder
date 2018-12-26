@@ -26,6 +26,8 @@
 
 #define SERVER_DAEMON_NAME "herderServerDaemon"
 
+#define SERVER_WEB_DIRECTORY "www/"
+
 #define PROPERTY_FILE_NAME "server_settings"
 #define PROPERTY_SERVER_ROOT_DIRECTORY_NAME "serverRootDirectory"
 #define PROPERTY_SERVER_EXTERNAL_PORT_NAME "serverExternalPort"
@@ -516,8 +518,7 @@ label_return:
             printf("Usage: herder --[command]/-[alias] <arguments>.\n\n");
 
             printf("\t%s\t%s\n", "--setServerRootDirectory <path>", "Sets the 'server root directory' to the given path.");
-            printf("\t%s\t%s\n", "--setLibraryDirectory <path>", "Sets the 'media library library directory' to the given path.");
-            printf("\t%s\t%s\n", "--setLibraryDirectory <path>", "Sets the 'media library library directory' to the given path.");
+            printf("\t%s\t%s\n", "--setServerExternalPort <port>", "Sets the external port to the given port.");
             printf("\t%s\t%s\n", "--showSettings", "Shows a quick overview of all the user settings.");
 
             printf("\t%s\t\t%s\n", "-?, -h, -help, --help", "Displays this help.");
@@ -529,7 +530,7 @@ label_return:
             noValidArgument = false;
 
             if((error = server_setRootDirectory(&argumentSetServerRootDirectory, &properties, serverRootDirectory)) == ERROR_NO_ERROR){
-                UTIL_LOG_CONSOLE_(LOG_INFO, "Successfully set '%s' to '%s'.", PROPERTY_SERVER_EXTERNAL_PORT_NAME , (char*)serverExternalPort->buffer);
+                UTIL_LOG_CONSOLE_(LOG_INFO, "Successfully set '%s' to '%s'.", PROPERTY_SERVER_ROOT_DIRECTORY_NAME , (char*)serverRootDirectory->buffer);
             }
 
             goto label_exit;
@@ -555,7 +556,7 @@ label_return:
 
 			    if(PROPERTY_IS_SET(serverExternalPort)){
                     UTIL_LOG_CONSOLE_(LOG_INFO, "ServerExternalPort: '%" PRIdFAST64 "'.", util_byteArrayTo_uint64(serverExternalPort->buffer));
-                }
+                }                
 		    }
             
             goto label_exit;
@@ -604,7 +605,7 @@ label_return:
 		}else{
             const int_fast32_t port = util_byteArrayTo_uint64((int8_t*) serverExternalPort->buffer);
 
-			if(server_init(&server, (char*) serverRootDirectory->buffer, serverRootDirectory->entry->length - 1, serverWorkingDirectory, serverWorkingDirectoryLength, port) != ERROR_NO_ERROR){
+			if(server_init(&server, (char*) serverRootDirectory->buffer, serverRootDirectory->entry->length - 1, port) != ERROR_NO_ERROR){
 				goto label_exit;
 			}
 
@@ -644,13 +645,13 @@ label_return:
 		return 0;
 	}
 
-ERROR_CODE server_init(HerderServer* server, const char* rootDirectory, const uint_fast64_t rootDirectoryLength, const char* mediaLibraryDirectory, const uint_fast64_t mediaLibraryDirectoryLength , const int_fast32_t port){
+ERROR_CODE server_init(HerderServer* server, const char* rootDirectory, const uint_fast64_t rootDirectoryLength, const int_fast32_t port){
     memset(server, 0, sizeof(*server));
 
     server->port = port;
 
     ERROR_CODE error;
-    // TODO:(jan) Choose sane number of threads here, or refactor threadPool to not need numWokers as an argument.
+    // TODO:(jan) Choose a sane number of threads here, or refactor threadPool to not need numWokers as an argument.
     const int_fast32_t numAvailableCores = util_getNumAvailableProcessorCores();
     const int_fast32_t numThreads = numAvailableCores * 12;
         
@@ -668,17 +669,20 @@ ERROR_CODE server_init(HerderServer* server, const char* rootDirectory, const ui
 
     arrayList_init(&server->contexts, 16, server_expandContextList);
 
-    if((error = mediaLibrary_init(&server->library, mediaLibraryDirectory, mediaLibraryDirectoryLength)) != ERROR_NO_ERROR){
+    if((error = mediaLibrary_init(&server->library, rootDirectory, rootDirectoryLength)) != ERROR_NO_ERROR){
         return ERROR(error);
     }
 
     cache_init(&server->cache, numThreads, 32 * 1024 * 1024);
 
-    server->rootDirectoryLength = rootDirectoryLength;
+    const uint_fast64_t serverWebDirectoryLength = strlen(SERVER_WEB_DIRECTORY);
 
-    server->rootDirectory = malloc(sizeof(*server->rootDirectory) * (rootDirectoryLength + 1));
+    server->rootDirectoryLength = rootDirectoryLength + serverWebDirectoryLength;
+
+    server->rootDirectory = malloc(sizeof(*server->rootDirectory) * (server->rootDirectoryLength + 1));
     strncpy(server->rootDirectory, rootDirectory, rootDirectoryLength);
-    server->rootDirectory[rootDirectoryLength] = '\0';
+    strncpy(server->rootDirectory + rootDirectoryLength, SERVER_WEB_DIRECTORY, serverWebDirectoryLength);
+    server->rootDirectory[server->rootDirectoryLength] = '\0';
 
     if(server->rootDirectory == NULL){
         return ERROR(ERROR_OUT_OF_MEMORY);
@@ -746,7 +750,7 @@ inline ERROR_CODE server_getFile(HerderServer* server, CacheObject** cacheObject
         error = cache_load(&server->cache, cacheObject, fileLocation, fileLocationLength, symbolicFileLocation, symbolicFileLocationLength);
    }
 
-    return ERROR(error);
+    return ERROR_(error, "File:'%s'", symbolicFileLocation);
 }
 
 inline void server_initContext(Context* context, const char* location, const uint_fast64_t locationLength, ContextHandler* contextHandler){
@@ -1078,5 +1082,7 @@ inline ERROR_CODE server_setServerExternalPort(Argument* argumentSetServerExtern
 
    return ERROR(ERROR_NO_ERROR);
 }
+
+#undef SERVER_WEB_DIRECTORY
 
 #endif
