@@ -32,7 +32,7 @@ additionalDebugFlags="-D DEBUG"
 
 additionaladditionalReleaseFlags="-D NDEBUG"
 
-linkerFlags="-pthread -lrt"
+linkFlags="-pthread -lrt"
 
 libraries="-lpthread"
 
@@ -49,7 +49,7 @@ prepareBuildDirectory(){
 
 # cleanBuildDirectoy(buildDirectory)
 cleanBuildDirectoy(){
-    rm -r $1
+    rm -r $14
 }
 
 # preprocess(compiler, "compilerFlags", buildDirectory, fileName)
