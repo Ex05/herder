@@ -41,6 +41,7 @@
 
 typedef enum{
     ERROR_NO_ERROR = 0,
+    ERROR_ERROR,
     ERROR_OUT_OF_MEMORY,
     ERROR_BUFFER_OVERFLOW,
     ERROR_TO_MANY_ELEMENTS,
@@ -294,6 +295,9 @@ ERROR_CODE util_extractPrefixedNumber(char*, uint_fast64_t, int_fast16_t*, const
 
 ERROR_CODE util_stringToInt(const char*, int64_t*);
 
+ERROR_CODE util_getCurrentWorkingDirectory(char*, const uint_fast64_t);
+
 #undef UTIL_MAX_ERROR_MSG_LENGTH
 
 #endif
+

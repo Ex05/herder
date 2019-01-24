@@ -55,6 +55,7 @@ inline ERROR_CODE util_formatNumber(char* s, uint_fast64_t* bufferSize, const in
 
 local const char* UTIL_ERROR_CODE_MESSAGE_MAPPING_ARRAY[] = {
     "ERROR_NO_ERROR",
+    "ERROR_ERROR",
     "ERROR_OUT_OF_MEMORY",
     "ERROR_BUFFER_OVERFLOW",
     "ERROR_TO_MANY_ELEMENTS",
@@ -337,7 +338,7 @@ inline ERROR_CODE util_deleteFile(const char* file){
     if(unlink(file) == 0){
         return ERROR(ERROR_NO_ERROR);
     }else{
-        return ERROR_(ERROR_FAILED_TO_DELETEFILE, "%s", strerror(errno));
+        return ERROR_(ERROR_FAILED_TO_DELETEFILE, "'%s' %s", file, strerror(errno));
     }
 }
 
@@ -642,6 +643,15 @@ inline ERROR_CODE util_stringToInt(const char* s, int64_t* value){
     }
 
     return ERROR(ERROR_NO_ERROR);
+}
+
+// Note: Use PATH_MAX, for the size of 'dir'. (Jan- 2019.01.23)
+inline ERROR_CODE util_getCurrentWorkingDirectory(char* dir, const uint_fast64_t dirLength){
+    if(getcwd(dir, dirLength) == NULL){
+        return ERROR_(ERROR_ERROR, "%s", strerror(errno));
+    }
+    
+    return ERROR(ERROR_NO_ERROR);    
 }
 
 #endif

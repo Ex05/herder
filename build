@@ -47,11 +47,6 @@ prepareBuildDirectory(){
     mkdir $1
 }
 
-# cleanBuildDirectoy(buildDirectory)
-cleanBuildDirectoy(){
-    rm -r $14
-}
-
 # preprocess(compiler, "compilerFlags", buildDirectory, fileName)
 preprocess(){
     pushd src > /dev/null
@@ -92,7 +87,7 @@ link(){
     
     printf "Link:\n"
 
-    #  Link.
+    # Link.
     \time --format '\tUser time: %Us\n\tSystem time: %Ss\n\tCPU utilization: %P' $1 $2 $3 -o ../$6 ../$4/$5.o
     
     popd >/dev/null
@@ -122,21 +117,35 @@ buildDebug(){
 
 # buildAndRunTest(fileName, executableName)
 buildAndRunTest(){
+    # Create temporary test directory.
+    if [ -d "./tmp/" ]; then
+        rm -r "./tmp/"
+    fi
+
+    mkdir "./tmp/"
+
+    # Remove old executable.
     if [ -d "$2" ]; then
-        rm -r $2
+        rm $2
     fi
 
     compileFlags="$compileFlags -D TEST_BUILD"
 
     buildDebug $1 $2
 
+    # Don't halt on errors.
     set +e
 
+    # Run test executable.
     ./$2
 
+    # If test run successfully, run a memory leak check.
     if [ $? -eq 0 ]; then
         valgrind --leak-check=full --track-origins=yes --show-leak-kinds=all ./$2 > /dev/null
     fi
+
+    # Remove temorary test directory.
+    rm -r "./tmp/"
 }   
 
 # printBuildOptions(void)

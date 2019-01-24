@@ -148,9 +148,7 @@ ERROR_CODE propertyFile_create(const char* fileName, const uint8_t numPageEntrie
     FILE* file = fopen(fileName, "a");
 
     if(file == NULL){
-        UTIL_LOG_ERROR_("ERRNO: '%s'.", strerror(errno));
-
-        return ERROR(ERROR_FAILED_TO_CREATE_FILE);
+        return ERROR_(ERROR_FAILED_TO_CREATE_FILE, " %s '%s'", strerror(errno), fileName);
     }
 
     // Current code/PropertyFile version.

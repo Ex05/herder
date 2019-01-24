@@ -79,7 +79,7 @@ SERVER_CONTEXT_HANDLER(server_defaultContextHandler){
         }else{
             error = server_constructErrorPage(server, request, response, _500_INTERNAL_SERVER_ERROR);
             
-            return ERROR(error);
+            return ERROR(error);   
         }
     }
 

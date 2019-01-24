@@ -958,48 +958,64 @@ TEST_TEST_FUNCTION(cache_load){
 }
 
 TEST_TEST_FUNCTION(propertyFile_create){
-    #define PROPERTY_FILE_PATH "/home/ex05/herder/propertyFile_create_test_file"
+    char currentDir[PATH_MAX];
+    util_getCurrentWorkingDirectory(currentDir, PATH_MAX);
 
-    if(util_fileExists(PROPERTY_FILE_PATH)){
-        if(!util_deleteFile(PROPERTY_FILE_PATH)){
-            UTIL_LOG_ERROR_("Failed to delete old file '%s'.\n", PROPERTY_FILE_PATH);       
+    const uint_fast64_t currentDirLength = strlen(currentDir);
+    const uint_fast64_t propertyFilePathLength = currentDirLength + 34/*"/tmp/propertyFile_create_test_file"*/;
+
+    char* propertyFilePath = alloca(sizeof(*propertyFilePath) * (propertyFilePathLength + 1));
+    strncpy(propertyFilePath, currentDir, currentDirLength);
+    strncpy(propertyFilePath + currentDirLength, "/tmp/propertyFile_create_test_file", 34);
+    propertyFilePath[propertyFilePathLength] = '\0';
+
+    if(util_fileExists(propertyFilePath)){
+        if(!util_deleteFile(propertyFilePath)){
+            UTIL_LOG_ERROR_("Failed to delete old file '%s'.\n", propertyFilePath);       
 
             return false;
         }
     }
 
-    if(propertyFile_create(PROPERTY_FILE_PATH, 16) != ERROR_NO_ERROR){
-        UTIL_LOG_ERROR_("Failed to create property file '%s'.\n", PROPERTY_FILE_PATH);                
+    if(propertyFile_create(propertyFilePath, propertyFilePathLength) != ERROR_NO_ERROR){
+        UTIL_LOG_ERROR_("Failed to create property file '%s'.\n", propertyFilePath);                
 
         return false;
     }
 
-    util_deleteFile(PROPERTY_FILE_PATH);
-
-    #undef PROPERTY_FILE_PATH
+    util_deleteFile(propertyFilePath);
 
     return true;
 }
 
 TEST_TEST_FUNCTION(propertyFile_add){
-    #define PROPERTY_FILE_PATH "/home/ex05/herder/propertyFile_add_test_file"
+    char currentDir[PATH_MAX];
+    util_getCurrentWorkingDirectory(currentDir, PATH_MAX);
 
-    if(util_fileExists(PROPERTY_FILE_PATH)){
-        if(!util_deleteFile(PROPERTY_FILE_PATH)){
-            UTIL_LOG_ERROR_("Failed to delete old file '%s'.\n", PROPERTY_FILE_PATH);       
+    const uint_fast64_t currentDirLength = strlen(currentDir);
+    const uint_fast64_t propertyFilePathLength = currentDirLength + 31/*"/tmp/propertyFile_add_test_file"*/;
+
+    char* propertyFilePath = alloca(sizeof(*propertyFilePath) * (propertyFilePathLength + 1));
+    strncpy(propertyFilePath, currentDir, currentDirLength);
+    strncpy(propertyFilePath + currentDirLength, "/tmp/propertyFile_add_test_file", 31);
+    propertyFilePath[propertyFilePathLength] = '\0';
+
+    if(util_fileExists(propertyFilePath)){
+        if(!util_deleteFile(propertyFilePath)){
+            UTIL_LOG_ERROR_("Failed to delete old file '%s'.\n", propertyFilePath);       
 
             return false;
         }
     }
 
-    if(propertyFile_create(PROPERTY_FILE_PATH, 16) != ERROR_NO_ERROR){
-        UTIL_LOG_ERROR_("Failed to create property file '%s'.\n", PROPERTY_FILE_PATH);                
+    if(propertyFile_create(propertyFilePath, propertyFilePathLength) != ERROR_NO_ERROR){
+        UTIL_LOG_ERROR_("Failed to create property file '%s'.\n", propertyFilePath);                
 
         return false;
     }
 
     PropertyFile propertyFile;
-    propertyFile_init(&propertyFile, PROPERTY_FILE_PATH);
+    propertyFile_init(&propertyFile, propertyFilePath);
 
     bool ret = true;
     Property* testProperty;
@@ -1030,32 +1046,39 @@ TEST_TEST_FUNCTION(propertyFile_add){
 label_free:
     propertyFile_free(&propertyFile);
 
-    util_deleteFile(PROPERTY_FILE_PATH);
-
-    #undef PROPERTY_FILE_PATH
+    util_deleteFile(propertyFilePath);
 
     return ret;
 }    
 
 TEST_TEST_FUNCTION(propertyFile_remove){
-    #define PROPERTY_FILE_PATH "/home/ex05/herder/propertyFile_remove_test_file"
+    char currentDir[PATH_MAX];
+    util_getCurrentWorkingDirectory(currentDir, PATH_MAX);
 
-    if(util_fileExists(PROPERTY_FILE_PATH)){
-        if(!util_deleteFile(PROPERTY_FILE_PATH)){
-            UTIL_LOG_ERROR_("Failed to delete old file '%s'.\n", PROPERTY_FILE_PATH);       
+    const uint_fast64_t currentDirLength = strlen(currentDir);
+    const uint_fast64_t propertyFilePathLength = currentDirLength + 34/*"/tmp/propertyFile_remove_test_file"*/;
+
+    char* propertyFilePath = alloca(sizeof(*propertyFilePath) * (propertyFilePathLength + 1));
+    strncpy(propertyFilePath, currentDir, currentDirLength);
+    strncpy(propertyFilePath + currentDirLength, "/tmp/propertyFile_remove_test_file", 34);
+    propertyFilePath[propertyFilePathLength] = '\0';
+
+    if(util_fileExists(propertyFilePath)){
+        if(!util_deleteFile(propertyFilePath)){
+            UTIL_LOG_ERROR_("Failed to delete old file '%s'.\n", propertyFilePath);       
 
             return false;
         }
     }
 
-    if(propertyFile_create(PROPERTY_FILE_PATH, 16) != ERROR_NO_ERROR){
-        UTIL_LOG_ERROR_("Failed to create property file '%s'.\n", PROPERTY_FILE_PATH);                
+    if(propertyFile_create(propertyFilePath, propertyFilePathLength) != ERROR_NO_ERROR){
+        UTIL_LOG_ERROR_("Failed to create property file '%s'.\n", propertyFilePath);                
 
         return false;
     }
 
     PropertyFile propertyFile;
-    propertyFile_init(&propertyFile, PROPERTY_FILE_PATH);
+    propertyFile_init(&propertyFile, propertyFilePath);
 
     Property* testProperty;
     propertyFile_addProperty(&propertyFile, &testProperty, "testProperty", sizeof(uint64_t));
@@ -1086,9 +1109,7 @@ TEST_TEST_FUNCTION(propertyFile_remove){
 
     propertyFile_free(&propertyFile);
 
-    util_deleteFile(PROPERTY_FILE_PATH);
-
-    #undef PROPERTY_FILE_PATH
+    util_deleteFile(propertyFilePath);
 
     return ret;
 }    
