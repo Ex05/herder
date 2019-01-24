@@ -351,8 +351,9 @@ char* util_readUserInput(void){
     while (true) {
         int_fast32_t c = fgetc(stdin);
 
-        if(c == EOF) 
+        if(c == EOF){
             break;
+        }
 
         if(!isspace(c)) {
              ungetc(c, stdin);
