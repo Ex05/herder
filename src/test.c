@@ -997,8 +997,7 @@ TEST_TEST_FUNCTION(propertyFile_add){
 
     char* propertyFilePath = alloca(sizeof(*propertyFilePath) * (propertyFilePathLength + 1));
     strncpy(propertyFilePath, currentDir, currentDirLength);
-    strncpy(propertyFilePath + currentDirLength, "/tmp/propertyFile_add_test_file", 31);
-    propertyFilePath[propertyFilePathLength] = '\0';
+    strncpy(propertyFilePath + currentDirLength, "/tmp/propertyFile_add_test_file", 32);
 
     if(util_fileExists(propertyFilePath)){
         if(!util_deleteFile(propertyFilePath)){
@@ -1060,8 +1059,7 @@ TEST_TEST_FUNCTION(propertyFile_remove){
 
     char* propertyFilePath = alloca(sizeof(*propertyFilePath) * (propertyFilePathLength + 1));
     strncpy(propertyFilePath, currentDir, currentDirLength);
-    strncpy(propertyFilePath + currentDirLength, "/tmp/propertyFile_remove_test_file", 34);
-    propertyFilePath[propertyFilePathLength] = '\0';
+    strncpy(propertyFilePath + currentDirLength, "/tmp/propertyFile_remove_test_file", 35);
 
     if(util_fileExists(propertyFilePath)){
         if(!util_deleteFile(propertyFilePath)){
@@ -1115,14 +1113,15 @@ TEST_TEST_FUNCTION(propertyFile_remove){
 }    
 
 TEST_TEST_FUNCTION(mediaLibrary_getShow){
-    char* userHome = util_getHomeDirectory();
-    const uint_fast64_t userHomeLength = strlen(userHome);
+    char currentDir[PATH_MAX];
+    util_getCurrentWorkingDirectory(currentDir, PATH_MAX);
 
-    char* libraryFileLocation = alloca(sizeof(*libraryFileLocation) * (userHomeLength + 15/*"/herder/daemon/"*/ + 1));
-    strncpy(libraryFileLocation, userHome, userHomeLength);
-    strncpy(libraryFileLocation + userHomeLength, "/herder/daemon/", 16);
+    const uint_fast64_t currentDirLength = strlen(currentDir);
+    const uint_fast64_t libraryFileLocationLength = currentDirLength + 5/*"/tmp/"*/;
 
-    const uint_fast64_t libraryFileLocationLength = strlen(libraryFileLocation);
+    char* libraryFileLocation = alloca(sizeof(*libraryFileLocation) * (libraryFileLocationLength + 1));
+    strncpy(libraryFileLocation, currentDir, currentDirLength);
+    strncpy(libraryFileLocation + currentDirLength, "/tmp/", 6);
     
     MediaLibrary library;
     bool ret = true;
@@ -1171,14 +1170,15 @@ label_free:
 }
 
 TEST_TEST_FUNCTION(mediaLibrary_getSeason){
-    char* userHome = util_getHomeDirectory();
-    const uint_fast64_t userHomeLength = strlen(userHome);
+    char currentDir[PATH_MAX];
+    util_getCurrentWorkingDirectory(currentDir, PATH_MAX);
 
-    char* libraryFileLocation = alloca(sizeof(*libraryFileLocation) * (userHomeLength + 15/*"/herder/daemon/"*/ + 1));
-    strncpy(libraryFileLocation, userHome, userHomeLength);
-    strncpy(libraryFileLocation + userHomeLength, "/herder/daemon/", 16);
+    const uint_fast64_t currentDirLength = strlen(currentDir);
+    const uint_fast64_t libraryFileLocationLength = currentDirLength + 5/*"/tmp/"*/;
 
-    const uint_fast64_t libraryFileLocationLength = strlen(libraryFileLocation);
+    char* libraryFileLocation = alloca(sizeof(*libraryFileLocation) * (libraryFileLocationLength + 1));
+    strncpy(libraryFileLocation, currentDir, currentDirLength);
+    strncpy(libraryFileLocation + currentDirLength, "/tmp/", 6);
     
     MediaLibrary library;
     bool ret = true;
@@ -1235,14 +1235,15 @@ label_free:
 }
 
 TEST_TEST_FUNCTION(mediaLibrary_addEpisode){
-    char* userHome = util_getHomeDirectory();
-    const uint_fast64_t userHomeLength = strlen(userHome);
+    char currentDir[PATH_MAX];
+    util_getCurrentWorkingDirectory(currentDir, PATH_MAX);
 
-    char* libraryFileLocation = alloca(sizeof(*libraryFileLocation) * (userHomeLength + 15/*"/herder/daemon/"*/ + 1));
-    strncpy(libraryFileLocation, userHome, userHomeLength);
-    strncpy(libraryFileLocation + userHomeLength, "/herder/daemon/", 16);
+    const uint_fast64_t currentDirLength = strlen(currentDir);
+    const uint_fast64_t libraryFileLocationLength = currentDirLength + 5/*"/tmp/"*/;
 
-    const uint_fast64_t libraryFileLocationLength = strlen(libraryFileLocation);
+    char* libraryFileLocation = alloca(sizeof(*libraryFileLocation) * (libraryFileLocationLength + 1));
+    strncpy(libraryFileLocation, currentDir, currentDirLength);
+    strncpy(libraryFileLocation + currentDirLength, "/tmp/", 6);
 
     MediaLibrary library;
     bool ret = true;
