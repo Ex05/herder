@@ -622,6 +622,13 @@ ERROR_CODE herder_addEpisode(Property* remoteHost, Property* remotePort, Propert
     util_uint16ToByteArray(request.data + request.dataLength, episodeInfo->episode);
     request.dataLength += sizeof(uint16_t);   
 
+    // FileExtension.
+    util_uint16ToByteArray(request.data + request.dataLength, episodeInfo->fileExtensionLength);
+    request.dataLength += sizeof(uint16_t);   
+
+    memcpy(request.data + request.dataLength, episodeInfo->fileExtension, episodeInfo->fileExtensionLength);
+    request.dataLength += episodeInfo->showNameLength;
+
     HTTP_Response response;
     http_initResponse(&response, httpProcessingBuffer, HTTP_PROCESSING_BUFFER_SIZE);
     if((error = http_sendRequest(&request, &response, socketFD)) != ERROR_NO_ERROR){
@@ -716,6 +723,12 @@ ERROR_CODE herder_extractShowInfo(Property* remoteHost, Property* remotePort, Ep
     const uint_fast64_t fileNameLength = filePathLength - fileNameOffset;
 
     const char url[] = "/extractShowInfo";
+
+    if((error = util_getFileExtension(&((*episodeInfo)->fileExtension), filePath, filePathLength)) != ERROR_NO_ERROR){
+        goto label_unMap;
+    }
+
+    (*episodeInfo)->fileExtensionLength = strlen((*episodeInfo)->fileExtension);
 
     HTTP_Request request;
     if((error = http_initRequest(&request, url, strlen(url), httpProcessingBuffer, HTTP_PROCESSING_BUFFER_SIZE, HTTP_VERSION_1_1, REQUEST_TYPE_POST)) != ERROR_NO_ERROR){

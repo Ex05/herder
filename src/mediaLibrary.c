@@ -29,7 +29,7 @@ local Episode* mediaLibrary_containsEpisode(ArrayList*, const uint_fast16_t, con
 
 local void medialibrary_initShow(Show*, const char*, const size_t);
 
-local ERROR_CODE medialibrary_initEpisode(Episode*, const uint_fast16_t, const char*, const size_t);
+local ERROR_CODE medialibrary_initEpisode(Episode*, const uint_fast16_t, const char*, const uint_fast64_t, const char*, const uint_fast16_t);
 
 local ERROR_CODE medialibrary_initSeason(Season*, const uint_fast16_t);
 
@@ -146,6 +146,12 @@ ERROR_CODE mediaLibrary_init(MediaLibrary* library, const char* libraryLocation,
             
             // TODO:(jan) Free allocated memory on error.
             char* showName = malloc(sizeof(*showName) * (showNameLength + 1));
+            if(showName == NULL){
+                error = ERROR_OUT_OF_MEMORY;
+
+                goto label_freeShowName;
+            }
+
             if(fread(showName, 1, showNameLength + 1, file) != showNameLength + 1){
                 if(feof(file) != 0){
                     break;
@@ -226,9 +232,37 @@ ERROR_CODE mediaLibrary_init(MediaLibrary* library, const char* libraryLocation,
                     goto label_freeEpisodeName;
                 }
             }
+
+            // File extension.
+             if(fread(readBuffer, 1, sizeof(uint16_t), file) != sizeof(uint16_t)){
+                if(feof(file) != 0){
+                    break;
+                }else{
+                    UTIL_LOG_ERROR("Failed to read file extension length.");
+
+                    error = ERROR_READ_ERROR;
+
+                    goto label_freeShowName;
+                }
+            }
+
+            uint_fast64_t fileExtensionLength = util_byteArrayTo_uint16(readBuffer);
+
+            char* fileExtension = malloc(sizeof(*fileExtension) * (fileExtensionLength + 1));
+            if(fread(fileExtension, 1, fileExtensionLength + 1, file) != fileExtensionLength + 1){
+                if(feof(file) != 0){
+                    break;
+                }else{
+                    UTIL_LOG_ERROR("Failed to read file extension.");
+
+                    error = ERROR_READ_ERROR;
+
+                    goto label_freeEpisodeName;
+                }
+            }
             
             Episode* episode;
-            error = mediaLibrary_addEpisode(library, &episode, show, season, episodeNumber, episodeName, episodeNameLength, false);
+            error = mediaLibrary_addEpisode(library, &episode, show, season, episodeNumber, episodeName, episodeNameLength, fileExtension, fileExtensionLength,  false);
 
         label_freeEpisodeName:
             free(episodeName);
@@ -258,6 +292,7 @@ inline void mediaLibrary_freeSeason(Season* season){
 
 inline void mediaLibrary_freeEpisode(Episode* episode){
     free(episode->name);
+    free(episode->fileExtension);
 }
 
 inline void mediaLibrary_free(MediaLibrary* library){
@@ -746,7 +781,7 @@ inline ERROR_CODE medialibrary_initSeason(Season* season, const uint_fast16_t nu
     return ERROR(error);
 }
 
-ERROR_CODE mediaLibrary_addEpisode(MediaLibrary* library, Episode** episode, Show* show, Season* season, const uint_fast16_t number, const char* name, const uint_fast64_t nameLength, const bool saveToDisk){
+ERROR_CODE mediaLibrary_addEpisode(MediaLibrary* library, Episode** episode, Show* show, Season* season, const uint_fast16_t number, const char* name, const uint_fast64_t nameLength, const char* fileExtension,const uint_fast16_t fileExtensionLength, const bool saveToDisk){
     ERROR_CODE error = ERROR_NO_ERROR;
 
     *episode = malloc(sizeof(**episode));
@@ -756,7 +791,7 @@ ERROR_CODE mediaLibrary_addEpisode(MediaLibrary* library, Episode** episode, Sho
         goto label_return;
     }
 
-    if((error = medialibrary_initEpisode(*episode, number, name, nameLength)) != ERROR_NO_ERROR){
+    if((error = medialibrary_initEpisode(*episode, number, name, nameLength, fileExtension, fileExtensionLength)) != ERROR_NO_ERROR){
         goto label_return;
     }
 
@@ -821,6 +856,21 @@ ERROR_CODE mediaLibrary_addEpisode(MediaLibrary* library, Episode** episode, Sho
             return ERROR(ERROR_WRITE_ERROR);
         }
 
+        // FileExtension
+        util_uint64ToByteArray(writeBuffer, (*episode)->fileExtensionLength);
+
+        if(fwrite(writeBuffer, 1, sizeof(uint16_t), file) != sizeof(uint16_t)){
+            UTIL_LOG_ERROR("Failed to write file extension length to library file.");
+            
+            return ERROR(ERROR_WRITE_ERROR);
+        }
+
+        if(fwrite((*episode)->fileExtension, 1, (*episode)->fileExtensionLength + 1, file) != (*episode)->fileExtensionLength + 1){
+            UTIL_LOG_ERROR("Failed to write file extension to library file.");
+            
+            return ERROR(ERROR_WRITE_ERROR);
+        }
+
         fflush(file);
     }
 
@@ -847,8 +897,12 @@ inline ERROR_CODE mediaLibrary_getEpisode(Season* season, Episode** episode, con
     return ERROR(ERROR_ENTRY_NOT_FOUND);
 }
 
-inline ERROR_CODE medialibrary_initEpisode(Episode* episode, const uint_fast16_t number,  const char* name, const size_t nameLength){
+inline ERROR_CODE medialibrary_initEpisode(Episode* episode, const uint_fast16_t number, const char* name, const uint_fast64_t nameLength, const char* fileExtension, const uint_fast16_t fileExtensionLength){
     ERROR_CODE error = ERROR_NO_ERROR;
+
+    episode->nameLength = nameLength;
+    episode->number = number;
+    episode->fileExtensionLength = fileExtensionLength;
 
     episode->name = malloc(sizeof(*episode->name) * (nameLength + 1));
     if(episode->name == NULL){
@@ -856,11 +910,15 @@ inline ERROR_CODE medialibrary_initEpisode(Episode* episode, const uint_fast16_t
 
         goto label_return;
     }
-
-    episode->nameLength = nameLength;
-    episode->number = number;
-
     strncpy(episode->name, name, nameLength + 1);
+
+    episode->fileExtension = malloc(sizeof(*episode->fileExtension) * (fileExtensionLength + 1));
+    if(episode->fileExtension == NULL){
+        error = ERROR_OUT_OF_MEMORY;
+
+        goto label_return;
+    }
+    strncpy(episode->fileExtension, fileExtension, fileExtensionLength + 1);
 
 label_return:
     return ERROR(error);
@@ -892,6 +950,7 @@ inline ERROR_CODE mediaLibrary_initEpisodeInfo(EpisodeInfo* info){
 inline void mediaLibrary_freeEpisodeInfo(EpisodeInfo* info){
     free(info->showName);
     free(info->name);
+    free(info->fileExtension);
 }
 
 #undef PROPERTY_LIBRARY_DIRECTORY_NAME
