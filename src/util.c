@@ -153,7 +153,7 @@ inline ERROR_CODE util_unMap(void* buffer, const uint_fast64_t length){
     return ERROR(ERROR_NO_ERROR);
 }
 
-inline void util_concatenate(char* dst, const size_t lengthDst, const char* a, const size_t lengthA, const char* b, const size_t lengthB) {
+inline void util_concatenate(char* dst, const uint_fast64_t lengthDst, const char* a, const uint_fast64_t lengthA, const char* b, const uint_fast64_t lengthB) {
 	strncpy(dst, a, lengthA);
 
 	if(lengthDst - lengthA > 0)

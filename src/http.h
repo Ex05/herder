@@ -12,11 +12,11 @@
 #define HTTP_ADD_HEADER_FIELD(request, _name, _value) do{ \
     HTTP_HeaderField* headerField ##  _name = malloc(sizeof(*headerField ##  _name)); \
     memset(headerField ##  _name, 0, sizeof(*headerField ##  _name)); \
-    const size_t headerFieldHostNameLength = strlen(# _name); \
+    const uint_fast64_t headerFieldHostNameLength = strlen(# _name); \
     headerField ##  _name->name = malloc(sizeof(headerField ##  _name->name) * (headerFieldHostNameLength + 1)); \
     strncpy(headerField ##  _name->name, # _name, headerFieldHostNameLength + 1); \
     \
-    const size_t headerField ##  _nameValueLength = strlen(_value); \
+    const uint_fast64_t headerField ##  _nameValueLength = strlen(_value); \
     headerField ##  _name->value = malloc(sizeof(headerField ##  _name->value) * (headerField ##  _nameValueLength + 1)); \
     strncpy(headerField ##  _name->value, _value, headerField ##  _nameValueLength + 1); \
     \

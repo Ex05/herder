@@ -89,7 +89,7 @@ inline HTTP_HeaderField* http_getHeaderField(HTTP_Request* request, char* name){
     ArrayListIterator it;
     arrayList_initIterator(&it, &request->headerFields);    
     
-    const size_t nameLength = strlen(name);
+    const uint_fast64_t nameLength = strlen(name);
     while(ARRAY_LIST_ITERATOR_HAS_NEXT(&it)){
         HTTP_HeaderField* headerField = ARRAY_LIST_ITERATOR_NEXT(&it);
         

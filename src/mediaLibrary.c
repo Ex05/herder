@@ -19,15 +19,15 @@ local ERROR_CODE mediaLibrary_extractEpisodeNumber(EpisodeInfo*, char*, const ui
 
 local ERROR_CODE mediaLibrary_extractEpisodeName(EpisodeInfo*, char*, const uint_fast64_t);
 
-local ERROR_CODE mediaLibrary_extractSeasonNumber(EpisodeInfo*, char*, const size_t);
+local ERROR_CODE mediaLibrary_extractSeasonNumber(EpisodeInfo*, char*, const uint_fast64_t);
 
 local void mediaLibrary_fillEpisodeInfo(EpisodeInfo*);
 
-local ERROR_CODE mediaLibrary_containsShow(LinkedList*, Show**, const char*, const size_t);
+local ERROR_CODE mediaLibrary_containsShow(LinkedList*, Show**, const char*, const uint_fast64_t);
 
-local Episode* mediaLibrary_containsEpisode(ArrayList*, const uint_fast16_t, const char*, const size_t);
+local Episode* mediaLibrary_containsEpisode(ArrayList*, const uint_fast16_t, const char*, const uint_fast64_t);
 
-local void medialibrary_initShow(Show*, const char*, const size_t);
+local void medialibrary_initShow(Show*, const char*, const uint_fast64_t);
 
 local ERROR_CODE medialibrary_initEpisode(Episode*, const uint_fast16_t, const char*, const uint_fast64_t, const char*, const uint_fast16_t);
 
@@ -406,7 +406,7 @@ inline ERROR_CODE mediaLibrary_extractEpisodeNumber(EpisodeInfo* info, char* fil
     return ERROR(ERROR_NO_ERROR);
 }
 
-inline ERROR_CODE mediaLibrary_extractSeasonNumber(EpisodeInfo* info, char* fileName, const size_t fileNameLength){
+inline ERROR_CODE mediaLibrary_extractSeasonNumber(EpisodeInfo* info, char* fileName, const uint_fast64_t fileNameLength){
     ERROR_CODE error;
     if((error = util_extractPrefixedNumber(fileName, fileNameLength, &info->season, 's')) != ERROR_NO_ERROR){
         return ERROR(error);
@@ -705,7 +705,7 @@ inline ERROR_CODE medialibrary_getShow(MediaLibrary* library, Show** show,  cons
     return mediaLibrary_containsShow(&library->shows, show, noneWhiteSpaceName, nameLength);
 }
 
-inline void medialibrary_initShow(Show* show, const char* name, const size_t nameLength){
+inline void medialibrary_initShow(Show* show, const char* name, const uint_fast64_t nameLength){
     show->name = malloc(sizeof(*show->name) * (nameLength + 1));
     show->nameLength = nameLength;
 
@@ -714,7 +714,7 @@ inline void medialibrary_initShow(Show* show, const char* name, const size_t nam
     arrayList_init(&show->seasons, 1, mediaLibrary_seasonsExpandFunction);
 }
 
-inline ERROR_CODE mediaLibrary_containsShow(LinkedList* shows, Show** show, const char* name, const size_t nameLength){
+inline ERROR_CODE mediaLibrary_containsShow(LinkedList* shows, Show** show, const char* name, const uint_fast64_t nameLength){
     LinkedListIterator it;
     linkedList_initIterator(&it, shows);
 
@@ -924,7 +924,7 @@ label_return:
     return ERROR(error);
 }
 
-inline Episode* mediaLibrary_containsEpisode(ArrayList* episodes,const uint_fast16_t number, const char* name, const size_t nameLength){
+inline Episode* mediaLibrary_containsEpisode(ArrayList* episodes,const uint_fast16_t number, const char* name, const uint_fast64_t nameLength){
     ArrayListIterator it;
     arrayList_initIterator(&it, episodes);
 

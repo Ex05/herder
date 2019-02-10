@@ -49,7 +49,7 @@ ERROR_CODE argumentParser_addArgument(ArgumentParser* parser, Argument* argument
     register uint_fast8_t i;
     for(i = 0; i < numArguments; i++){
         const char* s = va_arg(args, char*);
-        const size_t strLength = strlen(s);
+        const uint_fast64_t strLength = strlen(s);
 
         argument->arguments[i] = malloc(sizeof(*argument->arguments[i]) * (strLength + 1));
                 
