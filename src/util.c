@@ -655,4 +655,18 @@ inline ERROR_CODE util_getCurrentWorkingDirectory(char* dir, const uint_fast64_t
     return ERROR(ERROR_NO_ERROR);    
 }
 
+ERROR_CODE util_getFileExtension(char** extension, char* fileName, const uint_fast64_t fileNameLength){
+    const int_fast64_t fileExtensionOffset = util_findLast(fileName, fileNameLength, '.');
+
+    if(fileExtensionOffset == -1){
+        extension = NULL;
+
+        return ERROR_(ERROR_INVALID_STRING, "%s does not contain the token '.'", fileName);
+    }
+
+    *extension = fileName + (fileExtensionOffset + 1);
+
+    return ERROR(ERROR_NO_ERROR);
+}
+
 #endif

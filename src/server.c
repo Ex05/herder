@@ -215,6 +215,13 @@ local SERVER_CONTEXT_HANDLER(server_pageAdd){
     const uint_fast16_t episodeNumber = util_byteArrayTo_uint16(request->data + readOffset);
     readOffset += sizeof(uint16_t);
 
+    // FileExtension.
+    const uint_fast16_t fileExtensionLength = util_byteArrayTo_uint16(request->data + readOffset);
+    readOffset += sizeof(uint16_t);
+
+    char* fileExtension = (char*) request->data + readOffset;
+    readOffset += fileExtensionLength;
+
     Show* show;
     ERROR_CODE error;
     if((error = medialibrary_getShow(&server->library, &show, showName, showNameLength)) != ERROR_NO_ERROR){
@@ -231,7 +238,7 @@ local SERVER_CONTEXT_HANDLER(server_pageAdd){
     }
 
     Episode* episode;
-    if((error = mediaLibrary_addEpisode(&server->library, &episode, show, season, episodeNumber, episodeName, episodeNameLength, true)) != ERROR_NO_ERROR){
+    if((error = mediaLibrary_addEpisode(&server->library, &episode, show, season, episodeNumber, episodeName, episodeNameLength, fileExtension, fileExtensionLength, true)) != ERROR_NO_ERROR){
         goto label_return;
     }
 
@@ -704,24 +711,6 @@ ERROR_CODE server_init(HerderServer* server, const char* rootDirectory, const ui
     if(listen(server->sockFD, SOMAXCONN) == -1){
         return ERROR(ERROR_FAILED_TO_LISTEN_ON_SERVER_SOCKET);
     }
-
-    Show* americanDad;
-    mediaLibrary_addShow(&server->library, &americanDad, "American Dad", strlen("American Dad"));
-
-    Season* season14;
-    mediaLibrary_addSeason(&server->library, &season14, americanDad, 14);
-
-    Episode* episode1401;
-    mediaLibrary_addEpisode(&server->library, &episode1401, americanDad, season14, 1, "Father's Daze", strlen("Father's Daze"), false);
-
-    Episode* episode1403;
-    mediaLibrary_addEpisode(&server->library, &episode1403, americanDad, season14, 3, "The Enlightenment of Ragi-Baba", strlen("The Enlightenment of Ragi-Baba"), false);
-
-    Season* season15;
-    mediaLibrary_addSeason(&server->library, &season15, americanDad, 15);
-
-    Episode* episode1501;
-    mediaLibrary_addEpisode(&server->library, &episode1501, americanDad, season15, 1, "Santa, Schmanta", strlen("Santa, Schmanta"), false);
 
     return ERROR(ERROR_NO_ERROR);
 }

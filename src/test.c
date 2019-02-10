@@ -979,7 +979,7 @@ TEST_TEST_FUNCTION(propertyFile_create){
 
     if(propertyFile_create(propertyFilePath, propertyFilePathLength) != ERROR_NO_ERROR){
         UTIL_LOG_ERROR_("Failed to create property file '%s'.\n", propertyFilePath);                
-
+ 
         return false;
     }
 
@@ -1281,7 +1281,7 @@ TEST_TEST_FUNCTION(mediaLibrary_addEpisode){
     char episdoeName[] = "Episode_15";
     const uint_fast64_t episodeNameLength = strlen(episdoeName);
 
-    if(mediaLibrary_addEpisode(&library, &episode, americanDad, season_01, 15, episdoeName, episodeNameLength, true) != ERROR_NO_ERROR){
+    if(mediaLibrary_addEpisode(&library, &episode, americanDad, season_01, 15, episdoeName, episodeNameLength, ".mkv", 4, true) != ERROR_NO_ERROR){
         ret = false;
 
         goto label_free;

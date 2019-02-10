@@ -30,16 +30,20 @@ typedef struct{
 }Season;
 
 typedef struct{
-    char* name;
     uint_fast64_t nameLength;
     uint_fast16_t number;
+    uint_fast16_t fileExtensionLength;
+    char* fileExtension;
+    char* name;
 }Episode;
 
 typedef struct{
     char* showName;
     char* name;
+    char* fileExtension;
     uint_fast64_t showNameLength;
     uint_fast64_t nameLength;
+    uint_fast16_t fileExtensionLength;
     int_fast16_t season;
     int_fast16_t episode;
 }EpisodeInfo;
@@ -58,7 +62,7 @@ ERROR_CODE mediaLibrary_addSeason(MediaLibrary*, Season**, Show*, const uint_fas
 
 ERROR_CODE medialibrary_getSeason(Show*, Season**, const uint_fast16_t);
 
-ERROR_CODE mediaLibrary_addEpisode(MediaLibrary*, Episode**, Show*, Season*, const uint_fast16_t, const char*, const uint_fast64_t, const bool);
+ERROR_CODE mediaLibrary_addEpisode(MediaLibrary*, Episode**, Show*, Season*, const uint_fast16_t, const char*, const uint_fast64_t, const char*, const uint_fast16_t, const bool);
 
 ERROR_CODE mediaLibrary_getEpisode(Season*, Episode**, const uint_fast16_t);
 
