@@ -3,8 +3,8 @@
 
 #include "util.h"
 
-#define ARRAY_LIST_IS_EMPTY(list)(list->lengt == 0)
-#define ARRAY_LIST_LENGTH(list)(list->lengt)
+#define ARRAY_LIST_IS_EMPTY(list)(list->length == 0)
+#define ARRAY_LIST_LENGTH(list)(list->length)
 
 #define ARRAY_LIST_ITERATOR_HAS_NEXT(it)(arrayList_iteratorHasNext(it))
 #define ARRAY_LIST_ITERATOR_NEXT(it)(arrayList_iteratorNext(it))
