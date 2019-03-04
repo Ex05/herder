@@ -19,14 +19,33 @@
 
 static ArrayList testSuits;
 
-// TODO: Find out if there is a way to be more expressive and have 'void*' be 'TestSuit*'. (jan - 2019.02.24)
+#define TEST_NO_SETUP_FLAG 0x01
+
 #define TEST_TEST_SUIT_CONSTRUCT_FUNCTION(functionName) ERROR_CODE test_testSuitConstruct_##functionName(void** data)
 typedef ERROR_CODE test_TestSuitConstructFunction(void**);
 
 #define TEST_TEST_SUIT_DESTRUCT_FUNCTION(functionName) ERROR_CODE test_testSuitDestruct_##functionName (void* data)
 typedef ERROR_CODE test_TestSuitDestructFunction(void*);
 
-#define TEST_NO_SETUP_FLAG 0x01
+#define TEST_TEST_FUNCTION(functionName) bool test_ ## functionName (void* data)
+typedef TEST_TEST_FUNCTION(testFunction);
+
+#define TEST_END() return test_testEnd();
+
+#define TEST_BEGIN() test_testBegin()
+
+#define TEST_SUIT_BEGIN_(name) test_testSuitBegin_(# name, test_testSuitConstruct_## name, test_testSuitDestruct_## name)
+
+#define TEST_SUIT_BEGIN(name) test_testSuitBegin(name)
+
+#define TEST_SUIT_END() test_testSuitEnd()
+
+#define TEST(name) test_test(test_ ## name, #name)
+
+#define __TEST_NO_SETUP__(void) do { \
+    TestSuit* testSuit = arrayList_get(&testSuits, ARRAY_LIST_LENGTH((&testSuits)) - 1); \
+    testSuit->noSetup = TEST_NO_SETUP_FLAG; \
+}while(0);
 
 typedef struct testSuit{
     test_TestSuitConstructFunction* constructFunction;
@@ -135,12 +154,10 @@ TestSuit* test_testSuitBegin(const char* name){
     return testSuit;
 }
 
+// Note: Intentionally empty. (jan - 2019.03.01)
 void test_testSuitEnd(void){
-    // Note: Intentionally empty. (jan - 2019.03.01)
+    // Unused.
 }
-
-#define TEST_TEST_FUNCTION(functionName) bool test_ ## functionName (void* data)
-typedef TEST_TEST_FUNCTION(testFunction);
 
 void test_test(test_testFunction func, const char* name){    
     TestSuit* testSuit = arrayList_get(&testSuits, testSuits.length - 1);
@@ -172,22 +189,7 @@ void test_test(test_testFunction func, const char* name){
     testSuit->noSetup = 0;
 }
 
-#define TEST_END() return test_testEnd();
-
-#define TEST_BEGIN() test_testBegin()
-
-#define TEST_SUIT_BEGIN_(name) test_testSuitBegin_(# name, test_testSuitConstruct_## name, test_testSuitDestruct_## name)
-
-#define TEST_SUIT_BEGIN(name) test_testSuitBegin(name)
-
-#define TEST_SUIT_END() test_testSuitEnd()
-
-#define TEST(name) test_test(test_ ## name, #name)
-
-#define __TEST_NO_SETUP__(void) do { \
-    TestSuit* testSuit = arrayList_get(&testSuits, ARRAY_LIST_LENGTH((&testSuits)) - 1); \
-    testSuit->noSetup = TEST_NO_SETUP_FLAG; \
-}while(0);
+// END_HEADER.
 
 TEST_TEST_FUNCTION(arraylist_iteration){
     ArrayList list;
