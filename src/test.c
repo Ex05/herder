@@ -26,11 +26,14 @@ typedef ERROR_CODE test_TestSuitConstructFunction(void**);
 #define TEST_TEST_SUIT_DESTRUCT_FUNCTION(functionName) ERROR_CODE test_testSuitDestruct_##functionName (void* data)
 typedef ERROR_CODE test_TestSuitDestructFunction(void*);
 
+#define TEST_NO_SETUP_FLAG 0x01
+
 typedef struct testSuit{
     test_TestSuitConstructFunction* constructFunction;
     test_TestSuitDestructFunction* destructFunction;
     void* data;
     char* name;
+    uint8_t noSetup: 1;
     ArrayList testedFunctions;
 }TestSuit;
 
@@ -148,7 +151,7 @@ void test_test(test_testFunction func, const char* name){
     strcpy(test->name, name);
 
     ERROR_CODE error = ERROR_NO_ERROR;
-    if(testSuit->constructFunction != NULL){
+    if(testSuit->constructFunction != NULL && testSuit->noSetup != TEST_NO_SETUP_FLAG){
         if((error = testSuit->constructFunction(&testSuit->data)) != ERROR_NO_ERROR){
             test->failed = true;       
         }
@@ -158,13 +161,15 @@ void test_test(test_testFunction func, const char* name){
         test->failed = !func(testSuit->data);
     }
 
-     if(testSuit->destructFunction != NULL){
+     if(testSuit->destructFunction != NULL && testSuit->noSetup != TEST_NO_SETUP_FLAG){
         if(testSuit->destructFunction(testSuit->data) != ERROR_NO_ERROR){
             test->failed = true;
         }
     }
 
     arrayList_add(&testSuit->testedFunctions, test);  
+
+    testSuit->noSetup = 0;
 }
 
 #define TEST_END() return test_testEnd();
@@ -178,6 +183,11 @@ void test_test(test_testFunction func, const char* name){
 #define TEST_SUIT_END() test_testSuitEnd()
 
 #define TEST(name) test_test(test_ ## name, #name)
+
+#define __TEST_NO_SETUP__(void) do { \
+    TestSuit* testSuit = arrayList_get(&testSuits, ARRAY_LIST_LENGTH((&testSuits)) - 1); \
+    testSuit->noSetup = TEST_NO_SETUP_FLAG; \
+}while(0);
 
 TEST_TEST_FUNCTION(arraylist_iteration){
     ArrayList list;
