@@ -7,9 +7,9 @@
 uint_fast64_t arrayList_expand(const uint_fast16_t i);
 
 local ERROR_CODE arrayList_expandList(ArrayList*);
-local void arrayList_initCore(ArrayList*, const uint_fast64_t, ArrayList_ExpandFunction);
+local void arrayList_init_(ArrayList*, const uint_fast64_t, ArrayList_ExpandFunction);
 
-inline void arrayList_initCore(ArrayList* list, const uint_fast64_t initialSize, ArrayList_ExpandFunction expandFunction){
+inline void arrayList_init_(ArrayList* list, const uint_fast64_t initialSize, ArrayList_ExpandFunction expandFunction){
     list->length = 0;
     list->expansions = 1;
     list->expandFunction = expandFunction;
@@ -17,7 +17,7 @@ inline void arrayList_initCore(ArrayList* list, const uint_fast64_t initialSize,
 }
 
 inline ERROR_CODE arrayList_init(ArrayList* list, const uint_fast64_t initialSize, ArrayList_ExpandFunction expandFunction){    
-    arrayList_initCore(list, initialSize, expandFunction);
+    arrayList_init_(list, initialSize, expandFunction);
 
     list->elements = malloc(sizeof(void*) * list->maxLength);
 
@@ -29,7 +29,7 @@ inline ERROR_CODE arrayList_init(ArrayList* list, const uint_fast64_t initialSiz
 }
 
 inline ERROR_CODE arrayList_initFixedSizeList(ArrayList* list, const uint_fast64_t size){
-    arrayList_initCore(list, size, NULL);
+    arrayList_init_(list, size, NULL);
 
     list->elements = malloc(sizeof(void*) * list->maxLength);
 

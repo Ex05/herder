@@ -10,7 +10,7 @@
 #define ARRAY_LIST_ITERATOR_NEXT(it)(arrayList_iteratorNext(it))
 
 #define ARRAY_LIST_INIT_FIXED_SIZE_HEAP_LIST(list, initialSize) do{ \
-    arrayList_initCore(list, initialSize, NULL);\
+    arrayList_init_(list, initialSize, NULL);\
     list->elements = alloca(sizeof(void*) * list->maxLength);\
 } while(0)
 
