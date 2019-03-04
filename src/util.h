@@ -39,6 +39,8 @@
 
 #define UTIL_MAX_ERROR_MSG_LENGTH 256
 
+#define UTIL_FLAG(name, size) uint8_t name : size
+
 typedef enum{
     ERROR_NO_ERROR = 0,
     ERROR_ERROR,
@@ -119,9 +121,9 @@ typedef struct {
 
     union{
         struct{
-            uint supressNextError : 1;
-            uint supressAllErrors : 1;
-            uint supressNextErrorOfType : 1;
+            UTIL_FLAG(supressNextError, 1);
+            UTIL_FLAG(supressAllErrors, 1);
+            UTIL_FLAG(supressNextErrorOfType, 1);
         };
 
         uint8_t flags;

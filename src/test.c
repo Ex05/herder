@@ -33,7 +33,7 @@ typedef struct testSuit{
     test_TestSuitDestructFunction* destructFunction;
     void* data;
     char* name;
-    uint8_t noSetup: 1;
+    UTIL_FLAG(noSetup, 1);
     ArrayList testedFunctions;
 }TestSuit;
 
