@@ -17,16 +17,17 @@ preprocessFlags="-E"
 
 assembleFlags="-S"
 
-compileFlags="-pthread -lrt -c -Wall -Wextra -pedantic -Wno-unused-parameter -std=c11"
+compileFlags="-pthread -lrt -c -Werror -Wall -Wextra -pedantic -Wno-unused-parameter -std=c11 -march=native"
 # (pthread) Use POSIX threading.
 # (lrt) POSIX.1b realtime extension library.
 # (c) Compile without linking.
-# (Wno-unused-parameter) Disable warning about unused parameters.
+# (Werror) Turn all warnings in to errors.
 # (Wall) Turn on "all" warnings.
 # (Wextra) Turn on extra warnings not included in 'Wall'.
 # (pedantic-errors) Issue all the warnings demanded by strict ISO C and turns them into errors.
 # (Wno-unused-parameter) Don't warn about unused parameter.
 # (std=c11) Use C11 (C standard revision) ISO/IEC 9899:2011.
+# (-march=native) Use CPU/Architecture dependent optimisations. See:'https://stackoverflow.com/questions/14492436/g-optimization-beyond-o3-ofast' for more optimisation flags.
 
 additionalDebugFlags="-D DEBUG"
 

@@ -745,7 +745,7 @@ inline ERROR_CODE mediaLibrary_addSeason(MediaLibrary* library, Season** season,
         goto label_return;
     }
 
-    UTIL_LOG_DEBUG_("Added Season: %02" PRIuFAST16 " of '%s'.", (*season)->number,  show->name);
+    UTIL_LOG_DEBUG_("Added Season:%02" PRIuFAST16 " to '%s'.", (*season)->number,  show->name);
 
 label_return:
     return ERROR(ERROR_NO_ERROR);
@@ -799,7 +799,7 @@ ERROR_CODE mediaLibrary_addEpisode(MediaLibrary* library, Episode** episode, Sho
         goto label_return;
     }
 
-    UTIL_LOG_DEBUG_("Added Episode: %02" PRIuFAST16 " '%s' of Season: %02" PRIuFAST16 "  of '%s'.", (*episode)->number, (*episode)->name, season->number, show->name);
+    UTIL_LOG_DEBUG_("Added Episode:%02" PRIuFAST16 " '%s' of Season:%02" PRIuFAST16 " to '%s'.", (*episode)->number, (*episode)->name, season->number, show->name);
 
     if(saveToDisk){
         FILE* file = library->libraryFile;

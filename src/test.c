@@ -19,7 +19,17 @@
 
 static ArrayList testSuits;
 
-typedef struct{
+// TODO: Find out if there is a way to be more expressive and have 'void*' be 'TestSuit*'. (jan - 2019.02.24)
+#define TEST_TEST_SUIT_CONSTRUCT_FUNCTION(functionName) ERROR_CODE test_testSuitConstruct_##functionName(void** data)
+typedef ERROR_CODE test_TestSuitConstructFunction(void**);
+
+#define TEST_TEST_SUIT_DESTRUCT_FUNCTION(functionName) ERROR_CODE test_testSuitDestruct_##functionName (void* data)
+typedef ERROR_CODE test_TestSuitDestructFunction(void*);
+
+typedef struct testSuit{
+    test_TestSuitConstructFunction* constructFunction;
+    test_TestSuitDestructFunction* destructFunction;
+    void* data;
     char* name;
     ArrayList testedFunctions;
 }TestSuit;
@@ -36,6 +46,8 @@ local ARRAY_LIST_EXPAND_FUNCTION(test_failedTestsExpandFunction){
 void test_testBegin(void){
     arrayList_init(&testSuits, 16, test_failedTestsExpandFunction);
 }
+
+TestSuit* test_testSuitBegin(const char*);
 
 int32_t test_testEnd(void){
     uint_fast64_t totalTests = 0;
@@ -98,8 +110,17 @@ int32_t test_testEnd(void){
     return failedTests == 0 ? 0 : -1;
 }
 
-void test_testSuitBegin(const char* name){
+void test_testSuitBegin_(const char* name, test_TestSuitConstructFunction* constructFunction, test_TestSuitDestructFunction destructFunction){
+    TestSuit* testSuit = test_testSuitBegin(name);
+
+    testSuit->constructFunction = constructFunction;
+    testSuit->destructFunction = destructFunction;
+}
+
+TestSuit* test_testSuitBegin(const char* name){
     TestSuit* testSuit = malloc(sizeof(*testSuit));
+    memset(testSuit, 0, sizeof(*testSuit));
+
     testSuit->name = malloc(sizeof(char*) * (strlen(name) + 1));
 
     strcpy(testSuit->name, name);
@@ -107,13 +128,15 @@ void test_testSuitBegin(const char* name){
     arrayList_init(&testSuit->testedFunctions, 16, &test_failedTestsExpandFunction); 
 
     arrayList_add(&testSuits, testSuit);
+
+    return testSuit;
 }
 
 void test_testSuitEnd(void){
-    // Unused    
+    // Note: Intentionally empty. (jan - 2019.03.01)
 }
 
-#define TEST_TEST_FUNCTION(functionName) bool test_ ## functionName (void)
+#define TEST_TEST_FUNCTION(functionName) bool test_ ## functionName (void* data)
 typedef TEST_TEST_FUNCTION(testFunction);
 
 void test_test(test_testFunction func, const char* name){    
@@ -124,14 +147,31 @@ void test_test(test_testFunction func, const char* name){
 
     strcpy(test->name, name);
 
-    test->failed = !func();
+    ERROR_CODE error = ERROR_NO_ERROR;
+    if(testSuit->constructFunction != NULL){
+        if((error = testSuit->constructFunction(&testSuit->data)) != ERROR_NO_ERROR){
+            test->failed = true;       
+        }
+    }
 
-    arrayList_add(&testSuit->testedFunctions, test);
+    if(error == ERROR_NO_ERROR){
+        test->failed = !func(testSuit->data);
+    }
+
+     if(testSuit->destructFunction != NULL){
+        if(testSuit->destructFunction(testSuit->data) != ERROR_NO_ERROR){
+            test->failed = true;
+        }
+    }
+
+    arrayList_add(&testSuit->testedFunctions, test);  
 }
 
 #define TEST_END() return test_testEnd();
 
 #define TEST_BEGIN() test_testBegin()
+
+#define TEST_SUIT_BEGIN_(name) test_testSuitBegin_(# name, test_testSuitConstruct_## name, test_testSuitDestruct_## name)
 
 #define TEST_SUIT_BEGIN(name) test_testSuitBegin(name)
 
@@ -966,9 +1006,8 @@ TEST_TEST_FUNCTION(propertyFile_create){
 
     char* propertyFilePath = alloca(sizeof(*propertyFilePath) * (propertyFilePathLength + 1));
     strncpy(propertyFilePath, currentDir, currentDirLength);
-    strncpy(propertyFilePath + currentDirLength, "/tmp/propertyFile_create_test_file", 34);
-    propertyFilePath[propertyFilePathLength] = '\0';
-
+    strncpy(propertyFilePath + currentDirLength, "/tmp/propertyFile_create_test_file", 35);
+    
     if(util_fileExists(propertyFilePath)){
         if(!util_deleteFile(propertyFilePath)){
             UTIL_LOG_ERROR_("Failed to delete old file '%s'.\n", propertyFilePath);       
@@ -1112,7 +1151,9 @@ TEST_TEST_FUNCTION(propertyFile_remove){
     return ret;
 }    
 
-TEST_TEST_FUNCTION(mediaLibrary_getShow){
+TEST_TEST_SUIT_CONSTRUCT_FUNCTION(mediaLibrary){
+    ERROR_CODE error = ERROR_NO_ERROR;
+
     char currentDir[PATH_MAX];
     util_getCurrentWorkingDirectory(currentDir, PATH_MAX);
 
@@ -1123,48 +1164,82 @@ TEST_TEST_FUNCTION(mediaLibrary_getShow){
     strncpy(libraryFileLocation, currentDir, currentDirLength);
     strncpy(libraryFileLocation + currentDirLength, "/tmp/", 6);
     
-    MediaLibrary library;
-    bool ret = true;
-    if(mediaLibrary_init(&library, libraryFileLocation, libraryFileLocationLength) != ERROR_NO_ERROR){
-        ret = false;
+    MediaLibrary* library = malloc(sizeof(*library));
+    if(library == NULL){
+        error = ERROR_OUT_OF_MEMORY;
 
-        goto label_free;
+        goto label_error;
     }
 
-    char showName[] = "American Dad";
-    const uint_fast64_t showNameLength = strlen(showName);
-
-    Show* show;
-    if(medialibrary_getShow(&library, &show, showName, showNameLength) == ERROR_NO_ERROR){
-        ret =  false;
-
-        goto label_free;
+    if((error = mediaLibrary_init(library, libraryFileLocation, libraryFileLocationLength)) != ERROR_NO_ERROR){
+        goto label_error;
     }
 
-    if(mediaLibrary_addShow(&library, &show, showName, showNameLength) != ERROR_NO_ERROR){
-        ret = false;
+    *data = library;
 
-        goto label_free;
-    }
+label_error:
+    return ERROR(error);
+}
 
-    if(medialibrary_getShow(&library, &show, showName, showNameLength) != ERROR_NO_ERROR){
-        ret =  false;
+TEST_TEST_SUIT_DESTRUCT_FUNCTION(mediaLibrary){
+    ERROR_CODE error = ERROR_NO_ERROR;
 
-        goto label_free;
-    }
+    mediaLibrary_free(data);
 
-label_free:
- mediaLibrary_free(&library);
+    char currentDir[PATH_MAX];
+    util_getCurrentWorkingDirectory(currentDir, PATH_MAX);
+
+    const uint_fast64_t currentDirLength = strlen(currentDir);
+    const uint_fast64_t libraryFileLocationLength = currentDirLength + 5/*"/tmp/"*/;
+
+    char* libraryFileLocation = alloca(sizeof(*libraryFileLocation) * (libraryFileLocationLength + 1));
+    strncpy(libraryFileLocation, currentDir, currentDirLength);
+    strncpy(libraryFileLocation + currentDirLength, "/tmp/", 6);
 
     char* libraryFilePath = alloca(sizeof(*libraryFilePath) * (libraryFileLocationLength + 8/*lib_data*/ + 1));
     strncpy(libraryFilePath, libraryFileLocation, libraryFileLocationLength);
     strncpy(libraryFilePath + libraryFileLocationLength, "lib_data", 9);
 
-    if(util_deleteFile(libraryFilePath) != ERROR_NO_ERROR){
-        UTIL_LOG_ERROR_("Failed to delete media library file. '%s'.", libraryFilePath);
-
-        ret = false;
+    if(util_fileExists(libraryFilePath)){
+        if((error = util_deleteFile(libraryFilePath)) != ERROR_NO_ERROR){
+            UTIL_LOG_ERROR_("Failed to delete media library file. '%s'.", libraryFilePath);
+        }
     }
+    
+    free(data);
+
+    return ERROR(error);
+}
+
+TEST_TEST_FUNCTION(mediaLibrary_getShow){    
+    MediaLibrary* library = data;
+    
+    bool ret = true;
+    
+    char showName[] = "American Dad";
+    const uint_fast64_t showNameLength = strlen(showName);
+
+    Show* show;
+    __UTIL_SUPPRESS_NEXT_ERROR_OF_TYPE__(ERROR_ENTRY_NOT_FOUND);
+    if(medialibrary_getShow(library, &show, showName, showNameLength) == ERROR_NO_ERROR){
+        ret =  false;
+
+        goto label_return;
+    }
+
+    if(mediaLibrary_addShow(library, &show, showName, showNameLength) != ERROR_NO_ERROR){
+        ret = false;
+
+        goto label_return;
+    }
+
+    if(medialibrary_getShow(library, &show, showName, showNameLength) != ERROR_NO_ERROR){
+        ret =  false;
+
+        goto label_return;
+    }
+
+label_return:
 
     return ret;
 }
@@ -1278,7 +1353,7 @@ TEST_TEST_FUNCTION(mediaLibrary_addEpisode){
         goto label_free;
     }
 
-    char episdoeName[] = "Episode_15";
+    char episdoeName[] = "Threat Levels";
     const uint_fast64_t episodeNameLength = strlen(episdoeName);
 
     if(mediaLibrary_addEpisode(&library, &episode, americanDad, season_01, 15, episdoeName, episodeNameLength, ".mkv", 4, true) != ERROR_NO_ERROR){
@@ -1328,7 +1403,7 @@ TEST_TEST_FUNCTION(server_addContext){
 
         goto label_free;
     }
-
+  
     #define BUFFER_SIZE 8096
     void* buffer;
     if(util_blockAlloc(&buffer, BUFFER_SIZE) != ERROR_NO_ERROR){
@@ -1522,14 +1597,11 @@ int main(void){
         TEST(util_byteArrayTo_uint16);
         TEST(util_byteArrayTo_uint32);
         TEST(util_byteArrayTo_uint64);
-
         // Integer to ByteArray conversions.
         TEST(util_uint16ToByteArray);
         TEST(util_uint32ToByteArray);
         TEST(util_uint64ToByteArray);
-
         TEST(util_formatNumber);
-
         // String utils.
         TEST(util_findFirst);
         TEST(util_findFirst_s);
@@ -1563,24 +1635,24 @@ int main(void){
     TEST_SUIT_BEGIN("cache");
         TEST(cache_load);
     TEST_SUIT_END();
-
+    
     TEST_SUIT_BEGIN("propertyFile");
         TEST(propertyFile_create);
         TEST(propertyFile_add);
         TEST(propertyFile_remove);
     TEST_SUIT_END();   
 
-    TEST_SUIT_BEGIN("mediaLibrary");
+    TEST_SUIT_BEGIN_(mediaLibrary);
         TEST(mediaLibrary_getShow);
         TEST(mediaLibrary_getSeason);
         TEST(mediaLibrary_addEpisode);
     TEST_SUIT_END();
 
-    TEST_SUIT_BEGIN("herder");
-        TEST(herder_constructFilePath);
-    TEST_SUIT_END();
+    // TEST_SUIT_BEGIN("herder");
+    //     TEST(herder_constructFilePath);
+    // TEST_SUIT_END();
 
-    // The following comment is 'bs', there is a sleep in the test function because some one was to lasy to sync opening the server port with making the http request. (Jan - 2018.09.06)
+    // The following comment is 'bs', there is a sleep in the test function because someone was to lazy to sync opening the server port with making the http request. (Jan - 2018.09.06)
     /* TEST_SUIT_BEGIN("server");
         // Note:(jan) Running the server in valgrind takes to long, probably due to the 'accept' call having to be interrupted in the server loop.
         TEST(server_addContext);
