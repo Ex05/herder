@@ -5,8 +5,10 @@
 
 local Node* linkedList_initNode(void*);
 
-inline void linkedList_init(LinkedList* list) {
+inline ERROR_CODE linkedList_init(LinkedList* list) {
     memset(list, 0, sizeof(*list));
+
+    return ERROR(ERROR_NO_ERROR);
 }
 
 inline void linkedList_add(LinkedList* list, void* data) {

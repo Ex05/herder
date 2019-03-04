@@ -22,7 +22,7 @@ typedef struct {
     Node* node;
 }LinkedListIterator;
 
-void linkedList_init(LinkedList*);
+ERROR_CODE linkedList_init(LinkedList*);
 
 void linkedList_add(LinkedList*, void*);
 
