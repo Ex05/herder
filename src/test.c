@@ -21,13 +21,14 @@ static ArrayList testSuits;
 
 #define TEST_NO_SETUP_FLAG 0x01
 
-#define TEST_TEST_SUIT_CONSTRUCT_FUNCTION(functionName) ERROR_CODE test_testSuitConstruct_##functionName(void** data)
+#define TEST_TEST_SUIT_CONSTRUCT_FUNCTION(functionName, varName) ERROR_CODE test_testSuitConstruct_##functionName(void** varName)
 typedef ERROR_CODE test_TestSuitConstructFunction(void**);
 
-#define TEST_TEST_SUIT_DESTRUCT_FUNCTION(functionName) ERROR_CODE test_testSuitDestruct_##functionName (void* data)
+#define TEST_TEST_SUIT_DESTRUCT_FUNCTION(functionName, varName) ERROR_CODE test_testSuitDestruct_##functionName (void* varName)
 typedef ERROR_CODE test_TestSuitDestructFunction(void*);
 
 #define TEST_TEST_FUNCTION(functionName) bool test_ ## functionName (void* data)
+#define TEST_TEST_FUNCTION_(functionName, type, varName) bool test_ ## functionName (type* varName)
 typedef TEST_TEST_FUNCTION(testFunction);
 
 #define TEST_END() return test_testEnd();
@@ -40,7 +41,7 @@ typedef TEST_TEST_FUNCTION(testFunction);
 
 #define TEST_SUIT_END() test_testSuitEnd()
 
-#define TEST(name) test_test(test_ ## name, #name)
+#define TEST(name) test_test((test_testFunction*)test_ ## name, #name)
 
 #define __TEST_NO_SETUP__(void) do { \
     TestSuit* testSuit = arrayList_get(&testSuits, ARRAY_LIST_LENGTH((&testSuits)) - 1); \
@@ -281,24 +282,39 @@ TEST_TEST_FUNCTION(arraylist_get){
     return ret;
 }
 
-TEST_TEST_FUNCTION(linkedList_iteration){
-    LinkedList list;
-    linkedList_init(&list);
+TEST_TEST_SUIT_CONSTRUCT_FUNCTION(linkedList, list){
+    ERROR_CODE error;
 
+    *list = malloc(sizeof(LinkedList));
+
+    error = linkedList_init(*list);
+        
+    return ERROR(error);
+}
+
+TEST_TEST_SUIT_DESTRUCT_FUNCTION(linkedList, list){
+    linkedList_free(list);
+
+    free(list);
+
+    return ERROR(ERROR_NO_ERROR);
+}
+
+TEST_TEST_FUNCTION_(linkedList_iteration, LinkedList, list){
     uint8_t a = 0;
     uint8_t b = 1;
     uint8_t c = 2;
     uint8_t d = 3;
 
-    linkedList_add(&list, &a);
-    linkedList_add(&list, &b);
-    linkedList_add(&list, &c);
-    linkedList_add(&list, &d);
+    linkedList_add(list, &a);
+    linkedList_add(list, &b);
+    linkedList_add(list, &c);
+    linkedList_add(list, &d);
 
     uint8_t buf[4] = {0};
 
     LinkedListIterator it;
-    linkedList_initIterator(&it, &list);
+    linkedList_initIterator(&it, list);
 
     uint_fast64_t i = 0;
     while(LINKED_LIST_ITERATOR_HAS_NEXT(&it)){
@@ -310,32 +326,27 @@ TEST_TEST_FUNCTION(linkedList_iteration){
         ret = false;
     }
 
-    linkedList_free(&list);
-
     return ret;
 }
 
-TEST_TEST_FUNCTION(linkedList_remove){
-    LinkedList list;
-    linkedList_init(&list);
-
+TEST_TEST_FUNCTION_(linkedList_remove, LinkedList, list){
     uint8_t a = 0;
     uint8_t b = 1;
     uint8_t c = 2;
     uint8_t d = 3;
 
-    linkedList_add(&list, &a);
-    linkedList_add(&list, &b);
-    linkedList_add(&list, &c);
-    linkedList_add(&list, &d);
+    linkedList_add(list, &a);
+    linkedList_add(list, &b);
+    linkedList_add(list, &c);
+    linkedList_add(list, &d);
 
-    linkedList_remove(&list, &a);
-    linkedList_remove(&list, &b);
+    linkedList_remove(list, &a);
+    linkedList_remove(list, &b);
     
     uint8_t buf[4] = {0};
 
     LinkedListIterator it;
-    linkedList_initIterator(&it, &list);
+    linkedList_initIterator(&it, list);
 
     uint_fast64_t i = 0;
     while(LINKED_LIST_ITERATOR_HAS_NEXT(&it)){
@@ -347,13 +358,11 @@ TEST_TEST_FUNCTION(linkedList_remove){
         ret = false;
     }
 
-    if(list.length != 2){
+    if(list->length != 2){
         ret = false;
 
-        printf("Size:%" PRIdFAST64 ".\n", list.length);
+        printf("Size:%" PRIdFAST64 ".\n", list->length);
     }
-
-    linkedList_free(&list);
 
     return ret;
 }
@@ -1163,7 +1172,7 @@ TEST_TEST_FUNCTION(propertyFile_remove){
     return ret;
 }    
 
-TEST_TEST_SUIT_CONSTRUCT_FUNCTION(mediaLibrary){
+TEST_TEST_SUIT_CONSTRUCT_FUNCTION(mediaLibrary, library){
     ERROR_CODE error = ERROR_NO_ERROR;
 
     char currentDir[PATH_MAX];
@@ -1176,27 +1185,25 @@ TEST_TEST_SUIT_CONSTRUCT_FUNCTION(mediaLibrary){
     strncpy(libraryFileLocation, currentDir, currentDirLength);
     strncpy(libraryFileLocation + currentDirLength, "/tmp/", 6);
     
-    MediaLibrary* library = malloc(sizeof(*library));
-    if(library == NULL){
+    *library = malloc(sizeof(MediaLibrary));
+    if(*library == NULL){
         error = ERROR_OUT_OF_MEMORY;
 
         goto label_error;
     }
 
-    if((error = mediaLibrary_init(library, libraryFileLocation, libraryFileLocationLength)) != ERROR_NO_ERROR){
+    if((error = mediaLibrary_init(*library, libraryFileLocation, libraryFileLocationLength)) != ERROR_NO_ERROR){
         goto label_error;
     }
-
-    *data = library;
 
 label_error:
     return ERROR(error);
 }
 
-TEST_TEST_SUIT_DESTRUCT_FUNCTION(mediaLibrary){
+TEST_TEST_SUIT_DESTRUCT_FUNCTION(mediaLibrary, library){
     ERROR_CODE error = ERROR_NO_ERROR;
 
-    mediaLibrary_free(data);
+    mediaLibrary_free(library);
 
     char currentDir[PATH_MAX];
     util_getCurrentWorkingDirectory(currentDir, PATH_MAX);
@@ -1218,7 +1225,7 @@ TEST_TEST_SUIT_DESTRUCT_FUNCTION(mediaLibrary){
         }
     }
     
-    free(data);
+    free(library);
 
     return ERROR(error);
 }
@@ -1599,7 +1606,7 @@ int main(void){
         TEST(arraylist_get);
     TEST_SUIT_END();
 
-    TEST_SUIT_BEGIN("linkedList");
+    TEST_SUIT_BEGIN_(linkedList);
         TEST(linkedList_iteration);
         TEST(linkedList_remove);
     TEST_SUIT_END();
@@ -1660,9 +1667,9 @@ int main(void){
         TEST(mediaLibrary_addEpisode);
     TEST_SUIT_END();
 
-    // TEST_SUIT_BEGIN("herder");
-    //     TEST(herder_constructFilePath);
-    // TEST_SUIT_END();
+    TEST_SUIT_BEGIN("herder");
+        TEST(herder_constructFilePath);
+    TEST_SUIT_END();
 
     // The following comment is 'bs', there is a sleep in the test function because someone was to lazy to sync opening the server port with making the http request. (Jan - 2018.09.06)
     /* TEST_SUIT_BEGIN("server");
