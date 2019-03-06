@@ -1230,177 +1230,85 @@ TEST_TEST_SUIT_DESTRUCT_FUNCTION(mediaLibrary, library){
     return ERROR(error);
 }
 
-TEST_TEST_FUNCTION(mediaLibrary_getShow){    
-    MediaLibrary* library = data;
-    
-    bool ret = true;
-    
+TEST_TEST_FUNCTION_(mediaLibrary_getShow, MediaLibrary, library){            
     char showName[] = "American Dad";
     const uint_fast64_t showNameLength = strlen(showName);
 
     Show* show;
     __UTIL_SUPPRESS_NEXT_ERROR_OF_TYPE__(ERROR_ENTRY_NOT_FOUND);
     if(medialibrary_getShow(library, &show, showName, showNameLength) == ERROR_NO_ERROR){
-        ret =  false;
-
-        goto label_return;
+        return false;
     }
 
     if(mediaLibrary_addShow(library, &show, showName, showNameLength) != ERROR_NO_ERROR){
-        ret = false;
-
-        goto label_return;
+        return false;
     }
 
     if(medialibrary_getShow(library, &show, showName, showNameLength) != ERROR_NO_ERROR){
-        ret =  false;
-
-        goto label_return;
+        return false;
     }
 
-label_return:
-
-    return ret;
+    return true;
 }
 
-TEST_TEST_FUNCTION(mediaLibrary_getSeason){
-    char currentDir[PATH_MAX];
-    util_getCurrentWorkingDirectory(currentDir, PATH_MAX);
-
-    const uint_fast64_t currentDirLength = strlen(currentDir);
-    const uint_fast64_t libraryFileLocationLength = currentDirLength + 5/*"/tmp/"*/;
-
-    char* libraryFileLocation = alloca(sizeof(*libraryFileLocation) * (libraryFileLocationLength + 1));
-    strncpy(libraryFileLocation, currentDir, currentDirLength);
-    strncpy(libraryFileLocation + currentDirLength, "/tmp/", 6);
-    
-    MediaLibrary library;
-    bool ret = true;
-    if(mediaLibrary_init(&library, libraryFileLocation, libraryFileLocationLength) != ERROR_NO_ERROR){
-        ret = false;
-
-        goto label_free;
-    }
-
+TEST_TEST_FUNCTION_(mediaLibrary_getSeason, MediaLibrary, library){    
     char showName[] = "American Dad";
     const uint_fast64_t showNameLength = strlen(showName);
 
     Show* americanDad;
-    if(mediaLibrary_addShow(&library, &americanDad, showName, showNameLength) != ERROR_NO_ERROR){
-        ret = false;
-
-        goto label_free;
+    if(mediaLibrary_addShow(library, &americanDad, showName, showNameLength) != ERROR_NO_ERROR){
+        return false;
     }
 
     Season* season_1;
     __UTIL_SUPPRESS_NEXT_ERROR_OF_TYPE__(ERROR_ENTRY_NOT_FOUND);
     if(medialibrary_getSeason(americanDad, &season_1, 1) != ERROR_ENTRY_NOT_FOUND){
-        ret = false;
-
-        goto label_free;
+        return false;
     }
 
-    if(mediaLibrary_addSeason(&library, &season_1, americanDad, 1) != ERROR_NO_ERROR){
-        ret = false;
-
-        goto label_free;
+    if(mediaLibrary_addSeason(library, &season_1, americanDad, 1) != ERROR_NO_ERROR){
+        return false;
     }
 
     if(medialibrary_getSeason(americanDad, &season_1, 1) != ERROR_NO_ERROR){
-        ret = false;
-
-        goto label_free;
+        return false;
     }
 
-label_free:
- mediaLibrary_free(&library);
-
-    char* libraryFilePath = alloca(sizeof(*libraryFilePath) * (libraryFileLocationLength + 8/*lib_data*/ + 1));
-    strncpy(libraryFilePath, libraryFileLocation, libraryFileLocationLength);
-    strncpy(libraryFilePath + libraryFileLocationLength, "lib_data", 9);
-
-    if(util_deleteFile(libraryFilePath) != ERROR_NO_ERROR){
-        UTIL_LOG_ERROR_("Failed to delete media library file. '%s'.", libraryFilePath);
-
-        ret = false;
-    }
-
-    return ret;
+    return true;
 }
 
-TEST_TEST_FUNCTION(mediaLibrary_addEpisode){
-    char currentDir[PATH_MAX];
-    util_getCurrentWorkingDirectory(currentDir, PATH_MAX);
-
-    const uint_fast64_t currentDirLength = strlen(currentDir);
-    const uint_fast64_t libraryFileLocationLength = currentDirLength + 5/*"/tmp/"*/;
-
-    char* libraryFileLocation = alloca(sizeof(*libraryFileLocation) * (libraryFileLocationLength + 1));
-    strncpy(libraryFileLocation, currentDir, currentDirLength);
-    strncpy(libraryFileLocation + currentDirLength, "/tmp/", 6);
-
-    MediaLibrary library;
-    bool ret = true;
-    if(mediaLibrary_init(&library, libraryFileLocation, libraryFileLocationLength) != ERROR_NO_ERROR){
-        ret = false;
-
-        goto label_free;
-    }
-
+TEST_TEST_FUNCTION_(mediaLibrary_addEpisode, MediaLibrary, library){
     char showName[] = "American Dad";
     const uint_fast64_t showNameLength = strlen(showName);
 
     Show* americanDad;
-    if(mediaLibrary_addShow(&library, &americanDad, showName, showNameLength) != ERROR_NO_ERROR){
-        ret = false;
-
-        goto label_free;
+    if(mediaLibrary_addShow(library, &americanDad, showName, showNameLength) != ERROR_NO_ERROR){
+        return false;
     }
 
     Season* season_01;
-    if(mediaLibrary_addSeason(&library, &season_01, americanDad, 1) != ERROR_NO_ERROR){
-        ret = false;
-
-        goto label_free;
+    if(mediaLibrary_addSeason(library, &season_01, americanDad, 1) != ERROR_NO_ERROR){
+        return false;
     }
 
     Episode* episode;
     __UTIL_SUPPRESS_NEXT_ERROR_OF_TYPE__(ERROR_ENTRY_NOT_FOUND);
     if(mediaLibrary_getEpisode(season_01, &episode, 15) != ERROR_ENTRY_NOT_FOUND){
-        ret = false;
-
-        goto label_free;
+        return false;
     }
 
     char episdoeName[] = "Threat Levels";
     const uint_fast64_t episodeNameLength = strlen(episdoeName);
 
-    if(mediaLibrary_addEpisode(&library, &episode, americanDad, season_01, 15, episdoeName, episodeNameLength, ".mkv", 4, true) != ERROR_NO_ERROR){
-        ret = false;
-
-        goto label_free;
+    if(mediaLibrary_addEpisode(library, &episode, americanDad, season_01, 15, episdoeName, episodeNameLength, ".mkv", 4, true) != ERROR_NO_ERROR){
+        return false;
     }
 
     if(mediaLibrary_getEpisode(season_01, &episode, 15) != ERROR_NO_ERROR){
-        ret = false;
-
-        goto label_free;
+        return false;
     }
 
-label_free:
-    mediaLibrary_free(&library);
-
-    char* libraryFilePath = alloca(sizeof(*libraryFilePath) * (libraryFileLocationLength + 8/*lib_data*/ + 1));
-    strncpy(libraryFilePath, libraryFileLocation, libraryFileLocationLength);
-    strncpy(libraryFilePath + libraryFileLocationLength, "lib_data", 9);
-
-    if(util_deleteFile(libraryFilePath) != ERROR_NO_ERROR){
-        UTIL_LOG_ERROR_("Failed to delete media library file. '%s'.", libraryFilePath);
-
-        ret = false;
-    }
-
-    return ret;
+    return true;
 }
 
 TEST_TEST_FUNCTION(server_addContext){
