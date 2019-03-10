@@ -758,7 +758,7 @@ ERROR_CODE server_start(HerderServer* server){
             continue;
         }
 
-        // Note: We cast server_run to Runnable* here to be able to use the THREAD_POOL_RUNNABLE_ macro in the defenition of server_run to have type information inside the function. (jan - 2019.03.07)
+        // Note: We cast server_run to Runnable* here to be able to use the THREAD_POOL_RUNNABLE_ macro in the defenition of server_run, this allows us to have type information inside the function. (jan - 2019.03.07)
         threadPool_run(&server->threadPool, (Runnable*) server_run, client);
     }
 
