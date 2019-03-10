@@ -106,6 +106,11 @@ ERROR_CODE threadPool_run(ThreadPool* threadPool, Runnable* runnable, void* data
 void* threadPool_threadFunc(void* data){
     ThreadPool* threadPool = (ThreadPool*) data;    
     
+    void* httpProcessingBuffer;
+    if(util_blockAlloc(&httpProcessingBuffer, HTTP_PROCESSING_BUFFER_SIZE) != ERROR_NO_ERROR){
+        return NULL;
+    }
+
     for(;;){
         sem_wait(&threadPool->numJobs);
         
@@ -130,11 +135,18 @@ void* threadPool_threadFunc(void* data){
             continue;
         }
         
+        // NOTE: Until we can make sure we are not leaking memory, we just clear everything. (jan - 2019.03.06)
+        // TODO: Clear only the actually used memory after we send/received and handled our packets. (jan - 2019.03.06)
+        memset(httpProcessingBuffer, 0, HTTP_PROCESSING_BUFFER_SIZE);
+        job->buffer = httpProcessingBuffer;
+
         job->runnable(job->data);
         
         free(job);
     }
     
+    util_unMap(httpProcessingBuffer, HTTP_PROCESSING_BUFFER_SIZE);
+
     return NULL;
 }
 
