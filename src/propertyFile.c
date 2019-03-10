@@ -7,7 +7,7 @@
 
 #define PAGE_ENTRY_SIZE (sizeof(uint64_t) * 4)
 
-local const Version VERSION = {0, 0, 1};
+local const Version VERSION = {1, 0, 0};
 
 local void propertyFile_initProperty(Property*, PropertyFileEntry*, PropertyFile*);
 
@@ -26,7 +26,6 @@ ERROR_CODE propertyFile_init(PropertyFile* propertyFile, const char* fileName){
         return ERROR(ERROR_FAILED_TO_OPEN_FILE);
     }
 
-    // NOTE:(jan) Only add 1 new page at a time.
     ERROR_CODE error;
     if((error = arrayList_init(&propertyFile->pages, 1, propertyFile_expandPageList) != ERROR_NO_ERROR)){
         return error;
@@ -35,21 +34,17 @@ ERROR_CODE propertyFile_init(PropertyFile* propertyFile, const char* fileName){
     FILE* file = propertyFile->file;
 
     if(fread(&propertyFile->version, 1, sizeof(propertyFile->version), file) != sizeof(propertyFile->version)){
-        UTIL_LOG_ERROR("Failed to read property file version.");
-
-        return ERROR(ERROR_READ_ERROR);
+        return ERROR_(ERROR_READ_ERROR, "Failed to read property file version. '%s'", fileName);
     }
 
     if(VERSION.release != propertyFile->version.release && VERSION.update == propertyFile->version.update && VERSION.hotfix == propertyFile->version.hotfix){
-        UTIL_LOG_ERROR_("Version miss match [%" PRIu8 ".%" PRIu8 ".%" PRIu8"].", propertyFile->version.release, propertyFile->version.update, propertyFile->version.hotfix);
 
-        return ERROR(ERROR_VERSION_MISSMATCH);
+        return ERROR_(ERROR_VERSION_MISSMATCH, "Version miss match [%" PRIu8 ".%" PRIu8 ".%" PRIu8 "].", propertyFile->version.release, propertyFile->version.update, propertyFile->version.hotfix);
     }
 
     if(fread(&propertyFile->maxPageEntries, 1, sizeof(propertyFile->maxPageEntries), file) != sizeof(propertyFile->maxPageEntries)){
-        UTIL_LOG_ERROR("Failed to read Max_Page_Entries.");
 
-        return ERROR(ERROR_READ_ERROR);
+        return ERROR_(ERROR_READ_ERROR, "Failed to read Max_Page_Entries. '%s'.", fileName);
     }
 
     int8_t readBuffer[sizeof(uint64_t)];
@@ -66,38 +61,30 @@ ERROR_CODE propertyFile_init(PropertyFile* propertyFile, const char* fileName){
 
             entry->entryOffset = ftell(file);
 
-            // Nname_Size.
+            // Name_Size.
             if(fread(readBuffer, 1, sizeof(uint64_t), file) != sizeof(uint64_t)){
-                UTIL_LOG_ERROR("Failed to read Name_Size.");
-
-                return ERROR(ERROR_READ_ERROR);
+                return ERROR_(ERROR_READ_ERROR, "Failed to read Name_Size. '%s'", fileName);
             }
 
             entry->nameLength = util_byteArrayTo_uint64(readBuffer);
 
-            // Nname_Offset.
+            // Name_Offset.
             if(fread(readBuffer, 1, sizeof(uint64_t), file) != sizeof(uint64_t)){
-                UTIL_LOG_ERROR("Failed to read Name_Offset.");
-
-                return ERROR(ERROR_READ_ERROR);
+                return ERROR_(ERROR_READ_ERROR, "Failed to read Name_Offset. '%s'", fileName);
             }
 
             entry->nameOffset = util_byteArrayTo_uint64(readBuffer);
 
             // Data_Size.
             if(fread(readBuffer, 1, sizeof(uint64_t), file) != sizeof(uint64_t)){
-                UTIL_LOG_ERROR("Failed to read Name_Offset.");
-
-                return ERROR(ERROR_READ_ERROR);
+                return ERROR_(ERROR_READ_ERROR, "Failed to read Data_Size. '%s'", fileName);
             }
 
             entry->length = util_byteArrayTo_uint64(readBuffer);
 
             // Data_Offset.
             if(fread(readBuffer, 1, sizeof(uint64_t), file) != sizeof(uint64_t)){
-                UTIL_LOG_ERROR("Failed to read Name_Offset.");
-
-                return ERROR(ERROR_READ_ERROR);
+                return ERROR_(ERROR_READ_ERROR, "Failed to read Data_Offset. '%s'", fileName);
             }
 
             entry->dataOffset = util_byteArrayTo_uint64(readBuffer);
@@ -111,9 +98,7 @@ ERROR_CODE propertyFile_init(PropertyFile* propertyFile, const char* fileName){
                 entry->name[entry->nameLength] = '\0';
 
                 if(fread(entry->name, sizeof(*entry->name), entry->nameLength, file) != entry->nameLength){
-                    UTIL_LOG_ERROR("Failed to read entry name.");
-
-                    return ERROR(ERROR_READ_ERROR);
+                    return ERROR_(ERROR_READ_ERROR, "Failed to read entry name. '%s'", fileName);
                 }
 
                 fseek(file, fileOffset, SEEK_SET);
@@ -125,9 +110,7 @@ ERROR_CODE propertyFile_init(PropertyFile* propertyFile, const char* fileName){
         }
 
         if(fread(readBuffer, 1, sizeof(uint64_t), file) != sizeof(uint64_t)){
-            UTIL_LOG_ERROR("Failed to read Name_Offset.");
-
-            return ERROR(ERROR_READ_ERROR);
+            return ERROR_(ERROR_READ_ERROR, "Failed to read next page offset. '%s'", fileName);
         }
 
         const uint_fast64_t nextPageOffset = util_byteArrayTo_uint64(readBuffer);
@@ -137,7 +120,7 @@ ERROR_CODE propertyFile_init(PropertyFile* propertyFile, const char* fileName){
         }
         
         if(fseek(file, nextPageOffset, SEEK_SET) == -1){
-            return ERROR(ERROR_DISK_ERROR);
+            return ERROR_(ERROR_DISK_ERROR, "Failed to seek to the next page ffset. [%" PRIdFAST64 "] '%s'.", nextPageOffset, fileName);
         }
     }
 
@@ -232,7 +215,7 @@ inline void propertyFile_initProperty(Property* property, PropertyFileEntry* ent
     fseek(propertyFile->file, entry->dataOffset, SEEK_SET);
     
     if(fread(property->buffer, 1, entry->length, propertyFile->file) != entry->length){
-        printf("ERROR: Failed to read property data.");
+        UTIL_LOG_CONSOLE(LOG_ERR, "Failed to read property data.");
     }
 }
 
@@ -325,9 +308,7 @@ label_entryFound:
     entry->nameOffset = ftell(propertyFile->file);
 
     if(fwrite(entry->name, sizeof(*entry->name), entry->nameLength, propertyFile->file) != entry->nameLength){
-        UTIL_LOG_ERROR("Failed to write entry name to propertyFile.");
-
-        return ERROR(ERROR_WRITE_ERROR);
+        return ERROR_(ERROR_WRITE_ERROR, "Failed to write entry name '%s' to propertyFile", name);
     }
 
     uint8_t* voidBuffer = alloca(entry->length);
@@ -343,9 +324,9 @@ label_entryFound:
 
     // Update entry on disk.
     if(fseek(propertyFile->file, entry->entryOffset, SEEK_SET) == -1){
-        UTIL_LOG_ERROR("Failed to write empty propertyData.");
+        UTIL_LOG_ERROR("");
 
-        return ERROR(ERROR_DISK_ERROR);
+        return ERROR_(ERROR_DISK_ERROR, "Failed to write propertyData of proeprty '%s' to disk.", name);
     }
 
     int8_t writeBuffer[sizeof(uint64_t)];
@@ -354,36 +335,30 @@ label_entryFound:
     util_uint64ToByteArray(writeBuffer, entry->nameLength);
 
     if(fwrite(writeBuffer, 1, sizeof(entry->nameLength), propertyFile->file) != sizeof(entry->nameLength)){
-        UTIL_LOG_ERROR("Failed to write entry name size to propertyFile.");
+        UTIL_LOG_ERROR("");
 
-        return ERROR(ERROR_WRITE_ERROR);
+        return ERROR_(ERROR_WRITE_ERROR, "Failed to write entry name size of property '%s' to propertyFile.", name);
     }
 
     // Name_Offset.
     util_uint64ToByteArray(writeBuffer, entry->nameOffset);
 
     if(fwrite(writeBuffer, 1, sizeof(entry->nameOffset), propertyFile->file) != sizeof(entry->nameOffset)){
-        UTIL_LOG_ERROR("Failed to write entry name offset to propertyFile.");
-
-        return ERROR(ERROR_WRITE_ERROR);
+        return ERROR_(ERROR_WRITE_ERROR, "Failed to write entry name offset of '%s' to propertyFile.", name);
     }
 
     // Data_Size.
     util_uint64ToByteArray(writeBuffer, entry->length);
 
     if(fwrite(writeBuffer, 1, sizeof(entry->length), propertyFile->file) != sizeof(entry->length)){
-        UTIL_LOG_ERROR("Failed to write entry size to propertyFile.");
-
-        return ERROR(ERROR_WRITE_ERROR);
+        return ERROR_(ERROR_WRITE_ERROR, "Failed to write entry size of property '%s' to propertyFile.", name);
     }
 
     // Data_Offset.
     util_uint64ToByteArray(writeBuffer, entry->dataOffset);
 
     if(fwrite(writeBuffer, 1, sizeof(entry->dataOffset), propertyFile->file) != sizeof(entry->dataOffset)){
-        UTIL_LOG_ERROR("Failed to write entry size to propertyFile.");
-
-        return ERROR(ERROR_WRITE_ERROR);
+        return ERROR_(ERROR_WRITE_ERROR, "Failed to write entry data offset of property '%s' to propertyFile.", name);
     }
 
     *property = malloc(sizeof(**property));
@@ -436,12 +411,12 @@ PropertyPage* propertyFile_addPropertyPage(PropertyFile* propertyFile){
         propertyPage->entries[i]->entryOffset = ftell(file);
 
         if(fwrite(writeBuffer, 1, PAGE_ENTRY_SIZE, file) != PAGE_ENTRY_SIZE){
-            printf("ERROR: Failed to write empty property entry to file.");
+            UTIL_LOG_ERROR("Failed to write empty property entry to file.");
         }
     }
 
     if(fwrite(writeBuffer, 1, sizeof(uint64_t), file) != sizeof(uint64_t)){
-        printf("ERROR: Failed to write propertyPage offset to file.");
+        UTIL_LOG_ERROR("Failed to write propertyPage offset to file.");
     }
 
     arrayList_add(&propertyFile->pages, propertyPage);
@@ -451,7 +426,7 @@ PropertyPage* propertyFile_addPropertyPage(PropertyFile* propertyFile){
     util_uint64ToByteArray(writeBuffer, propertyPage->offset);
 
     if(fwrite(writeBuffer, 1, sizeof(uint64_t), file) != sizeof(uint64_t)){
-        printf("ERROR: Failed to update previous propertyPage offset.");
+        UTIL_LOG_ERROR("Failed to update previous propertyPage offset.");
     }
 
     return propertyPage;
