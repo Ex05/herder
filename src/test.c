@@ -17,8 +17,6 @@
 #include "server.c"
 #include "herder.c"
 
-static ArrayList testSuits;
-
 #define TEST_NO_SETUP_FLAG 0x01
 
 #define TEST_TEST_SUIT_CONSTRUCT_FUNCTION(functionName, varName) ERROR_CODE test_testSuitConstruct_##functionName(void** varName)
@@ -47,6 +45,8 @@ typedef TEST_TEST_FUNCTION(testFunction);
     TestSuit* testSuit = arrayList_get(&testSuits, ARRAY_LIST_LENGTH((&testSuits)) - 1); \
     testSuit->noSetup = TEST_NO_SETUP_FLAG; \
 }while(0);
+
+static ArrayList testSuits;
 
 typedef struct testSuit{
     test_TestSuitConstructFunction* constructFunction;
@@ -182,7 +182,7 @@ void test_test(test_testFunction func, const char* name){
      if(testSuit->destructFunction != NULL && testSuit->noSetup != TEST_NO_SETUP_FLAG){
         if(testSuit->destructFunction(testSuit->data) != ERROR_NO_ERROR){
             test->failed = true;
-        }
+        } 
     }
 
     arrayList_add(&testSuit->testedFunctions, test);  

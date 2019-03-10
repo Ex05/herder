@@ -18,11 +18,13 @@ typedef struct{
 }ThreadPool;
 
 #define THREAD_POOL_RUNNABLE(functionName) void* functionName(void* data)
+#define THREAD_POOL_RUNNABLE_(functionName, dataType, varName) void* functionName(dataType* varName)
 typedef THREAD_POOL_RUNNABLE(Runnable);
 
 typedef struct{
-    Runnable* runnable;
+    void* buffer;
     void* data;
+    Runnable* runnable;
 }Job;
 
 ERROR_CODE threadPool_init(ThreadPool*, const uint_fast16_t);

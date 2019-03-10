@@ -42,9 +42,9 @@ local ERROR_CODE server_getFile(HerderServer*, CacheObject**, char*, const uint_
 
 local void server_daemonize(const char* workingDirectory);
 
-local ERROR_CODE server_setRootDirectory(Argument*, PropertyFile*, Property*);
+local ERROR_CODE server_setRootDirectory(Argument*, PropertyFile*, Property**);
 
-local ERROR_CODE server_setServerExternalPort(Argument*, PropertyFile*, Property*);
+local ERROR_CODE server_setServerExternalPort(Argument*, PropertyFile*, Property**);
 
 local HerderServer server;
 
@@ -98,8 +98,9 @@ SERVER_CONTEXT_HANDLER(server_defaultContextHandler){
     return ERROR(ERROR_NO_ERROR);
 }
 
-local THREAD_POOL_RUNNABLE(server_run){
-    Client* client = data;
+local THREAD_POOL_RUNNABLE_(server_run, Job, job){
+    Client* client = job->data;
+    void* buffer = job->buffer;
 
     char ip[INET_ADDRSTRLEN];
         
@@ -107,13 +108,6 @@ local THREAD_POOL_RUNNABLE(server_run){
         inet_ntop(AF_INET, &(client->socket.sin_addr), ip, INET_ADDRSTRLEN);    
     }else{
         memset(ip, 0, INET_ADDRSTRLEN);
-    }
-
-    // Using mmap saves about 5_000μs here for the first few calles to malloc, in a single Threaded scenario.
-    void* buffer;
-    
-    if(util_blockAlloc(&buffer, HTTP_PROCESSING_BUFFER_SIZE) != ERROR_NO_ERROR){
-        goto label_failedToRecevieHTTP_Request;
     }
 
     HTTP_Request request;
@@ -154,8 +148,6 @@ label_failedToRecevieHTTP_Request:
     close(client->sockFD);
 
     http_freeHTTP_Request(&request);
-
-    util_unMap(buffer, HTTP_PROCESSING_BUFFER_SIZE);
 
     free(client);
 
@@ -536,7 +528,7 @@ label_return:
         if(argumentParser_contains(&parser, &argumentSetServerRootDirectory)){
             noValidArgument = false;
 
-            if((error = server_setRootDirectory(&argumentSetServerRootDirectory, &properties, serverRootDirectory)) == ERROR_NO_ERROR){
+            if((error = server_setRootDirectory(&argumentSetServerRootDirectory, &properties, &serverRootDirectory)) == ERROR_NO_ERROR){
                 UTIL_LOG_CONSOLE_(LOG_INFO, "Successfully set '%s' to '%s'.", PROPERTY_SERVER_ROOT_DIRECTORY_NAME , (char*)serverRootDirectory->buffer);
             }
 
@@ -546,9 +538,11 @@ label_return:
         if(argumentParser_contains(&parser, &argumentSetServerExternalPort)){
             noValidArgument = false;
 
-		     if((error = server_setServerExternalPort(&argumentSetServerExternalPort, &properties, serverExternalPort)) == ERROR_NO_ERROR){
+		     if((error = server_setServerExternalPort(&argumentSetServerExternalPort, &properties, &serverExternalPort)) == ERROR_NO_ERROR){
                 UTIL_LOG_CONSOLE_(LOG_INFO, "Successfully set '%s' to '%" PRIdFAST64 "'.", PROPERTY_SERVER_EXTERNAL_PORT_NAME , util_byteArrayTo_uint64(serverExternalPort->buffer));
             }
+
+            goto label_exit;
         }
 
         if(argumentParser_contains(&parser, &argumentShowSettings)){
@@ -557,13 +551,9 @@ label_return:
 		    if(ARGUMENT_PARSER_ARGUMENT_HAS_VALUE(argumentShowSettings)){
                 UTIL_LOG_CONSOLE(LOG_INFO, "Invalid command. Usage --showSettings.");
             }else{
-                if(PROPERTY_IS_SET(serverRootDirectory)){
-                    UTIL_LOG_CONSOLE_(LOG_INFO, "ServerRootDirectory: '%s'.", serverRootDirectory->buffer);
-                }
+                UTIL_LOG_CONSOLE_(LOG_INFO, "ServerRootDirectory: '%s'.", PROPERTY_IS_SET(serverRootDirectory) ? (char*) serverRootDirectory->buffer : "NULL");
 
-			    if(PROPERTY_IS_SET(serverExternalPort)){
-                    UTIL_LOG_CONSOLE_(LOG_INFO, "ServerExternalPort: '%" PRIdFAST64 "'.", util_byteArrayTo_uint64(serverExternalPort->buffer));
-                }                
+                UTIL_LOG_CONSOLE_(LOG_INFO, "ServerExternalPort: '%" PRIuFAST64 "'.", PROPERTY_IS_SET(serverExternalPort) ? util_byteArrayTo_uint64(serverExternalPort->buffer) : 0);                
 		    }
             
             goto label_exit;
@@ -768,7 +758,8 @@ ERROR_CODE server_start(HerderServer* server){
             continue;
         }
 
-        threadPool_run(&server->threadPool, server_run, client);
+        // Note: We cast server_run to Runnable* here to be able to use the THREAD_POOL_RUNNABLE_ macro in the defenition of server_run, this allows us to have type information inside the function. (jan - 2019.03.07)
+        threadPool_run(&server->threadPool, (Runnable*) server_run, client);
     }
 
     return ERROR(ERROR_NO_ERROR);
@@ -982,7 +973,7 @@ inline void server_daemonize(const char* workingDirectory){
 	}
 }
 
-inline ERROR_CODE server_setRootDirectory(Argument* argumentSetServerRootDirectory, PropertyFile* propertyFile, Property* serverRootDirectory){
+inline ERROR_CODE server_setRootDirectory(Argument* argumentSetServerRootDirectory, PropertyFile* propertyFile, Property** serverRootDirectory){
     // Note: Make sure 'slashTerminated' is clamped to '0 - 1' so we can use it later to add/subtract depending on wether the string was slash termianted or not. (Jan - 2018.10.20)
     const bool slashTerminated = (argumentSetServerRootDirectory->value[argumentSetServerRootDirectory->valueLength - 1] == '/') & 0x01;
 
@@ -999,23 +990,23 @@ inline ERROR_CODE server_setRootDirectory(Argument* argumentSetServerRootDirecto
     }
 
     if(ARGUMENT_PARSER_ARGUMENT_HAS_VALUE((*argumentSetServerRootDirectory))){
-        if(PROPERTY_IS_NOT_SET(serverRootDirectory)){
-            if(propertyFile_addProperty(propertyFile, &serverRootDirectory, PROPERTY_SERVER_ROOT_DIRECTORY_NAME, serverRootDirectoryLength + 1) != ERROR_NO_ERROR){
+        if(PROPERTY_IS_NOT_SET(*serverRootDirectory)){
+            if(propertyFile_addProperty(propertyFile, serverRootDirectory, PROPERTY_SERVER_ROOT_DIRECTORY_NAME, serverRootDirectoryLength + 1) != ERROR_NO_ERROR){
                 return ERROR_(ERROR_FAILED_TO_ADD_PROPERTY, "'%s'", PROPERTY_SERVER_ROOT_DIRECTORY_NAME);
             }
         }else{
-            if(serverRootDirectory->entry->length != serverRootDirectoryLength + 1){
-                if(propertyFile_removeProperty(serverRootDirectory) != ERROR_NO_ERROR){
+            if((*serverRootDirectory)->entry->length != serverRootDirectoryLength + 1){
+                if(propertyFile_removeProperty(*serverRootDirectory) != ERROR_NO_ERROR){
                     return ERROR_(ERROR_FAILED_TO_REMOVE_PROPERTY, "'%s'", PROPERTY_SERVER_ROOT_DIRECTORY_NAME);
                 }
 
-                if(propertyFile_addProperty(propertyFile, &serverRootDirectory, PROPERTY_SERVER_ROOT_DIRECTORY_NAME, serverRootDirectoryLength + 1) != ERROR_NO_ERROR){
+                if(propertyFile_addProperty(propertyFile, serverRootDirectory, PROPERTY_SERVER_ROOT_DIRECTORY_NAME, serverRootDirectoryLength + 1) != ERROR_NO_ERROR){
                     return ERROR_(ERROR_FAILED_TO_ADD_PROPERTY, "'%s'", PROPERTY_SERVER_ROOT_DIRECTORY_NAME);
                 }
             }
         }
 
-        if(propertyFile_setBuffer(serverRootDirectory, (int8_t*) serverRootDirectoryString) != ERROR_NO_ERROR){
+        if(propertyFile_setBuffer(*serverRootDirectory, (int8_t*) serverRootDirectoryString) != ERROR_NO_ERROR){
             return ERROR_(ERROR_FAILED_TO_UPDATE_PROPERTY, "'%s'", PROPERTY_SERVER_ROOT_DIRECTORY_NAME);
         }
     }else{
@@ -1027,19 +1018,19 @@ inline ERROR_CODE server_setRootDirectory(Argument* argumentSetServerRootDirecto
     return ERROR(ERROR_NO_ERROR);
 }
 
-inline ERROR_CODE server_setServerExternalPort(Argument* argumentSetServerExternalPort, PropertyFile* propertyFile, Property* serverExternalPort){
+inline ERROR_CODE server_setServerExternalPort(Argument* argumentSetServerExternalPort, PropertyFile* propertyFile, Property** serverExternalPort){
     if(ARGUMENT_PARSER_ARGUMENT_HAS_VALUE((*argumentSetServerExternalPort))){
-        if(PROPERTY_IS_NOT_SET(serverExternalPort)){
-            if(propertyFile_addProperty(propertyFile, &serverExternalPort, PROPERTY_SERVER_EXTERNAL_PORT_NAME, sizeof(uint64_t)) != ERROR_NO_ERROR){
+        if(PROPERTY_IS_NOT_SET(*serverExternalPort)){
+            if(propertyFile_addProperty(propertyFile, serverExternalPort, PROPERTY_SERVER_EXTERNAL_PORT_NAME, sizeof(uint64_t)) != ERROR_NO_ERROR){
                 return ERROR_(ERROR_FAILED_TO_ADD_PROPERTY, "'%s'", PROPERTY_SERVER_EXTERNAL_PORT_NAME);
             }
         }else{
-            if(serverExternalPort->entry->length != sizeof(uint64_t)){
-                if(propertyFile_removeProperty(serverExternalPort) != ERROR_NO_ERROR){
+            if((*serverExternalPort)->entry->length != sizeof(uint64_t)){
+                if(propertyFile_removeProperty(*serverExternalPort) != ERROR_NO_ERROR){
                     return ERROR_(ERROR_FAILED_TO_REMOVE_PROPERTY, "'%s'", PROPERTY_SERVER_EXTERNAL_PORT_NAME);
                 }
 
-                if(propertyFile_addProperty(propertyFile, &serverExternalPort, PROPERTY_SERVER_EXTERNAL_PORT_NAME, sizeof(uint64_t)) != ERROR_NO_ERROR){
+                if(propertyFile_addProperty(propertyFile, serverExternalPort, PROPERTY_SERVER_EXTERNAL_PORT_NAME, sizeof(uint64_t)) != ERROR_NO_ERROR){
                     return ERROR_(ERROR_FAILED_TO_ADD_PROPERTY, "'%s'", PROPERTY_SERVER_EXTERNAL_PORT_NAME);
                 }
             }
@@ -1058,7 +1049,7 @@ inline ERROR_CODE server_setServerExternalPort(Argument* argumentSetServerExtern
         int8_t* buffer = alloca(sizeof(uint64_t));
         util_uint64ToByteArray(buffer, port);
 
-        if(propertyFile_setBuffer(serverExternalPort, buffer) != ERROR_NO_ERROR){
+        if(propertyFile_setBuffer(*serverExternalPort, buffer) != ERROR_NO_ERROR){
             return ERROR_(ERROR_FAILED_TO_UPDATE_PROPERTY, "'%s'", PROPERTY_SERVER_EXTERNAL_PORT_NAME);
         }
     }else{
