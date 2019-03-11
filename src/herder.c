@@ -90,6 +90,7 @@ local ERROR_CODE herder_argumentAdd(Argument*, PropertyFile*, Property*, Propert
     ARGUMENT_PARSER_ADD_ARGUMENT(Import, 2, "-i", "--import");
     ARGUMENT_PARSER_ADD_ARGUMENT(ListShows, 3, "-l", "--list", "--listShows");
     ARGUMENT_PARSER_ADD_ARGUMENT(ShowInfo, 1, "--info");
+    ARGUMENT_PARSER_ADD_ARGUMENT(ShowSettings, 1, "--showSettings");
 
 	if(argumentParser_parse(&parser, argc, argv) != ERROR_NO_ERROR){
         UTIL_LOG_ERROR("Failed to parse command line arguments.");
@@ -176,6 +177,17 @@ local ERROR_CODE herder_argumentAdd(Argument*, PropertyFile*, Property*, Propert
         if((error = herder_argumentSetImportDirectory(&argumentSetLibraryDirectory, &properties, &libraryDirectory)) == ERROR_NO_ERROR){
             UTIL_LOG_CONSOLE_(LOG_INFO, "Successfully set '%s' to '%s'.", PROPERTY_LIBRARY_DIRECTORY_NAME , (char*) libraryDirectory->buffer);
         }
+
+        goto label_free;
+    }
+
+    if(argumentParser_contains(&parser, &argumentShowSettings)){
+        noValidArgument = false;
+
+        UTIL_LOG_CONSOLE_(LOG_INFO, "ImportDirectory: %s.", PROPERTY_IS_SET(importDirectory) ? (char*) importDirectory->buffer : "NULL");
+        UTIL_LOG_CONSOLE_(LOG_INFO, "RemoteHost: %s.", PROPERTY_IS_SET(remoteHost) ? (char*) remoteHost->buffer : "NULL");
+        UTIL_LOG_CONSOLE_(LOG_INFO, "RemotePorrt: %" PRIuFAST64 ".", PROPERTY_IS_SET(remotePort) ? util_byteArrayTo_uint64(remotePort->buffer) : 0);
+        UTIL_LOG_CONSOLE_(LOG_INFO, "LibraryDirectory: %s.", PROPERTY_IS_SET(libraryDirectory) ? (char*) libraryDirectory->buffer : "NULL");
 
         goto label_free;
     }
@@ -276,6 +288,7 @@ inline void herder_printHelp(void){
     printf("\t%s\t\t%s\n", "--setRemotePort <port>", "Sets the 'remote host' port to the given port.");
     printf("\t%s\t\t\t%s\n", "--killDeamon", "Kills the deamon process running the 'herder' server.");
     printf("\t%s\t\t\t%s\n", "--restartDeamon", "Restarts the deamon process running the 'herder' server.");
+    printf("\t%s\t\t\t%s\n", "--showSettings", "Prints all available settings and their value.");
     printf("\t%s\t\t%s\n", "-?, -h, -help, --help", "Displays this help.");
 }
 
