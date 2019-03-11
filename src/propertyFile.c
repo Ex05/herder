@@ -11,7 +11,7 @@ local const Version VERSION = {1, 0, 0};
 
 local void propertyFile_initProperty(Property*, PropertyFileEntry*, PropertyFile*);
 
-local PropertyPage* propertyFile_addPropertyPage(PropertyFile*);
+local ERROR_CODE propertyFile_addPropertyPage(PropertyFile*, PropertyPage**);
 
 local void propertyFile_initPropertyPage(PropertyPage*, const uint8_t, const uint_fast64_t);
 
@@ -291,7 +291,11 @@ ERROR_CODE propertyFile_addProperty(PropertyFile* propertyFile, Property** prope
     }
 
     if(entry == NULL){
-        PropertyPage* propertyPage = propertyFile_addPropertyPage(propertyFile);
+        ERROR_CODE error;
+        PropertyPage* propertyPage;        
+        if((error = propertyFile_addPropertyPage(propertyFile, &propertyPage)) != ERROR_NO_ERROR){
+            return ERROR(error);
+        }
 
         entry = propertyPage->entries[0];
     }
@@ -387,49 +391,56 @@ inline ERROR_CODE propertyFile_setBuffer(Property* property, int8_t* buffer){
     } 
 
     if(fwrite(property->buffer, 1, bufferSize, file) != bufferSize){
-        UTIL_LOG_ERROR("Failed to write property data to file.");
-
-        return ERROR(ERROR_WRITE_ERROR);
+        return ERROR_(ERROR_WRITE_ERROR, "Failed to write property data to file. '%s'.", strerror(errno));
     }
 
     return ERROR(ERROR_NO_ERROR);
 }
 
-PropertyPage* propertyFile_addPropertyPage(PropertyFile* propertyFile){
+ERROR_CODE propertyFile_addPropertyPage(PropertyFile* propertyFile, PropertyPage** propertyPage){
     FILE* file = propertyFile->file;
 
     const uint_fast64_t prevPageOffset = ((PropertyPage*) arrayList_get(&propertyFile->pages, propertyFile->pages.length - 1))->offset;
 
-    PropertyPage* propertyPage = malloc(sizeof(*propertyPage));
-    propertyFile_initPropertyPage(propertyPage, propertyFile->maxPageEntries, ftell(file));
+    *propertyPage = malloc(sizeof(**propertyPage));
+    if(*propertyPage == NULL){
+        return ERROR(ERROR_OUT_OF_MEMORY);
+    }
+
+    propertyFile_initPropertyPage(*propertyPage, propertyFile->maxPageEntries, ftell(file));
 
     int8_t* writeBuffer = alloca(PAGE_ENTRY_SIZE);
     memset(writeBuffer, 0 , PAGE_ENTRY_SIZE);
-
+    
     uint_fast8_t i;
     for(i = 0; i < propertyFile->maxPageEntries; i++){
-        propertyPage->entries[i]->entryOffset = ftell(file);
+        (*propertyPage)->entries[i]->entryOffset = ftell(file);
 
         if(fwrite(writeBuffer, 1, PAGE_ENTRY_SIZE, file) != PAGE_ENTRY_SIZE){
-            UTIL_LOG_ERROR("Failed to write empty property entry to file.");
+            return ERROR_(ERROR_WRITE_ERROR, "Failed to write empty property entry to file. '%s'", strerror(errno));
         }
     }
 
     if(fwrite(writeBuffer, 1, sizeof(uint64_t), file) != sizeof(uint64_t)){
-        UTIL_LOG_ERROR("Failed to write propertyPage offset to file.");
+        return ERROR_(ERROR_WRITE_ERROR, "Failed to write propertyPage offset to file. '%s'.", strerror(errno));
     }
 
-    arrayList_add(&propertyFile->pages, propertyPage);
+    ERROR_CODE error;
+    if((error = arrayList_add(&propertyFile->pages, *propertyPage)) != ERROR_NO_ERROR){
+        return ERROR(error);
+    }
 
-    fseek(file, prevPageOffset + (PAGE_ENTRY_SIZE * propertyFile->maxPageEntries), SEEK_SET);
+    if(fseek(file, prevPageOffset + (PAGE_ENTRY_SIZE * propertyFile->maxPageEntries), SEEK_SET) != 0){
+        return ERROR_(ERROR_DISK_ERROR, "%s", strerror(errno));
+    }
 
-    util_uint64ToByteArray(writeBuffer, propertyPage->offset);
+    util_uint64ToByteArray(writeBuffer, (*propertyPage)->offset);
 
     if(fwrite(writeBuffer, 1, sizeof(uint64_t), file) != sizeof(uint64_t)){
-        UTIL_LOG_ERROR("Failed to update previous propertyPage offset.");
+        return ERROR_(ERROR_WRITE_ERROR, "Failed to update previous propertyPage offset. '%s'.", strerror(errno));
     }
 
-    return propertyPage;
+    return ERROR(ERROR_NO_ERROR);
 }
 
 inline void propertyFile_initPropertyPage(PropertyPage* propertyPage, const uint8_t maxPageEntries, const uint_fast64_t pageOffset){
