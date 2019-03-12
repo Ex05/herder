@@ -26,6 +26,10 @@ inline void linkedList_add(LinkedList* list, void* data) {
 
 inline Node* linkedList_initNode(void* data){
     Node* node = malloc(sizeof(*node));
+    if(node == NULL){
+        UTIL_LOG_ERROR(util_toErrorString(ERROR_OUT_OF_MEMORY));
+    }
+
     node->data = data;
     node->next = NULL;
 

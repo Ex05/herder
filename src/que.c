@@ -19,14 +19,17 @@ inline ERROR_CODE que_enque(Que* que, void* value){
     }
     
     if(que->tail == NULL){
-        QueElement* queElement = malloc(sizeof(*queElement));        
+        QueElement* queElement = malloc(sizeof(*queElement));
+        if(queElement == NULL){
+            return ERROR(ERROR_OUT_OF_MEMORY);
+        }
+
         que_initQueElement(queElement, value);
         
         que->tail = que->head = queElement;
     }            
     else{
         QueElement* queElement = malloc(sizeof(*queElement));
-
         if(queElement == NULL){
             return ERROR(ERROR_OUT_OF_MEMORY);
         }

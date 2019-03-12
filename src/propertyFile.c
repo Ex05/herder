@@ -9,11 +9,11 @@
 
 local const Version VERSION = {1, 0, 0};
 
-local void propertyFile_initProperty(Property*, PropertyFileEntry*, PropertyFile*);
+local ERROR_CODE propertyFile_initProperty(Property*, PropertyFileEntry*, PropertyFile*);
 
 local ERROR_CODE propertyFile_addPropertyPage(PropertyFile*, PropertyPage**);
 
-local void propertyFile_initPropertyPage(PropertyPage*, const uint8_t, const uint_fast64_t);
+local ERROR_CODE propertyFile_initPropertyPage(PropertyPage*, const uint8_t, const uint_fast64_t);
 
 local ARRAY_LIST_EXPAND_FUNCTION(propertyFile_expandPageList){
     return previousSize + 1;
@@ -51,6 +51,10 @@ ERROR_CODE propertyFile_init(PropertyFile* propertyFile, const char* fileName){
 
     for(;;){
         PropertyPage* propertyPage = malloc(sizeof(*propertyPage));
+        if(propertyPage == NULL){
+            return ERROR(ERROR_OUT_OF_MEMORY);
+        }
+
         propertyFile_initPropertyPage(propertyPage, propertyFile->maxPageEntries, ftell(file));
 
         arrayList_add(&propertyFile->pages, propertyPage);
@@ -92,16 +96,24 @@ ERROR_CODE propertyFile_init(PropertyFile* propertyFile, const char* fileName){
             if(entry->nameOffset != 0 && entry->nameLength != 0){
                 const uint_fast64_t fileOffset = ftell(file);
 
-                fseek(file, entry->nameOffset, SEEK_SET);
+                if(fseek(file, entry->nameOffset, SEEK_SET) != 0){
+                    return ERROR_(ERROR_DISK_ERROR, "%s", strerror(errno));
+                }
 
-                entry->name = malloc(sizeof(*entry->name) * (entry->nameLength + 1));            
+                entry->name = malloc(sizeof(*entry->name) * (entry->nameLength + 1));     
+                if(entry->name == NULL){
+                    return ERROR(ERROR_OUT_OF_MEMORY);
+                }
+
                 entry->name[entry->nameLength] = '\0';
 
                 if(fread(entry->name, sizeof(*entry->name), entry->nameLength, file) != entry->nameLength){
                     return ERROR_(ERROR_READ_ERROR, "Failed to read entry name. '%s'", fileName);
                 }
 
-                fseek(file, fileOffset, SEEK_SET);
+                if(fseek(file, fileOffset, SEEK_SET) != 0){
+                    return ERROR_(ERROR_DISK_ERROR, "%s", strerror(errno));
+                }
             }else{
                 entry->name = NULL;
             }
@@ -141,7 +153,7 @@ ERROR_CODE propertyFile_create(const char* fileName, const uint8_t numPageEntrie
     buffer[2] = VERSION.hotfix;
 
     if(fwrite(buffer, 1, sizeof(Version), file) != sizeof(Version)){
-        return ERROR(ERROR_WRITE_ERROR);
+        return ERROR_(ERROR_WRITE_ERROR, "%s.", strerror(errno));
     }
 
     memset(buffer, 0, sizeof(Version));
@@ -150,7 +162,7 @@ ERROR_CODE propertyFile_create(const char* fileName, const uint8_t numPageEntrie
     buffer[0] = numPageEntries;
 
     if(fwrite(buffer, 1, sizeof(numPageEntries), file) != sizeof(numPageEntries)){
-        return ERROR(ERROR_WRITE_ERROR);
+        return ERROR_(ERROR_WRITE_ERROR, "%s.", strerror(errno));
     }
 
     buffer[0] = 0;
@@ -159,13 +171,13 @@ ERROR_CODE propertyFile_create(const char* fileName, const uint8_t numPageEntrie
     uint8_t i;
     for(i = 0; i < numPageEntries; i++){
         if(fwrite(buffer, 1, PAGE_ENTRY_SIZE, file) != PAGE_ENTRY_SIZE){
-            return ERROR(ERROR_WRITE_ERROR);
+            return ERROR_(ERROR_WRITE_ERROR, "%s.", strerror(errno));
         }
     }
 
     // Next_Page.
     if(fwrite(buffer, 1, sizeof(uint64_t), file) != sizeof(uint64_t)){
-        return ERROR(ERROR_WRITE_ERROR);
+        return ERROR_(ERROR_WRITE_ERROR, "%s.", strerror(errno));
     }
 
     if(fflush(file) != 0){
@@ -192,6 +204,10 @@ inline ERROR_CODE propertyFile_getProperty(PropertyFile* propertyFile, Property*
 
             if(entry->name != NULL && strncmp(entry->name, name, entry->nameLength) == 0){
                 Property* _property = malloc(sizeof(*_property));
+                if(_property == NULL){
+                    return ERROR(ERROR_OUT_OF_MEMORY);
+                }
+
                 propertyFile_initProperty(_property, entry, propertyFile);
 
                 *property = _property;
@@ -206,17 +222,24 @@ inline ERROR_CODE propertyFile_getProperty(PropertyFile* propertyFile, Property*
     return ERROR_(ERROR_ENTRY_NOT_FOUND, "Entry: '%s'", name);
 }
 
-inline void propertyFile_initProperty(Property* property, PropertyFileEntry* entry, PropertyFile* propertyFile){
+inline ERROR_CODE propertyFile_initProperty(Property* property, PropertyFileEntry* entry, PropertyFile* propertyFile){
     property->entry = entry;
     property->callBack = propertyFile;
 
     property->buffer = malloc(sizeof(*property->buffer) * entry->length);
+    if(property->buffer == NULL){
+        return ERROR(ERROR_OUT_OF_MEMORY);
+    }
 
-    fseek(propertyFile->file, entry->dataOffset, SEEK_SET);
+    if(fseek(propertyFile->file, entry->dataOffset, SEEK_SET) != 0){
+        return ERROR_(ERROR_DISK_ERROR, "%s", strerror(errno));
+    }
     
     if(fread(property->buffer, 1, entry->length, propertyFile->file) != entry->length){
-        UTIL_LOG_CONSOLE(LOG_ERR, "Failed to read property data.");
+        return ERROR_(ERROR_DISK_ERROR, "Failed to read property data. '%s'.", strerror(errno));
     }
+
+    return ERROR(ERROR_NO_ERROR);
 }
 
 inline void propertyFile_free(PropertyFile* propertyFile){
@@ -304,10 +327,15 @@ label_entryFound:
     entry->length = size;
     entry->nameLength = strlen(name);
     entry->name = malloc(sizeof(*entry->name) * (entry->nameLength + 1));
+    if(entry->name == NULL){
+        return ERROR(ERROR_OUT_OF_MEMORY);
+    }
 
     memcpy(entry->name, name, sizeof(*entry->name) * (entry->nameLength + 1));
 
-    fseek(propertyFile->file, 0, SEEK_END);
+    if(fseek(propertyFile->file, 0, SEEK_END) != 0){
+        return ERROR_(ERROR_DISK_ERROR, "%s", strerror(errno));
+    }
 
     entry->nameOffset = ftell(propertyFile->file);
 
@@ -327,9 +355,7 @@ label_entryFound:
     }
 
     // Update entry on disk.
-    if(fseek(propertyFile->file, entry->entryOffset, SEEK_SET) == -1){
-        UTIL_LOG_ERROR("");
-
+    if(fseek(propertyFile->file, entry->entryOffset, SEEK_SET) != 0){
         return ERROR_(ERROR_DISK_ERROR, "Failed to write propertyData of proeprty '%s' to disk.", name);
     }
 
@@ -386,7 +412,7 @@ inline ERROR_CODE propertyFile_setBuffer(Property* property, int8_t* buffer){
 
     FILE* file = property->callBack->file;
 
-    if(fseek(file, property->entry->dataOffset, SEEK_SET) == -1){
+    if(fseek(file, property->entry->dataOffset, SEEK_SET) != 0){
         return ERROR(ERROR_DISK_ERROR);
     } 
 
@@ -443,14 +469,23 @@ ERROR_CODE propertyFile_addPropertyPage(PropertyFile* propertyFile, PropertyPage
     return ERROR(ERROR_NO_ERROR);
 }
 
-inline void propertyFile_initPropertyPage(PropertyPage* propertyPage, const uint8_t maxPageEntries, const uint_fast64_t pageOffset){
+inline ERROR_CODE propertyFile_initPropertyPage(PropertyPage* propertyPage, const uint8_t maxPageEntries, const uint_fast64_t pageOffset){
     propertyPage->entries = malloc(sizeof(*propertyPage->entries) * maxPageEntries);
+    if(propertyPage->entries == NULL){
+        return ERROR(ERROR_OUT_OF_MEMORY);
+    }
+
     propertyPage->offset = pageOffset;
 
     uint_fast8_t i;
     for(i = 0; i < maxPageEntries; i++){
         propertyPage->entries[i] = malloc(sizeof(PropertyFileEntry));
+        if(propertyPage->entries[i] == NULL){
+            return ERROR(ERROR_OUT_OF_MEMORY);
+        }
     }
+
+    return ERROR(ERROR_NO_ERROR);
 }
 
 ERROR_CODE propertyFile_removeProperty(Property* property){
@@ -472,15 +507,11 @@ ERROR_CODE propertyFile_removeProperty(Property* property){
 
                 // Clear data on disk.
                 if(fseek(file, property->entry->dataOffset, SEEK_SET) != 0){
-                    UTIL_LOG_ERROR("Failed to move file pointer to property data on disk.");    
-
-                    return ERROR(ERROR_DISK_ERROR); 
+                    return ERROR_(ERROR_WRITE_ERROR, "Failed to move file pointer to property data on disk. '%s'.", strerror(errno)); 
                 }
 
                 if(fwrite(writeBuffer, 1, property->entry->length, file) != property->entry->length){
-                    UTIL_LOG_ERROR("Failed to erase property data on disk.");    
-
-                    return ERROR(ERROR_WRITE_ERROR);          
+                    return ERROR_(ERROR_WRITE_ERROR, "Failed to erase property data on disk. '%s'.", strerror(errno));     
                 }
 
                 // Clear entry name on disk.
@@ -489,12 +520,12 @@ ERROR_CODE propertyFile_removeProperty(Property* property){
                     memset(writeBuffer, 0, property->entry->nameLength);
                 }
 
-                fseek(file, property->entry->nameOffset, SEEK_SET);
+                if(fseek(file, property->entry->nameOffset, SEEK_SET) != 0){
+                    return ERROR_(ERROR_DISK_ERROR, "%s", strerror(errno));
+                }
 
                 if(fwrite(writeBuffer, 1, property->entry->nameLength, file) != property->entry->nameLength){
-                    UTIL_LOG_ERROR("Failed to erase property name on disk.");  
-
-                    return ERROR(ERROR_WRITE_ERROR);                       
+                    return ERROR_(ERROR_WRITE_ERROR, "Failed to erase property name on disk. '%s'.", strerror(errno));                     
                 }
 
                 // Clear entry on disk.
@@ -503,12 +534,12 @@ ERROR_CODE propertyFile_removeProperty(Property* property){
                     memset(writeBuffer, 0, PAGE_ENTRY_SIZE);
                 }
 
-                fseek(file, property->entry->entryOffset, SEEK_SET);
+                if(fseek(file, property->entry->entryOffset, SEEK_SET) != 0){
+                    return ERROR_(ERROR_DISK_ERROR, "%s", strerror(errno));
+                }
 
                 if(fwrite(writeBuffer, 1, PAGE_ENTRY_SIZE, file) != PAGE_ENTRY_SIZE){
-                    UTIL_LOG_ERROR("Failed to clear property entry on disk.");      
-
-                    return ERROR(ERROR_WRITE_ERROR);          
+                    return ERROR_(ERROR_WRITE_ERROR, "Failed to clear property entry on disk. '%s'.", strerror(errno));         
                 }         
 
                 free(property->entry->name);

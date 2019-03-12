@@ -142,9 +142,20 @@ void test_testSuitBegin_(const char* name, test_TestSuitConstructFunction* const
 
 TestSuit* test_testSuitBegin(const char* name){
     TestSuit* testSuit = malloc(sizeof(*testSuit));
+    if(testSuit == NULL){
+        UTIL_LOG_ERROR(util_toErrorString(ERROR_OUT_OF_MEMORY));
+
+        return NULL;
+    }
+
     memset(testSuit, 0, sizeof(*testSuit));
 
     testSuit->name = malloc(sizeof(char*) * (strlen(name) + 1));
+    if(testSuit->name == NULL){
+        UTIL_LOG_ERROR(util_toErrorString(ERROR_OUT_OF_MEMORY));
+
+        return NULL;
+    }
 
     strcpy(testSuit->name, name);
 
@@ -164,7 +175,14 @@ void test_test(test_testFunction func, const char* name){
     TestSuit* testSuit = arrayList_get(&testSuits, testSuits.length - 1);
 
     Test* test = malloc(sizeof(*test));
+    if(test == NULL){
+        UTIL_LOG_ERROR(util_toErrorString(ERROR_OUT_OF_MEMORY));
+    }
+
     test->name = malloc(sizeof(*name) * (strlen(name) + 1));
+    if(test->name == NULL){
+        UTIL_LOG_ERROR(util_toErrorString(ERROR_OUT_OF_MEMORY));
+    }
 
     strcpy(test->name, name);
 
@@ -1186,11 +1204,6 @@ TEST_TEST_SUIT_CONSTRUCT_FUNCTION(mediaLibrary, library){
     strncpy(libraryFileLocation + currentDirLength, "/tmp/", 6);
     
     *library = malloc(sizeof(MediaLibrary));
-    if(*library == NULL){
-        error = ERROR_OUT_OF_MEMORY;
-
-        goto label_error;
-    }
 
     if((error = mediaLibrary_init(*library, libraryFileLocation, libraryFileLocationLength)) != ERROR_NO_ERROR){
         goto label_error;

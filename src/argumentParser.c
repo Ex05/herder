@@ -87,6 +87,10 @@ inline ERROR_CODE argumentParser_parse(ArgumentParser* parser, const int numArgu
                         argument->valueLength = strlen(value);
 
                         argument->value = malloc(sizeof(*argument->value) * (argument->valueLength + 1));
+                        if(argument->value == NULL){
+                            return ERROR(ERROR_OUT_OF_MEMORY);
+                        }
+
                         memcpy(argument->value, value, argument->valueLength + 1);
                     }else{
                         argument->value = &ARGUMENT_PARSER_ARGUMENT_PRESENT_FLAG;

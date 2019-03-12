@@ -24,6 +24,10 @@ inline ERROR_CODE http_initRequest(HTTP_Request* request, const char* url, const
 
     request->urlLength = urlLength;
     request->requestURL = malloc(sizeof(request->requestURL) * (urlLength + 1));
+    if(request->requestURL == NULL){
+        return  ERROR(ERROR_OUT_OF_MEMORY);
+    }
+
     memcpy(request->requestURL, url, urlLength);
     request->requestURL[urlLength] = '\0';
 
@@ -73,7 +77,11 @@ inline ERROR_CODE http_addHeaderField(HTTP_Request* request, char* name, const u
         return ERROR(ERROR_MAX_HEADER_FIELDS_REACHED);
     }
     
-    HTTP_HeaderField* headerField = malloc(sizeof(*headerField));    
+    HTTP_HeaderField* headerField = malloc(sizeof(*headerField));
+    if(headerField == NULL){
+        return  ERROR(ERROR_OUT_OF_MEMORY);
+    }
+
     http_initheaderField(headerField, name, nameLength, value, valueLength);
     
     arrayList_add(&request->headerFields, headerField);
@@ -183,9 +191,17 @@ ERROR_CODE http_sendRequest(HTTP_Request* request, HTTP_Response* response, cons
 
     // Content-Length:.
     char* contentLength = malloc(sizeof(*contentLength) * UTIL_FORMATTED_NUMBER_LENGTH);
+    if(contentLength == NULL){
+        return  ERROR(ERROR_OUT_OF_MEMORY);
+    }
+
     const uint_fast64_t contentLengthLength = snprintf(contentLength, UTIL_FORMATTED_NUMBER_LENGTH, "%" PRIdFAST64 "", request->dataLength);
 
     char* _contentLength = malloc(sizeof(*_contentLength) * 16);
+    if(contentLength == NULL){
+        return  ERROR(ERROR_OUT_OF_MEMORY);
+    }
+
     strncpy(_contentLength, "Content-Length", 16);
 
     http_addHeaderField(request, _contentLength, 16, contentLength, contentLengthLength);
@@ -261,12 +277,20 @@ ERROR_CODE http_sendResponse(HTTP_Response* response, const int_fast32_t connect
     const uint_fast64_t tTypeLength = strlen(tType);
 
     char* contentType = malloc(sizeof(*contentType) *  (tTypeLength + 1));
+    if(contentType == NULL){
+        return  ERROR(ERROR_OUT_OF_MEMORY);
+    }
+
     memcpy(contentType, tType, tTypeLength + 1);
 
     uint_fast64_t contentTypeLength;
     const char* contentTypeString = http_contentTypeToString(response->contentType, &contentTypeLength);
 
     char* _contentTypeString = malloc(sizeof(_contentTypeString) * (contentTypeLength + 1));
+    if(_contentTypeString == NULL){
+        return  ERROR(ERROR_OUT_OF_MEMORY);
+    }
+
     memcpy(_contentTypeString, contentTypeString, contentTypeLength);
     _contentTypeString[contentTypeLength] = '\0';
 
@@ -274,12 +298,20 @@ ERROR_CODE http_sendResponse(HTTP_Response* response, const int_fast32_t connect
 
     // Content-Length:.
     char* contentLength = malloc(sizeof(*contentLength) * UTIL_FORMATTED_NUMBER_LENGTH);
+    if(contentLength == NULL){
+        return  ERROR(ERROR_OUT_OF_MEMORY);
+    }
+
     const uint_fast64_t contentLengthLength = snprintf(contentLength, UTIL_FORMATTED_NUMBER_LENGTH, "%" PRIdFAST64 "", response->dataLength);
 
     const char cType[] = "Content-Length";
 
     const uint_fast64_t _contentLengthLength =  strlen(cType);
     char* _contentLength = malloc(sizeof(*_contentLength) * (_contentLengthLength + 1));
+    if(_contentLength == NULL){
+        return  ERROR(ERROR_OUT_OF_MEMORY);
+    }
+
     memcpy(_contentLength, cType, _contentLengthLength + 1);
 
     http_addHeaderField((HTTP_Request*) response, _contentLength, strlen(_contentLength), contentLength, contentLengthLength);
@@ -632,12 +664,20 @@ ERROR_CODE http_receiveResponse(HTTP_Response* response, const int_fast32_t conn
             uint_fast64_t nameLength = lineSplit;
 
             char* name = malloc(sizeof(*name) * (nameLength + 1));
+            if(name == NULL){
+                return  ERROR(ERROR_OUT_OF_MEMORY);
+            }
+
             memcpy(name, line, nameLength);
             name[nameLength] = '\0';
 
             uint64_t valueLength = lineLength - (lineSplit + 1);
 
             char* value = malloc(sizeof(*value) * (valueLength + 1));
+            if(value == NULL){
+                return  ERROR(ERROR_OUT_OF_MEMORY);
+            }
+
             memcpy(value, line + lineSplit + 1, valueLength);
             value[valueLength] = '\0';
 
@@ -734,6 +774,9 @@ ERROR_CODE http_receiveRequest(HTTP_Request* request, const int_fast32_t connect
             }
 
             request->requestURL = malloc(sizeof(*request->requestURL) * request->urlLength);
+            if(request->requestURL == NULL){
+               return  ERROR(ERROR_OUT_OF_MEMORY);
+            }
 
             if(request->requestURL == NULL){
                 return ERROR(ERROR_OUT_OF_MEMORY);
@@ -777,6 +820,10 @@ ERROR_CODE http_receiveRequest(HTTP_Request* request, const int_fast32_t connect
             }
 
             char* name = malloc(sizeof(*name) * nameLength);
+            if(name == NULL){
+                return  ERROR(ERROR_OUT_OF_MEMORY);
+            }
+
             memcpy(name, line, nameLength);
 
             // Move line beginning after ':'
@@ -795,6 +842,10 @@ ERROR_CODE http_receiveRequest(HTTP_Request* request, const int_fast32_t connect
             }
 
             char* value = malloc(sizeof(*value) * valueLength);
+            if(value == NULL){
+                return  ERROR(ERROR_OUT_OF_MEMORY);
+            }
+
             memcpy(value, line, valueLength);
 
             if(strncmp(name, "Content-Length:", nameLength) == 0){

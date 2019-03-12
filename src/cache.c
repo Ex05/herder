@@ -43,12 +43,13 @@ inline ERROR_CODE cache_initCacheObject(CacheObject* cacheObject, uint8_t* data,
     cacheObject->fileLocationLength = fileLocationLength;
 
     cacheObject->symbolicFileLocation = malloc(sizeof(*cacheObject->symbolicFileLocation) * (symbolicFileLocationLength + 1));
-    memcpy(cacheObject->symbolicFileLocation, symbolicFileLocation, symbolicFileLocationLength);
-    cacheObject->symbolicFileLocation[symbolicFileLocationLength] = '\0';
 
     if(cacheObject->symbolicFileLocation == NULL){
         return  ERROR(ERROR_OUT_OF_MEMORY);
     }
+
+    memcpy(cacheObject->symbolicFileLocation, symbolicFileLocation, symbolicFileLocationLength);
+    cacheObject->symbolicFileLocation[symbolicFileLocationLength] = '\0';
 
     cacheObject->symbolicFileLocationLength = symbolicFileLocationLength;
 
@@ -127,6 +128,9 @@ inline ERROR_CODE cache_load(Cache* cache, CacheObject** cacheObject, char* file
     }    
 
     uint8_t* data = malloc(sizeof(*data) * fileSize);
+    if(data == NULL){
+        return  ERROR(ERROR_OUT_OF_MEMORY);
+    }
 
     if(fread(data, sizeof(uint8_t), fileSize, file) != fileSize){
         return ERROR(ERROR_FAILED_TO_LOAD_FILE);

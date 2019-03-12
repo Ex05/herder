@@ -346,6 +346,11 @@ inline ERROR_CODE util_deleteFile(const char* file){
 char* util_readUserInput(void){
     uint_fast16_t limit = 32;
     char* s = malloc(limit);
+    if(s == NULL){
+        UTIL_LOG_ERROR(util_toErrorString(ERROR_OUT_OF_MEMORY));
+
+        return NULL;
+    }
 
     // Skip leading whitespaces.
     while (true) {

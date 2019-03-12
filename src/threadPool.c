@@ -10,6 +10,9 @@ inline ERROR_CODE threadPool_init(ThreadPool* threadPool, const uint_fast16_t nu
     threadPool->numWorkers = numWorkers;
     
     threadPool->threads = malloc(sizeof(pthread_t) * numWorkers);
+    if(threadPool->threads == NULL){
+        return ERROR(ERROR_OUT_OF_MEMORY);
+    }
 
     if(threadPool->threads == NULL){        
         return ERROR(ERROR_OUT_OF_MEMORY);
@@ -86,7 +89,6 @@ ERROR_CODE threadPool_run(ThreadPool* threadPool, Runnable* runnable, void* data
     pthread_mutex_lock(&threadPool->lock);
 
     Job* job = malloc(sizeof(*job));
-
     if(job == NULL){
         return ERROR(ERROR_OUT_OF_MEMORY);
     }

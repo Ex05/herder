@@ -778,6 +778,10 @@ ERROR_CODE herder_extractShowInfo(Property* remoteHost, Property* remotePort, Ep
 
             if((*episodeInfo)->showNameLength != 0){
                 (*episodeInfo)->showName = malloc(sizeof(*(*episodeInfo)->showName) * ((*episodeInfo)->showNameLength) + 1);
+                if((*episodeInfo)->showName == NULL){
+                    return  ERROR(ERROR_OUT_OF_MEMORY);
+                }
+
                 strncpy((*episodeInfo)->showName, (char*) (response.data + readOffset), (*episodeInfo)->showNameLength);
                 readOffset += (*episodeInfo)->showNameLength;
             }else{
@@ -789,6 +793,11 @@ ERROR_CODE herder_extractShowInfo(Property* remoteHost, Property* remotePort, Ep
 
             if((*episodeInfo)->nameLength != 0){
                 (*episodeInfo)->name = malloc(sizeof(*(*episodeInfo)->name) * ((*episodeInfo)->nameLength + 1));
+
+                 if((*episodeInfo)->name == NULL){
+                    return  ERROR(ERROR_OUT_OF_MEMORY);
+                }
+
                 strncpy((*episodeInfo)->name, (char*) (response.data + readOffset), (*episodeInfo)->nameLength);
                 readOffset += (*episodeInfo)->nameLength;
             }else{

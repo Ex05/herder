@@ -34,7 +34,7 @@
 
 local void server_initClient(Client*, HerderServer*);
 
-local void server_initContext(Context*, const char*, const uint_fast64_t, ContextHandler*);
+local ERROR_CODE server_initContext(Context*, const char*, const uint_fast64_t, ContextHandler*);
 
 local void server_freeContext(Context*);
 
@@ -677,14 +677,14 @@ ERROR_CODE server_init(HerderServer* server, const char* rootDirectory, const ui
     server->rootDirectoryLength = rootDirectoryLength + serverWebDirectoryLength;
 
     server->rootDirectory = malloc(sizeof(*server->rootDirectory) * (server->rootDirectoryLength + 1));
-    strncpy(server->rootDirectory, rootDirectory, rootDirectoryLength);
-    strncpy(server->rootDirectory + rootDirectoryLength, SERVER_WEB_DIRECTORY, serverWebDirectoryLength);
-    server->rootDirectory[server->rootDirectoryLength] = '\0';
-
     if(server->rootDirectory == NULL){
         return ERROR(ERROR_OUT_OF_MEMORY);
     }
 
+    strncpy(server->rootDirectory, rootDirectory, rootDirectoryLength);
+    strncpy(server->rootDirectory + rootDirectoryLength, SERVER_WEB_DIRECTORY, serverWebDirectoryLength);
+    server->rootDirectory[server->rootDirectoryLength] = '\0';
+    
     if(!util_fileExists(server->rootDirectory)){
         if((error = util_createDirectory(server->rootDirectory) != ERROR_NO_ERROR)){
             return ERROR(error);
@@ -722,6 +722,10 @@ inline ERROR_CODE server_getFile(HerderServer* server, CacheObject** cacheObject
         const uint_fast64_t fileLocationLength = server->rootDirectoryLength + symbolicFileLocationLength - 1;
         
         char* fileLocation = malloc(sizeof(*fileLocation) * fileLocationLength + 1);
+        if(fileLocation == NULL){
+            return ERROR(ERROR_OUT_OF_MEMORY);
+        }
+
         memcpy(fileLocation, server->rootDirectory, server->rootDirectoryLength);
         memcpy(fileLocation + server->rootDirectoryLength, symbolicFileLocation + 1, symbolicFileLocationLength - 1);
         fileLocation[fileLocationLength] = '\0';
@@ -732,12 +736,18 @@ inline ERROR_CODE server_getFile(HerderServer* server, CacheObject** cacheObject
     return ERROR_(error, "File:'%s'", symbolicFileLocation);
 }
 
-inline void server_initContext(Context* context, const char* location, const uint_fast64_t locationLength, ContextHandler* contextHandler){
+inline ERROR_CODE server_initContext(Context* context, const char* location, const uint_fast64_t locationLength, ContextHandler* contextHandler){
     context->locationLength = locationLength;
     context->location = malloc(sizeof(*location) * (locationLength + 1));
+    if(context->location == NULL){
+        return ERROR(ERROR_OUT_OF_MEMORY);
+    }
+
     strncpy(context->location, location, locationLength + 1);
 
     context->contextHandler = contextHandler;
+
+    return ERROR(ERROR_NO_ERROR);
 }
 
 inline void server_freeContext(Context* context){
@@ -747,6 +757,10 @@ inline void server_freeContext(Context* context){
 ERROR_CODE server_start(HerderServer* server){
     while(server->alive){
         Client* client = malloc(sizeof(*client));
+        if(client == NULL){
+            return ERROR(ERROR_OUT_OF_MEMORY);
+        }
+
         server_initClient(client, server);
         
         socklen_t clientSocketSize = sizeof(client->socket);
@@ -800,7 +814,6 @@ inline ERROR_CODE server_stop(HerderServer* server){
 
 inline ERROR_CODE server_addContext(HerderServer* server, const char* location, ContextHandler* contextHandler){
     Context* context = malloc(sizeof(*context));
-
     if(context == NULL){
         return ERROR(ERROR_OUT_OF_MEMORY);
     }
