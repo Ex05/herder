@@ -129,15 +129,15 @@ local THREAD_POOL_RUNNABLE_(server_run, Job, job){
         server_constructErrorPage(client->server, &request, &response, _400_BAD_REQUEST);
     }
 
+    ERROR_CODE error;
     if(contextHandler == NULL){
         server_constructErrorPage(client->server, &request, &response, _401_UNAUTHORIZED);
     }else{
-        if(contextHandler(client->server, &request, &response) != ERROR_NO_ERROR){
-            // TODO:(jan) ???
+        if((error = contextHandler(client->server, &request, &response)) != ERROR_NO_ERROR){
+            UTIL_LOG_ERROR(util_toErrorString(error));
         }
     }
 
-    ERROR_CODE error;
     if((error = http_sendResponse(&response, client->sockFD)) != ERROR_NO_ERROR){
         UTIL_LOG_ERROR_("Failed to send HTTP response. %d", error);
     }  

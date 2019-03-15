@@ -105,6 +105,8 @@ buildRelease(){
     compile $compiler "$compileFlags" $buildDirectory "../$buildDirectory/$1.s" "$1.o"
 
     link $compiler "$linkFlags" "$libraries" $buildDirectory $1 $2
+
+    rm -r $buildDirectory
 }
 
 # buildDebug(fileName, executableName)
@@ -114,6 +116,8 @@ buildDebug(){
     compile $compiler "$compileFlags" $buildDirectory "$1.c" "$1.o"
 
     link $compiler "$linkFlags" "$libraries" $buildDirectory $1 $2
+
+    rm -r $buildDirectory
 }
 
 # buildAndRunTest(fileName, executableName)
