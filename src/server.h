@@ -14,7 +14,7 @@
 typedef struct{
     int sockFD;
     struct sockaddr_in sockAddr;
-    int_fast32_t port;
+    uint_fast16_t port;
     ThreadPool threadPool;
     volatile bool alive;
     ArrayList contexts;
@@ -39,7 +39,7 @@ typedef struct{
     ContextHandler* contextHandler;
 }Context;
 
-ERROR_CODE server_init(HerderServer*, const char*, const uint_fast64_t, int_fast32_t);
+ERROR_CODE server_init(HerderServer*, const char*, const uint_fast64_t, uint_fast16_t);
 
 ERROR_CODE server_start(HerderServer*);
 

@@ -539,7 +539,7 @@ label_return:
             noValidArgument = false;
 
 		     if((error = server_setServerExternalPort(&argumentSetServerExternalPort, &properties, &serverExternalPort)) == ERROR_NO_ERROR){
-                UTIL_LOG_CONSOLE_(LOG_INFO, "Successfully set '%s' to '%" PRIdFAST64 "'.", PROPERTY_SERVER_EXTERNAL_PORT_NAME , util_byteArrayTo_uint64(serverExternalPort->buffer));
+                UTIL_LOG_CONSOLE_(LOG_INFO, "Successfully set '%s' to '%" PRIdFAST16 "'.", PROPERTY_SERVER_EXTERNAL_PORT_NAME , util_byteArrayTo_uint64(serverExternalPort->buffer));
             }
 
             goto label_exit;
@@ -600,7 +600,7 @@ label_return:
 		if(lockf(lockFile, F_TLOCK, 0)  == -1){
 			UTIL_LOG_INFO("Server already running.");
 		}else{
-            const int_fast32_t port = util_byteArrayTo_uint64((int8_t*) serverExternalPort->buffer);
+            const uint_fast16_t port = util_byteArrayTo_uint16((int8_t*) serverExternalPort->buffer);
 
 			if(server_init(&server, (char*) serverRootDirectory->buffer, serverRootDirectory->entry->length - 1, port) != ERROR_NO_ERROR){
 				goto label_exit;
@@ -619,7 +619,7 @@ label_return:
 			server_addContext(&server, "/showInfo", server_pageShowInfo);
             server_addContext(&server, "/extractShowInfo", server_pageExtractShowInfo);
 
-			UTIL_LOG_INFO_("Starting server on port '%" PRIdFAST32 "'.", port);
+			UTIL_LOG_INFO_("Starting server on port '%" PRIuFAST16 "'.", port);
 
 			server_start(&server);
 
@@ -642,7 +642,7 @@ label_return:
 		return 0;
 	}
 
-ERROR_CODE server_init(HerderServer* server, const char* rootDirectory, const uint_fast64_t rootDirectoryLength, const int_fast32_t port){
+ERROR_CODE server_init(HerderServer* server, const char* rootDirectory, const uint_fast64_t rootDirectoryLength, const uint_fast16_t port){
     memset(server, 0, sizeof(*server));
 
     server->port = port;
@@ -1034,16 +1034,16 @@ inline ERROR_CODE server_setRootDirectory(Argument* argumentSetServerRootDirecto
 inline ERROR_CODE server_setServerExternalPort(Argument* argumentSetServerExternalPort, PropertyFile* propertyFile, Property** serverExternalPort){
     if(ARGUMENT_PARSER_ARGUMENT_HAS_VALUE((*argumentSetServerExternalPort))){
         if(PROPERTY_IS_NOT_SET(*serverExternalPort)){
-            if(propertyFile_addProperty(propertyFile, serverExternalPort, PROPERTY_SERVER_EXTERNAL_PORT_NAME, sizeof(uint64_t)) != ERROR_NO_ERROR){
+            if(propertyFile_addProperty(propertyFile, serverExternalPort, PROPERTY_SERVER_EXTERNAL_PORT_NAME, sizeof(uint16_t)) != ERROR_NO_ERROR){
                 return ERROR_(ERROR_FAILED_TO_ADD_PROPERTY, "'%s'", PROPERTY_SERVER_EXTERNAL_PORT_NAME);
             }
         }else{
-            if((*serverExternalPort)->entry->length != sizeof(uint64_t)){
+            if((*serverExternalPort)->entry->length != sizeof(uint16_t)){
                 if(propertyFile_removeProperty(*serverExternalPort) != ERROR_NO_ERROR){
                     return ERROR_(ERROR_FAILED_TO_REMOVE_PROPERTY, "'%s'", PROPERTY_SERVER_EXTERNAL_PORT_NAME);
                 }
 
-                if(propertyFile_addProperty(propertyFile, serverExternalPort, PROPERTY_SERVER_EXTERNAL_PORT_NAME, sizeof(uint64_t)) != ERROR_NO_ERROR){
+                if(propertyFile_addProperty(propertyFile, serverExternalPort, PROPERTY_SERVER_EXTERNAL_PORT_NAME, sizeof(uint16_t)) != ERROR_NO_ERROR){
                     return ERROR_(ERROR_FAILED_TO_ADD_PROPERTY, "'%s'", PROPERTY_SERVER_EXTERNAL_PORT_NAME);
                 }
             }
@@ -1059,8 +1059,8 @@ inline ERROR_CODE server_setServerExternalPort(Argument* argumentSetServerExtern
             }
         }
 
-        int8_t* buffer = alloca(sizeof(uint64_t));
-        util_uint64ToByteArray(buffer, port);
+        int8_t* buffer = alloca(sizeof(uint16_t));
+        util_uint16ToByteArray(buffer, port);
 
         if(propertyFile_setBuffer(*serverExternalPort, buffer) != ERROR_NO_ERROR){
             return ERROR_(ERROR_FAILED_TO_UPDATE_PROPERTY, "'%s'", PROPERTY_SERVER_EXTERNAL_PORT_NAME);
