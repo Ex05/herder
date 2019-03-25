@@ -362,11 +362,11 @@ local SERVER_CONTEXT_HANDLER(server_pageShowInfo){
 
                 // Episode_Number.
                 util_uint16ToByteArray(response->data + response->dataLength, episode->number);
-                response->dataLength += sizeof(uint64_t);
+                response->dataLength += sizeof(uint16_t);
 
                 // Episode_NameLength.
                 util_uint64ToByteArray(response->data + response->dataLength, episode->nameLength);
-                response->dataLength += sizeof(uint16_t);
+                response->dataLength += sizeof(uint64_t);
 
                 // Episode_Name.
                 memcpy(response->data + response->dataLength, episode->name, episode->nameLength);
@@ -408,7 +408,7 @@ local SERVER_CONTEXT_HANDLER(server_pageExtractShowInfo){
     }else{
         error = mediaLibrary_extractEpisodeInfo(&info, &server->library.shows, fileName, fileNameLength);
 
-        if(error != ERROR_NO_ERROR || error != ERROR_INCOMPLETE){
+        if(error != ERROR_NO_ERROR && error != ERROR_INCOMPLETE){
             goto label_onError;
         }else{
             util_uint64ToByteArray(response->data + response->dataLength, error);
@@ -539,7 +539,7 @@ label_return:
             noValidArgument = false;
 
 		     if((error = server_setServerExternalPort(&argumentSetServerExternalPort, &properties, &serverExternalPort)) == ERROR_NO_ERROR){
-                UTIL_LOG_CONSOLE_(LOG_INFO, "Successfully set '%s' to '%" PRIdFAST16 "'.", PROPERTY_SERVER_EXTERNAL_PORT_NAME , util_byteArrayTo_uint64(serverExternalPort->buffer));
+                UTIL_LOG_CONSOLE_(LOG_INFO, "Successfully set '%s' to '%" PRIuFAST16 "'.", PROPERTY_SERVER_EXTERNAL_PORT_NAME , util_byteArrayTo_uint16(serverExternalPort->buffer));
             }
 
             goto label_exit;
@@ -553,7 +553,7 @@ label_return:
             }else{
                 UTIL_LOG_CONSOLE_(LOG_INFO, "ServerRootDirectory: '%s'.", PROPERTY_IS_SET(serverRootDirectory) ? (char*) serverRootDirectory->buffer : "NULL");
 
-                UTIL_LOG_CONSOLE_(LOG_INFO, "ServerExternalPort: '%" PRIuFAST64 "'.", PROPERTY_IS_SET(serverExternalPort) ? util_byteArrayTo_uint64(serverExternalPort->buffer) : 0);                
+                UTIL_LOG_CONSOLE_(LOG_INFO, "ServerExternalPort: '%" PRIuFAST16 "'.", PROPERTY_IS_SET(serverExternalPort) ? util_byteArrayTo_uint16(serverExternalPort->buffer) : 0);                
 		    }
             
             goto label_exit;

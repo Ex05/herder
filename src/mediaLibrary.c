@@ -11,8 +11,6 @@
 
 local const Version MEDIA_LIBRARY_FILE_VERSION = {0, 1, 0};
 
-local bool mediaLibrary_isFileTypeAllowed(const char*, const uint_fast64_t);
-
 local ERROR_CODE mediaLibrary_extractShowName(EpisodeInfo*, LinkedList*, char*, const uint_fast64_t);
 
 local ERROR_CODE mediaLibrary_extractEpisodeNumber(EpisodeInfo*, char*, const uint_fast64_t);
@@ -349,21 +347,25 @@ inline void mediaLibrary_free(MediaLibrary* library){
 }
 
 inline ERROR_CODE mediaLibrary_extractEpisodeInfo(EpisodeInfo* info, LinkedList* shows, char* fileName, const uint_fast64_t fileNameLength){
+    char* lowerChaseFileName = alloca(sizeof(*lowerChaseFileName) * (fileNameLength + 1));
+    util_stringCopy(lowerChaseFileName, fileName, fileNameLength + 1);
+    util_toLowerChase(lowerChaseFileName);
+
     // NOTE:(jan) All the strlen calls are needed, as each of the 'medialibrary_extract*' calls modify the file name.
     ERROR_CODE error = ERROR_NO_ERROR;
-    if(mediaLibrary_extractEpisodeNumber(info, fileName, fileNameLength) != ERROR_NO_ERROR){
+    if(mediaLibrary_extractEpisodeNumber(info, lowerChaseFileName, fileNameLength) != ERROR_NO_ERROR){
         error = ERROR_INCOMPLETE;
     }
 
-    if(mediaLibrary_extractSeasonNumber(info, fileName, strlen(fileName)) != ERROR_NO_ERROR){
+    if(mediaLibrary_extractSeasonNumber(info, lowerChaseFileName, strlen(lowerChaseFileName)) != ERROR_NO_ERROR){
         error = ERROR_INCOMPLETE;
     }
 
-    if(mediaLibrary_extractShowName(info, shows, fileName, strlen(fileName)) != ERROR_NO_ERROR){
+    if(mediaLibrary_extractShowName(info, shows, lowerChaseFileName, strlen(lowerChaseFileName)) != ERROR_NO_ERROR){
         error = ERROR_INCOMPLETE;
     }
 
-    if(mediaLibrary_extractEpisodeName(info, fileName, strlen(fileName)) != ERROR_NO_ERROR){
+    if(mediaLibrary_extractEpisodeName(info, lowerChaseFileName, strlen(lowerChaseFileName)) != ERROR_NO_ERROR){
         error = ERROR_INCOMPLETE;
     }
 
@@ -411,6 +413,9 @@ inline ERROR_CODE mediaLibrary_extractEpisodeName(EpisodeInfo* info, char* fileN
 
 inline ERROR_CODE mediaLibrary_extractEpisodeNumber(EpisodeInfo* info, char* fileName, const uint_fast64_t fileNameLength){
     ERROR_CODE error;
+
+    UTIL_LOG_DEBUG_("File:'%s'.", fileName);
+
     if((error = util_extractPrefixedNumber(fileName, fileNameLength, &info->episode, 'e')) != ERROR_NO_ERROR){
         return ERROR(error);
     }
@@ -656,30 +661,6 @@ inline void mediaLibrary_fillEpisodeInfo(EpisodeInfo* info){
 
         free(userInput);
     }
-}
-
-/*  printf("#define HASH_MP4 %d\n", util_hashString(".mp4"));
-    printf("#define HASH_MKV %d\n", util_hashString(".mkv"));
-    printf("#define HASH_AVI %d\n", util_hashString(".avi")); */
-inline bool mediaLibrary_isFileTypeAllowed(const char* s, const uint_fast64_t length){
-    #define HASH_MP4 -1839843325
-    #define HASH_MKV -1840171254
-    #define HASH_AVI -1938587738
-
-    switch(util_hashString(s, length)){
-        case HASH_MP4:
-        case HASH_MKV:
-        case HASH_AVI:{
-            return true;
-        }
-
-        default:
-            return false;
-    }
-
-    #undef HASH_MP4
-    #undef HASH_MKV
-    #undef HASH_AVI
 }
 
 inline ERROR_CODE mediaLibrary_addShow(MediaLibrary* library, Show** show, const char* name, const uint_fast64_t nameLength){
@@ -970,7 +951,7 @@ inline ERROR_CODE mediaLibrary_initEpisodeInfo(EpisodeInfo* info){
 inline void mediaLibrary_freeEpisodeInfo(EpisodeInfo* info){
     free(info->showName);
     free(info->name);
-    free(info->fileExtension);
+    // free(info->fileExtension);
 }
 
 #undef PROPERTY_LIBRARY_DIRECTORY_NAME
