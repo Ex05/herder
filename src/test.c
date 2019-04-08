@@ -769,6 +769,19 @@ TEST_TEST_FUNCTION(util_replaceAllChars){
     return true;
 }
 
+TEST_TEST_FUNCTION(util_append){
+    char a[11] = {'1', '2', '3', '4', '5'};
+    char b[] = "67890";
+    
+    util_append(a, strlen(a), b, strlen(b));
+
+    if(strncmp(a, "1234567890", 11) != 0){
+        return false;
+    }
+
+    return true;
+}
+
 TEST_TEST_FUNCTION(argumentParser_parse){
     ArgumentParser parser;
     argumentParser_init(&parser);
@@ -1550,6 +1563,7 @@ int main(void){
         TEST(util_trim);
         TEST(util_toLowerChase);
         TEST(util_replaceAllChars);
+        TEST(util_append);
                 
         TEST(util_getBaseDirectory);
         TEST(util_getFileName);
