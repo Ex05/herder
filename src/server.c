@@ -602,7 +602,9 @@ label_return:
 		}else{
             const uint_fast16_t port = util_byteArrayTo_uint16((int8_t*) serverExternalPort->buffer);
 
-			if(server_init(&server, (char*) serverRootDirectory->buffer, serverRootDirectory->entry->length - 1, port) != ERROR_NO_ERROR){
+			if((error = server_init(&server, (char*) serverRootDirectory->buffer, serverRootDirectory->entry->length - 1, port)) != ERROR_NO_ERROR){
+                UTIL_LOG_CONSOLE(LOG_ERR, util_toErrorString(error));
+
 				goto label_exit;
 			}
 

@@ -413,9 +413,6 @@ inline ERROR_CODE mediaLibrary_extractEpisodeName(EpisodeInfo* info, char* fileN
 
 inline ERROR_CODE mediaLibrary_extractEpisodeNumber(EpisodeInfo* info, char* fileName, const uint_fast64_t fileNameLength){
     ERROR_CODE error;
-
-    UTIL_LOG_DEBUG_("File:'%s'.", fileName);
-
     if((error = util_extractPrefixedNumber(fileName, fileNameLength, &info->episode, 'e')) != ERROR_NO_ERROR){
         return ERROR(error);
     }
@@ -609,7 +606,7 @@ inline void mediaLibrary_fillEpisodeInfo(EpisodeInfo* info){
     if(info->showName == NULL){
         printf("Please enter the name of the show.\n");
 
-        char* s = util_readUserInput();
+        char* s = util_readUserInput(NULL);
         
         util_replaceAllChars(s, ' ', '_');
 
@@ -619,7 +616,7 @@ inline void mediaLibrary_fillEpisodeInfo(EpisodeInfo* info){
     if(info->season == -1){
         printf("Please enter the season number of this episode.\n");
 
-        char* s = util_readUserInput();
+        char* s = util_readUserInput(NULL);
 
         info->season = atoi(s);
     }
@@ -627,7 +624,7 @@ inline void mediaLibrary_fillEpisodeInfo(EpisodeInfo* info){
    if(info->episode == -1){
         printf("Please enter the episode number.\n");
 
-        char* s = util_readUserInput();
+        char* s = util_readUserInput(NULL);
 
         info->episode = atoi(s);
     }
@@ -635,7 +632,7 @@ inline void mediaLibrary_fillEpisodeInfo(EpisodeInfo* info){
     if(info->name == NULL){
         printf("Please enter the episode name.\n");
 
-        char* s = util_readUserInput();
+        char* s = util_readUserInput(NULL);
 
         util_replaceAllChars(s, ' ', '_');
 
@@ -643,14 +640,14 @@ inline void mediaLibrary_fillEpisodeInfo(EpisodeInfo* info){
     }else{
         printf("Is the episode name correct? (yes/no)\n");
 
-        char* userInput = util_readUserInput();
+        char* userInput = util_readUserInput(NULL);
 
         util_toLowerChase(userInput);
 
         if(strncmp(userInput, "no", 2) == 0 || strncmp(userInput, "n", 1) == 0){
             printf("Please enter the episode name.\n");
 
-            char* s = util_readUserInput();
+            char* s = util_readUserInput(NULL);
 
             util_replaceAllChars(s, ' ', '_');
 

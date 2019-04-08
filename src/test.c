@@ -1540,7 +1540,7 @@ int main(void){
         // Integer to ByteArray conversions.
         TEST(util_uint16ToByteArray);
         TEST(util_uint32ToByteArray);
-        TEST(util_uint64ToByteArray);
+        TEST(util_uint64ToByteArray); 
         TEST(util_formatNumber);
         // String utils.
         TEST(util_findFirst);

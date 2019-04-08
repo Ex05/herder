@@ -232,7 +232,11 @@ local ERROR_CODE herder_import(Property*, Property*, Property*, const char*);
             if(error == ERROR_UNKNOWN_SHOW){
                 UTIL_LOG_CONSOLE_(LOG_INFO, "Unknown show '%s'.", argumentShowInfo.value);
             }else{
-                 UTIL_LOG_CONSOLE_(LOG_ERR, "Failed to fetch show info for show '%s'. [%s]", argumentShowInfo.value,util_toErrorString(error));
+                if(error == ERROR_INVALID_COMMAND_USAGE){
+                    UTIL_LOG_CONSOLE(LOG_INFO, "Invalid command. Usage --info <name>.");
+                }else{
+                     UTIL_LOG_CONSOLE_(LOG_ERR, "Failed to fetch show info for show '%s'. [%s]", argumentShowInfo.value,util_toErrorString(error));
+                    }
             }
         }
 
@@ -869,43 +873,129 @@ ERROR_CODE herder_extractShowInfo(Property* remoteHost, Property* remotePort, Ep
         UTIL_LOG_CONSOLE_(LOG_ERR, "Server_status:'%s'.", http_getStatusMsg(response.statusCode));
     }
 
-// TODO: Extract this to its own function . (Jan - 2018.12.07)
-if((*episodeInfo)->showName == NULL){
-    UTIL_LOG_CONSOLE_(LOG_INFO, "Failed to extract show name from file: '%s'.", fileName);
+    // TODO: Extract this to its own function . (Jan - 2018.12.07)
+    if((*episodeInfo)->showName == NULL){
+        UTIL_LOG_CONSOLE_(LOG_INFO, "Failed to extract show name from file: '%s'.", fileName);
 
-    UTIL_LOG_CONSOLE(LOG_INFO, "Please enter the show name...");
+        UTIL_LOG_CONSOLE(LOG_INFO, "Please enter the show name...");
 
-    (*episodeInfo)->showName = util_readUserInput();
-}
+        int_fast64_t userInputLength;
+        (*episodeInfo)->showName = util_readUserInput(&userInputLength);
+
+        (*episodeInfo)->showNameLength = userInputLength;
+    }
+
+    if((*episodeInfo)->season == 0){
+        UTIL_LOG_CONSOLE_(LOG_INFO, "Failed to extract season number from file: '%s'.", fileName);
+
+        UTIL_LOG_CONSOLE(LOG_INFO, "Please enter the season number...");
+
+        if((error = util_stringToInt(util_readUserInput(NULL), &(*episodeInfo)->season)) != ERROR_NO_ERROR){
+            goto label_freeRequest;
+        }
+    }
+
+    if((*episodeInfo)->episode == 0){
+        UTIL_LOG_CONSOLE_(LOG_INFO, "Failed to extract episode number from file: '%s'.", fileName);
+
+        UTIL_LOG_CONSOLE(LOG_INFO, "Please enter the episode number...");
+
+        if((error = util_stringToInt(util_readUserInput(NULL), &(*episodeInfo)->episode)) != ERROR_NO_ERROR){
+            goto label_freeRequest;
+        }
+    }
 
     if((*episodeInfo)->name == NULL){
-    UTIL_LOG_CONSOLE_(LOG_INFO, "Failed to extract episode name from file: '%s'.", fileName);
+        UTIL_LOG_CONSOLE_(LOG_INFO, "Failed to extract episode name from file: '%s'.", fileName);
 
-    UTIL_LOG_CONSOLE(LOG_INFO, "Please enter the episode name...");
+        UTIL_LOG_CONSOLE(LOG_INFO, "Please enter the episode name...");
 
-    (*episodeInfo)->name = util_readUserInput(); 
-}
+        int_fast64_t userInputLength;
+        (*episodeInfo)->name = util_readUserInput(&userInputLength); 
 
-if((*episodeInfo)->season == 0){
-    UTIL_LOG_CONSOLE_(LOG_INFO, "Failed to extract season number from file: '%s'.", fileName);
-
-    UTIL_LOG_CONSOLE(LOG_INFO, "Please enter the season number...");
-
-    if((error = util_stringToInt(util_readUserInput(), &(*episodeInfo)->season)) != ERROR_NO_ERROR){
-        goto label_freeRequest;
+        (*episodeInfo)->nameLength = userInputLength;
     }
-}
 
-if((*episodeInfo)->episode == 0){
-    UTIL_LOG_CONSOLE_(LOG_INFO, "Failed to extract episode number from file: '%s'.", fileName);
+    UTIL_LOG_CONSOLE(LOG_INFO, "Are these values correct? Yes/No.");
+    UTIL_LOG_CONSOLE_(LOG_INFO, "\tShow:'%s'.", (*episodeInfo)->showName);
+    UTIL_LOG_CONSOLE_(LOG_INFO, "\tSeason:'%" PRIdFAST16 "'.", (*episodeInfo)->season);
+    UTIL_LOG_CONSOLE_(LOG_INFO, "\tEpisode:'%" PRIdFAST16 "'.", (*episodeInfo)->episode);
+    UTIL_LOG_CONSOLE_(LOG_INFO, "\t\t'%s'.", (*episodeInfo)->name);
 
-    UTIL_LOG_CONSOLE(LOG_INFO, "Please enter the episode number...");
+    int_fast64_t userInputLength;
+    char* userInput;    
+label_invalidUserInput:    
+    userInput = util_readUserInput(&userInputLength);
+    util_toLowerChase(userInput);
 
-    if((error = util_stringToInt(util_readUserInput(), &(*episodeInfo)->episode)) != ERROR_NO_ERROR){
-        goto label_freeRequest;
+    if(strncmp("no", userInput, userInputLength) == 0){
+        // Show name.
+        UTIL_LOG_CONSOLE_(LOG_INFO, "Show name:'%s'. Press <Enter> to accept.", (*episodeInfo)->showName);
+
+        char* showName = util_readUserInput(&userInputLength);
+        if(userInputLength != 0){
+            free((*episodeInfo)->showName);
+
+            (*episodeInfo)->showName = showName;
+            (*episodeInfo)->showNameLength = userInputLength;
+        }
+
+    label_seasonNumber:
+        // Season number.
+        UTIL_LOG_CONSOLE_(LOG_INFO, "Season:'%" PRIiFAST16 "'. Press <Enter> to accept.", (*episodeInfo)->season);
+
+        char* season = util_readUserInput(&userInputLength);
+        if(userInputLength != 0){
+            if((error = util_stringToInt(season, &(*episodeInfo)->season)) != ERROR_NO_ERROR){
+                free(season);
+
+                UTIL_LOG_CONSOLE_(LOG_ERR, "%s.", util_toErrorString(error));
+
+                goto label_seasonNumber;
+            }
+
+            free(season);
+        }
+
+        label_episodeNumber:
+        // Episode number.
+        UTIL_LOG_CONSOLE_(LOG_INFO, "Episode:'%" PRIiFAST16 "'. Press <Enter> to accept.", (*episodeInfo)->episode);
+
+        char* episode = util_readUserInput(&userInputLength);
+        if(userInputLength != 0){
+            if((error = util_stringToInt(episode, &(*episodeInfo)->episode)) != ERROR_NO_ERROR){
+                free(episode);
+
+                UTIL_LOG_CONSOLE_(LOG_ERR, "%s.", util_toErrorString(error));
+
+                goto label_episodeNumber;
+            }
+
+            free(episode);
+        }
+
+        // Episode name.
+        UTIL_LOG_CONSOLE_(LOG_INFO, "Episode name:'%s'. Press <Enter> to accept.", (*episodeInfo)->name);
+
+        char* episodeName = util_readUserInput(&userInputLength);
+        if(userInputLength != 0){
+            free((*episodeInfo)->name);
+
+            (*episodeInfo)->name = episodeName;
+            (*episodeInfo)->nameLength = userInputLength;
+        }
+    }else{
+        if(strncmp("yes", userInput, userInputLength) != 0){
+            UTIL_LOG_CONSOLE_(LOG_INFO, "'%s' is not a valid answer, please type Yes/No.", userInput);
+
+            free(userInput);
+
+            goto label_invalidUserInput;
+        }
     }
-}
 
+    free(userInput);
+    
 label_freeRequest:
     http_freeHTTP_Request(&request);
 
@@ -1106,8 +1196,6 @@ inline ERROR_CODE herder_argumentKillDaemon(Argument* argumentImport, PropertyFi
 
 inline ERROR_CODE herder_argumentShowInfo(Argument* argumentShowInfo, PropertyFile* propertyFile, Property* remoteHost, Property* remotePort){
     if(!ARGUMENT_PARSER_ARGUMENT_HAS_VALUE((*argumentShowInfo))){
-        UTIL_LOG_CONSOLE(LOG_INFO, "Invalid command. Usage --info <name>.");
-
         return ERROR(ERROR_INVALID_COMMAND_USAGE);
     }else{
         if(REMOTE_HOST_PROPERTIES_SET()){
