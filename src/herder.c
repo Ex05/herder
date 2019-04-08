@@ -564,8 +564,8 @@ local ERROR_CODE herder_pullShowInfo(Property* remoteHost, Property* remotePort,
     util_uint64ToByteArray(request.data + request.dataLength, showNameLength);
     request.dataLength += sizeof(uint64_t);   
 
-    memcpy(request.data + request.dataLength, showName, showNameLength);
-    request.dataLength += showNameLength;
+    memcpy(request.data + request.dataLength, showName, showNameLength + 1);
+    request.dataLength += showNameLength + 1;
 
     HTTP_Response response;
     http_initResponse(&response, httpProcessingBuffer, HTTP_PROCESSING_BUFFER_SIZE);
@@ -606,7 +606,7 @@ local ERROR_CODE herder_pullShowInfo(Property* remoteHost, Property* remotePort,
                     readOffset += sizeof(uint64_t);
 
                     // Episode_Name.
-                    char* name = alloca(sizeof(*name) * (nameLength));
+                    char* name = alloca(sizeof(*name) * (nameLength + 1));
                     memcpy(name, response.data + readOffset, nameLength);
                     readOffset += nameLength;
 

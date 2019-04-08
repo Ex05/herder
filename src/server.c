@@ -329,7 +329,7 @@ local SERVER_CONTEXT_HANDLER(server_pageShowInfo){
     readOffset += sizeof(uint64_t);
 
     const char* showName = (char*) (request->data + readOffset);
-    readOffset += nameLength;
+    readOffset += nameLength + 1;
 
     Show* show;    
     if(medialibrary_getShow(&server->library, &show, showName, nameLength) == ERROR_ENTRY_NOT_FOUND){
@@ -365,11 +365,11 @@ local SERVER_CONTEXT_HANDLER(server_pageShowInfo){
                 response->dataLength += sizeof(uint16_t);
 
                 // Episode_NameLength.
-                util_uint64ToByteArray(response->data + response->dataLength, episode->nameLength);
+                util_uint64ToByteArray(response->data + response->dataLength, episode->nameLength + 1);
                 response->dataLength += sizeof(uint64_t);
 
                 // Episode_Name.
-                memcpy(response->data + response->dataLength, episode->name, episode->nameLength);
+                memcpy(response->data + response->dataLength, episode->name, episode->nameLength + 1);
                 response->dataLength += episode->nameLength;
             }
         }
