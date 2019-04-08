@@ -623,7 +623,9 @@ label_return:
 
 			UTIL_LOG_INFO_("Starting server on port '%" PRIuFAST16 "'.", port);
 
-			server_start(&server);
+			if((error = server_start(&server)) != ERROR_NO_ERROR){
+                UTIL_LOG_CONSOLE_(LOG_ERR, "%s", util_toErrorString(error));
+            }
 
 			server_free(&server);
 
