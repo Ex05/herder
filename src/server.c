@@ -329,7 +329,7 @@ local SERVER_CONTEXT_HANDLER(server_pageShowInfo){
     readOffset += sizeof(uint64_t);
 
     const char* showName = (char*) (request->data + readOffset);
-    readOffset += nameLength;
+    readOffset += nameLength + 1;
 
     Show* show;    
     if(medialibrary_getShow(&server->library, &show, showName, nameLength) == ERROR_ENTRY_NOT_FOUND){
@@ -362,14 +362,14 @@ local SERVER_CONTEXT_HANDLER(server_pageShowInfo){
 
                 // Episode_Number.
                 util_uint16ToByteArray(response->data + response->dataLength, episode->number);
-                response->dataLength += sizeof(uint64_t);
-
-                // Episode_NameLength.
-                util_uint64ToByteArray(response->data + response->dataLength, episode->nameLength);
                 response->dataLength += sizeof(uint16_t);
 
+                // Episode_NameLength.
+                util_uint64ToByteArray(response->data + response->dataLength, episode->nameLength + 1);
+                response->dataLength += sizeof(uint64_t);
+
                 // Episode_Name.
-                memcpy(response->data + response->dataLength, episode->name, episode->nameLength);
+                memcpy(response->data + response->dataLength, episode->name, episode->nameLength + 1);
                 response->dataLength += episode->nameLength;
             }
         }
@@ -408,7 +408,7 @@ local SERVER_CONTEXT_HANDLER(server_pageExtractShowInfo){
     }else{
         error = mediaLibrary_extractEpisodeInfo(&info, &server->library.shows, fileName, fileNameLength);
 
-        if(error != ERROR_NO_ERROR || error != ERROR_INCOMPLETE){
+        if(error != ERROR_NO_ERROR && error != ERROR_INCOMPLETE){
             goto label_onError;
         }else{
             util_uint64ToByteArray(response->data + response->dataLength, error);
@@ -514,13 +514,13 @@ label_return:
         if(argumentParser_contains(&parser, &argumentHelp)){
             noValidArgument = false;
 
-            printf("Usage: herder --[command]/-[alias] <arguments>.\n\n");
+            UTIL_LOG_CONSOLE(LOG_INFO, "Usage: herder --[command]/-[alias] <arguments>.\n");
 
-            printf("\t%s\t%s\n", "--setServerRootDirectory <path>", "Sets the 'server root directory' to the given path.");
-            printf("\t%s\t%s\n", "--setServerExternalPort <port>", "Sets the external port to the given port.");
-            printf("\t%s\t%s\n", "--showSettings", "Shows a quick overview of all the user settings.");
+            UTIL_LOG_CONSOLE_(LOG_INFO, "\t%s\t%s", "--setServerRootDirectory <path>", "Sets the 'server root directory' to the given path.");
+            UTIL_LOG_CONSOLE_(LOG_INFO, "\t%s\t%s", "--setServerExternalPort <port>", "Sets the external port to the given port.");
+            UTIL_LOG_CONSOLE_(LOG_INFO, "\t%s\t%s", "--showSettings", "Shows a quick overview of all the user settings.");
 
-            printf("\t%s\t\t%s\n", "-?, -h, -help, --help", "Displays this help.");
+            UTIL_LOG_CONSOLE_(LOG_INFO, "\t%s\t\t%s", "-?, -h, -help, --help", "Displays this help.");
 
             goto label_exit;
         }
@@ -539,7 +539,7 @@ label_return:
             noValidArgument = false;
 
 		     if((error = server_setServerExternalPort(&argumentSetServerExternalPort, &properties, &serverExternalPort)) == ERROR_NO_ERROR){
-                UTIL_LOG_CONSOLE_(LOG_INFO, "Successfully set '%s' to '%" PRIdFAST16 "'.", PROPERTY_SERVER_EXTERNAL_PORT_NAME , util_byteArrayTo_uint64(serverExternalPort->buffer));
+                UTIL_LOG_CONSOLE_(LOG_INFO, "Successfully set '%s' to '%" PRIuFAST16 "'.", PROPERTY_SERVER_EXTERNAL_PORT_NAME , util_byteArrayTo_uint16(serverExternalPort->buffer));
             }
 
             goto label_exit;
@@ -553,7 +553,7 @@ label_return:
             }else{
                 UTIL_LOG_CONSOLE_(LOG_INFO, "ServerRootDirectory: '%s'.", PROPERTY_IS_SET(serverRootDirectory) ? (char*) serverRootDirectory->buffer : "NULL");
 
-                UTIL_LOG_CONSOLE_(LOG_INFO, "ServerExternalPort: '%" PRIuFAST64 "'.", PROPERTY_IS_SET(serverExternalPort) ? util_byteArrayTo_uint64(serverExternalPort->buffer) : 0);                
+                UTIL_LOG_CONSOLE_(LOG_INFO, "ServerExternalPort: '%" PRIuFAST16 "'.", PROPERTY_IS_SET(serverExternalPort) ? util_byteArrayTo_uint16(serverExternalPort->buffer) : 0);                
 		    }
             
             goto label_exit;
@@ -602,7 +602,9 @@ label_return:
 		}else{
             const uint_fast16_t port = util_byteArrayTo_uint16((int8_t*) serverExternalPort->buffer);
 
-			if(server_init(&server, (char*) serverRootDirectory->buffer, serverRootDirectory->entry->length - 1, port) != ERROR_NO_ERROR){
+			if((error = server_init(&server, (char*) serverRootDirectory->buffer, serverRootDirectory->entry->length - 1, port)) != ERROR_NO_ERROR){
+                UTIL_LOG_CONSOLE(LOG_ERR, util_toErrorString(error));
+
 				goto label_exit;
 			}
 

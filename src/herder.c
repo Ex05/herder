@@ -34,6 +34,13 @@
 
 #define REMOTE_HOST_PROPERTIES_SET() ((propertyFile_propertySet(remoteHost, PROPERTY_REMOTE_HOST_NAME) == ERROR_NO_ERROR) && (propertyFile_propertySet(remotePort, PROPERTY_REMOTE_PORT_NAME) == ERROR_NO_ERROR))
 
+typedef struct{
+    char* path;
+    char* fileName;
+    uint64_t pathLength;
+    uint64_t fileNameLength;
+}DirectoryEntry;
+
 local void herder_printHelp(void);
 
 local ERROR_CODE herder_listShows(Property*, Property*);
@@ -56,7 +63,7 @@ local ERROR_CODE herder_argumentSetRemoteHostPort(Argument*, PropertyFile*, Prop
 
 local ERROR_CODE herder_argumentSetLibraryDirectory(Argument*, PropertyFile*, Property**);
 
-local ERROR_CODE herder_argumentImport(Argument*, PropertyFile*);
+local ERROR_CODE herder_argumentImport(Argument*, PropertyFile*, Property*, Property*, Property*, Property*);
 
 local ERROR_CODE herder_argumentKillDaemon(Argument*, PropertyFile*);
 
@@ -65,6 +72,10 @@ local ERROR_CODE herder_argumentShowInfo(Argument*, PropertyFile*, Property*, Pr
 local ERROR_CODE herder_argumentListShows(Argument*, PropertyFile*, Property*, Property*);
 
 local ERROR_CODE herder_argumentAdd(Argument*, PropertyFile*, Property*, Property*);
+
+local ERROR_CODE herder_walkDirectory(ArrayList*, const char*);
+
+local ERROR_CODE herder_import(Property*, Property*, Property*, const char*);
 
 // TODO:(jan) Make custom entry point for the client build, so we won't have to use 'main'.
 #ifndef TEST_BUILD
@@ -122,7 +133,7 @@ local ERROR_CODE herder_argumentAdd(Argument*, PropertyFile*, Property*, Propert
 
     PropertyFile properties;
     if(propertyFile_init(&properties, propertyFilePath) != ERROR_NO_ERROR){
-        goto label_free;
+        goto label_freeProperties;
     }
 
     Property* importDirectory;
@@ -148,17 +159,17 @@ local ERROR_CODE herder_argumentAdd(Argument*, PropertyFile*, Property*, Propert
             UTIL_LOG_CONSOLE_(LOG_INFO, "Successfully set '%s' to '%s'.", PROPERTY_IMPORT_DIRECTORY_NAME , (char*) importDirectory->buffer);
         }
 
-        goto label_free;
+        goto label_freeProperties;
     }
 
 	if(argumentParser_contains(&parser, &argumentSetRemoteHost)){
         noValidArgument = false;
 
-        if((error = herder_argumentSetRemoteHost(&argumentSetImportDirectory, &properties, &remoteHost)) == ERROR_NO_ERROR){
+        if((error = herder_argumentSetRemoteHost(&argumentSetRemoteHost, &properties, &remoteHost)) == ERROR_NO_ERROR){
             UTIL_LOG_CONSOLE_(LOG_INFO, "Successfully set '%s' to '%s'.", PROPERTY_REMOTE_HOST_NAME, (char*) remoteHost->buffer);
         }
 
-        goto label_free;
+        goto label_freeProperties;
     }
 
     if(argumentParser_contains(&parser, &argumentSetRemoteHostPort)){
@@ -168,17 +179,19 @@ local ERROR_CODE herder_argumentAdd(Argument*, PropertyFile*, Property*, Propert
             UTIL_LOG_CONSOLE_(LOG_INFO, "Successfully set '%s' to '%" PRIdFAST64 "'.", PROPERTY_REMOTE_PORT_NAME , util_byteArrayTo_uint64(remotePort->buffer));
         }
 
-        goto label_free;
+        goto label_freeProperties;
     }
 
      if(argumentParser_contains(&parser, &argumentSetLibraryDirectory)){
         noValidArgument = false;
 
-        if((error = herder_argumentSetImportDirectory(&argumentSetLibraryDirectory, &properties, &libraryDirectory)) == ERROR_NO_ERROR){
+        UTIL_LOG_CONSOLE(LOG_DEBUG, "--setLibraryDirectory.");
+
+        if((error = herder_argumentSetLibraryDirectory(&argumentSetLibraryDirectory, &properties, &libraryDirectory)) == ERROR_NO_ERROR){
             UTIL_LOG_CONSOLE_(LOG_INFO, "Successfully set '%s' to '%s'.", PROPERTY_LIBRARY_DIRECTORY_NAME , (char*) libraryDirectory->buffer);
         }
 
-        goto label_free;
+        goto label_freeProperties;
     }
 
     if(argumentParser_contains(&parser, &argumentShowSettings)){
@@ -189,17 +202,17 @@ local ERROR_CODE herder_argumentAdd(Argument*, PropertyFile*, Property*, Propert
         UTIL_LOG_CONSOLE_(LOG_INFO, "RemotePorrt: %" PRIuFAST64 ".", PROPERTY_IS_SET(remotePort) ? util_byteArrayTo_uint64(remotePort->buffer) : 0);
         UTIL_LOG_CONSOLE_(LOG_INFO, "LibraryDirectory: %s.", PROPERTY_IS_SET(libraryDirectory) ? (char*) libraryDirectory->buffer : "NULL");
 
-        goto label_free;
+        goto label_freeProperties;
     }
 
     if(argumentParser_contains(&parser, &argumentImport)){
        noValidArgument = false;
 
-        if((error = herder_argumentImport(&argumentImport, &properties)) == ERROR_NO_ERROR){
+        if((error = herder_argumentImport(&argumentImport, &properties, remoteHost, remotePort, libraryDirectory, importDirectory)) == ERROR_NO_ERROR){
             // TODO: Add handling of error or success case. (Jan - 2018.12.18)
         }
 
-        goto label_free;
+        goto label_freeProperties;
     }
 
     if(argumentParser_contains(&parser, &argumentKillDeamon)){
@@ -209,7 +222,7 @@ local ERROR_CODE herder_argumentAdd(Argument*, PropertyFile*, Property*, Propert
             // TODO: Add handling of error or success case. (Jan - 2018.12.18)
         }
 
-        goto label_free;
+        goto label_freeProperties;
     }
 
     if(argumentParser_contains(&parser, &argumentShowInfo)){
@@ -219,18 +232,26 @@ local ERROR_CODE herder_argumentAdd(Argument*, PropertyFile*, Property*, Propert
             if(error == ERROR_UNKNOWN_SHOW){
                 UTIL_LOG_CONSOLE_(LOG_INFO, "Unknown show '%s'.", argumentShowInfo.value);
             }else{
-                 UTIL_LOG_CONSOLE_(LOG_ERR, "Failed to fetch show info for show '%s'. [%s]", argumentShowInfo.value,util_toErrorString(error));
+                if(error == ERROR_INVALID_COMMAND_USAGE){
+                    UTIL_LOG_CONSOLE(LOG_INFO, "Invalid command. Usage --info <name>.");
+                }else{
+                     UTIL_LOG_CONSOLE_(LOG_ERR, "Failed to fetch show info for show '%s'. [%s]", argumentShowInfo.value,util_toErrorString(error));
+                    }
             }
         }
 
-        goto label_free;
+        goto label_freeProperties;
     }
 
     if(argumentParser_contains(&parser, &argumentListShows)){
         noValidArgument = false;
 
-        if((error = herder_argumentListShows(&argumentListShows, &properties, remoteHost, remotePort)) == ERROR_NO_ERROR){
-            // TODO: Add handling of error or success case. (Jan - 2018.12.18)
+        if((error = herder_argumentListShows(&argumentListShows, &properties, remoteHost, remotePort)) != ERROR_NO_ERROR){       
+            if(error == ERROR_FAILED_TO_CONNECT){
+                UTIL_LOG_CONSOLE_(LOG_INFO, "Failed to list shows. [%s] (%s:%" PRIdFAST16 ")", util_toErrorString(error) , (char*) remoteHost->buffer, util_byteArrayTo_uint64(remotePort->buffer));
+            }else{
+                UTIL_LOG_CONSOLE_(LOG_ERR, "Unexpected error:'%s'.", util_toErrorString(error));
+            }
         }
     }
 
@@ -241,7 +262,7 @@ local ERROR_CODE herder_argumentAdd(Argument*, PropertyFile*, Property*, Propert
             UTIL_LOG_CONSOLE_(LOG_INFO, "Added '%s' to the library.", argumentAddShow.value);
         }
 
-        goto label_free;
+        goto label_freeProperties;
     }
 
     if(argumentParser_contains(&parser, &argumentAdd)){
@@ -266,6 +287,33 @@ local ERROR_CODE herder_argumentAdd(Argument*, PropertyFile*, Property*, Propert
         herder_printHelp();
     }
 
+label_freeProperties:
+    propertyFile_free(&properties);
+
+    if(PROPERTY_IS_SET(libraryDirectory)){
+        propertyFile_freeProperty(libraryDirectory);
+
+        free(libraryDirectory);
+    }
+
+     if(PROPERTY_IS_SET(remotePort)){
+        propertyFile_freeProperty(remotePort);
+
+        free(remotePort);
+    }
+
+     if(PROPERTY_IS_SET(remoteHost)){
+        propertyFile_freeProperty(remoteHost);
+
+        free(remoteHost);
+    }
+
+     if(PROPERTY_IS_SET(importDirectory)){
+        propertyFile_freeProperty(importDirectory);
+
+        free(importDirectory);
+    }
+
 label_free:
 	argumentParser_free(&parser);
 
@@ -275,28 +323,28 @@ label_free:
 }
 
 inline void herder_printHelp(void){
-    printf("Usage: herder --[command]/-[alias] <arguments>.\n\n");
+    UTIL_LOG_CONSOLE(LOG_INFO, "Usage: herder --[command]/-[alias] <arguments>.\n\n");
 
-    printf("\t%s\t\t\t%s\n", "-l, --list", "Fetches and prints a list of all shows in the library.");
-    printf("\t%s\t\t\t%s\n", "--info <name>", "Prints all Episodes of the given show.");
-    printf("\t%s\t\t%s\n", "-a, --add <file>", "Adds the given file to the library.");
-    printf("\t%s\t\t%s\n", "--addShow <name>", "Adds the given show to the library.");
-    printf("\t%s\t%s\n", "-i, --import optional:<path>", "Imports all files from the specified import path to the library (See '--setImportDirectory').");
-    printf("\t%s\t%s\n", "--setImportDirectory <path>", "Sets the 'import directory' to the given path.");
-    printf("\t%s\t%s\n", "--setLibraryDirectory <path>", "Sets the 'library directory' to the given path.");
-    printf("\t%s\t\t%s\n", "--setRemoteHost <URL>", "Sets the 'remote host' address to the given URL.");
-    printf("\t%s\t\t%s\n", "--setRemotePort <port>", "Sets the 'remote host' port to the given port.");
-    printf("\t%s\t\t\t%s\n", "--killDeamon", "Kills the deamon process running the 'herder' server.");
-    printf("\t%s\t\t\t%s\n", "--restartDeamon", "Restarts the deamon process running the 'herder' server.");
-    printf("\t%s\t\t\t%s\n", "--showSettings", "Prints all available settings and their value.");
-    printf("\t%s\t\t%s\n", "-?, -h, -help, --help", "Displays this help.");
+   UTIL_LOG_CONSOLE_(LOG_INFO, "\t%s\t\t\t%s", "-l, --list", "Fetches and prints a list of all shows in the library.");
+   UTIL_LOG_CONSOLE_(LOG_INFO, "\t%s\t\t\t%s", "--info <name>", "Prints all Episodes of the given show.");
+   UTIL_LOG_CONSOLE_(LOG_INFO, "\t%s\t\t%s", "-a, --add <file>", "Adds the given file to the library.");
+   UTIL_LOG_CONSOLE_(LOG_INFO, "\t%s\t\t%s", "--addShow <name>", "Adds the given show to the library.");
+   UTIL_LOG_CONSOLE_(LOG_INFO, "\t%s\t%s", "-i, --import optional:<path>", "Imports all files from the specified import path to the library (See '--setImportDirectory').");
+   UTIL_LOG_CONSOLE_(LOG_INFO, "\t%s\t%s", "--setImportDirectory <path>", "Sets the 'import directory' to the given path.");
+   UTIL_LOG_CONSOLE_(LOG_INFO, "\t%s\t%s", "--setLibraryDirectory <path>", "Sets the 'library directory' to the given path.");
+   UTIL_LOG_CONSOLE_(LOG_INFO, "\t%s\t\t%s", "--setRemoteHost <URL>", "Sets the 'remote host' address to the given URL.");
+   UTIL_LOG_CONSOLE_(LOG_INFO, "\t%s\t\t%s", "--setRemotePort <port>", "Sets the 'remote host' port to the given port.");
+   UTIL_LOG_CONSOLE_(LOG_INFO, "\t%s\t\t\t%s", "--killDeamon", "Kills the deamon process running the 'herder' server.");
+   UTIL_LOG_CONSOLE_(LOG_INFO, "\t%s\t\t\t%s", "--restartDeamon", "Restarts the deamon process running the 'herder' server.");
+   UTIL_LOG_CONSOLE_(LOG_INFO, "\t%s\t\t\t%s", "--showSettings", "Prints all available settings and their value.");
+   UTIL_LOG_CONSOLE_(LOG_INFO, "\t%s\t\t%s", "-?, -h, -help, --help", "Displays this help.");
 }
 
 inline ERROR_CODE herder_listShows(Property* remoteHostProperty, Property* remoteHostPortProperty){
     ERROR_CODE error = ERROR_NO_ERROR;
 
     char* host = (char*) remoteHostProperty->buffer;
-    uint_fast16_t port = util_byteArrayTo_uint16(remoteHostPortProperty->buffer);
+    uint_fast16_t port = util_byteArrayTo_uint64(remoteHostPortProperty->buffer);
 
     ArrayList shows;
     if((error = herder_pullShowList(&shows, host, port)) != ERROR_NO_ERROR){
@@ -330,6 +378,9 @@ label_freeShowList:
 
 ERROR_CODE herder_pullShowList(ArrayList* shows, const char* host, const uint_fast16_t port){
     ERROR_CODE error = ERROR_NO_ERROR;
+    
+    // Note: We have to zero out shows here to not free garbage values in the ArrayList if we fail to connect, as the initialisation of shows requires the number of shows to be send from the server. (jan - 2019.04.04)
+    memset(shows, 0, sizeof(*shows));
 
     void* httpProcessingBuffer;    
     if((error = util_blockAlloc(&httpProcessingBuffer, HTTP_PROCESSING_BUFFER_SIZE)) != ERROR_NO_ERROR){
@@ -416,7 +467,7 @@ ERROR_CODE herder_addShow(Property* remoteHost, Property* remotePort, char* show
     ERROR_CODE error = ERROR_NO_ERROR;
 
     char* host = (char*) remoteHost->buffer;
-    uint_fast16_t port = util_byteArrayTo_uint16(remotePort->buffer);
+    uint_fast16_t port = util_byteArrayTo_uint64(remotePort->buffer);
 
     void* httpProcessingBuffer;
     if((error = util_blockAlloc(&httpProcessingBuffer, HTTP_PROCESSING_BUFFER_SIZE)) != ERROR_NO_ERROR){
@@ -489,7 +540,7 @@ local ERROR_CODE herder_pullShowInfo(Property* remoteHost, Property* remotePort,
     ERROR_CODE error = ERROR_NO_ERROR;
 
     char* host = (char*) remoteHost->buffer;
-    uint_fast16_t port = util_byteArrayTo_uint16(remotePort->buffer);
+    uint_fast16_t port = util_byteArrayTo_uint64(remotePort->buffer);
 
     void* httpProcessingBuffer;
     if((error = util_blockAlloc(&httpProcessingBuffer, HTTP_PROCESSING_BUFFER_SIZE)) != ERROR_NO_ERROR){
@@ -513,8 +564,8 @@ local ERROR_CODE herder_pullShowInfo(Property* remoteHost, Property* remotePort,
     util_uint64ToByteArray(request.data + request.dataLength, showNameLength);
     request.dataLength += sizeof(uint64_t);   
 
-    memcpy(request.data + request.dataLength, showName, showNameLength);
-    request.dataLength += showNameLength;
+    memcpy(request.data + request.dataLength, showName, showNameLength + 1);
+    request.dataLength += showNameLength + 1;
 
     HTTP_Response response;
     http_initResponse(&response, httpProcessingBuffer, HTTP_PROCESSING_BUFFER_SIZE);
@@ -524,36 +575,42 @@ local ERROR_CODE herder_pullShowInfo(Property* remoteHost, Property* remotePort,
 
     http_closeConnection(socketFD);
 
-    printf("%s:\n", showName);
+   UTIL_LOG_CONSOLE_(LOG_INFO, "%s:", showName);
 
     if(response.statusCode == _200_OK){
         uint_fast64_t readOffset = 0;
 
+        // Num_Seasons.
         uint_fast64_t numSeasons = util_byteArrayTo_uint64(response.data + readOffset);
         readOffset += sizeof(uint64_t);
 
         if(numSeasons != 0){                
             for( ; numSeasons > 0; numSeasons--){
+                // Season_Number.
                 const uint_fast16_t season = util_byteArrayTo_uint16(response.data + readOffset);
                 readOffset += sizeof(uint16_t);
 
-                printf("\tSeason: %02" PRIuFAST16 ".\n", season);
+               UTIL_LOG_CONSOLE_(LOG_INFO, "\tSeason: %02" PRIuFAST16 ".", season);
 
+                // Num_Episodes.
                 uint_fast64_t numEpisodes = util_byteArrayTo_uint64(response.data + readOffset);
                 readOffset += sizeof(uint64_t);
 
                 for( ; numEpisodes > 0; numEpisodes--){
+                    // Episode_Number.
                     const uint_fast16_t episode = util_byteArrayTo_uint16(response.data + readOffset);
                     readOffset += sizeof(uint16_t);
 
+                    // Episode_NameLength.
                     uint_fast64_t nameLength = util_byteArrayTo_uint64(response.data + readOffset);
                     readOffset += sizeof(uint64_t);
 
-                    char* name = alloca(sizeof(*name) * (nameLength));
+                    // Episode_Name.
+                    char* name = alloca(sizeof(*name) * (nameLength + 1));
                     memcpy(name, response.data + readOffset, nameLength);
                     readOffset += nameLength;
 
-                    printf("\t\t  -> %02" PRIuFAST16 ": '%s'.\n", episode, name);
+                   UTIL_LOG_CONSOLE_(LOG_INFO, "\t\t  -> %02" PRIuFAST16 ": '%s'.", episode, name);
                 }
             }
         }else{
@@ -592,7 +649,7 @@ ERROR_CODE herder_addEpisode(Property* remoteHost, Property* remotePort, Propert
     }
 
     char* host = (char*) remoteHost->buffer;
-    uint_fast16_t port = util_byteArrayTo_uint16(remotePort->buffer);
+    uint_fast16_t port = util_byteArrayTo_uint64(remotePort->buffer);
 
     void* httpProcessingBuffer;
     if((error = util_blockAlloc(&httpProcessingBuffer, HTTP_PROCESSING_BUFFER_SIZE)) != ERROR_NO_ERROR){
@@ -718,7 +775,7 @@ ERROR_CODE herder_extractShowInfo(Property* remoteHost, Property* remotePort, Ep
     ERROR_CODE error = ERROR_NO_ERROR;
 
     char* host = (char*) remoteHost->buffer;
-    uint_fast16_t port = util_byteArrayTo_uint16(remotePort->buffer);
+    uint_fast16_t port = util_byteArrayTo_uint64(remotePort->buffer);
 
     void* httpProcessingBuffer;
     if((error = util_blockAlloc(&httpProcessingBuffer, HTTP_PROCESSING_BUFFER_SIZE)) != ERROR_NO_ERROR){
@@ -816,6 +873,129 @@ ERROR_CODE herder_extractShowInfo(Property* remoteHost, Property* remotePort, Ep
         UTIL_LOG_CONSOLE_(LOG_ERR, "Server_status:'%s'.", http_getStatusMsg(response.statusCode));
     }
 
+    // TODO: Extract this to its own function . (Jan - 2018.12.07)
+    if((*episodeInfo)->showName == NULL){
+        UTIL_LOG_CONSOLE_(LOG_INFO, "Failed to extract show name from file: '%s'.", fileName);
+
+        UTIL_LOG_CONSOLE(LOG_INFO, "Please enter the show name...");
+
+        int_fast64_t userInputLength;
+        (*episodeInfo)->showName = util_readUserInput(&userInputLength);
+
+        (*episodeInfo)->showNameLength = userInputLength;
+    }
+
+    if((*episodeInfo)->season == 0){
+        UTIL_LOG_CONSOLE_(LOG_INFO, "Failed to extract season number from file: '%s'.", fileName);
+
+        UTIL_LOG_CONSOLE(LOG_INFO, "Please enter the season number...");
+
+        if((error = util_stringToInt(util_readUserInput(NULL), &(*episodeInfo)->season)) != ERROR_NO_ERROR){
+            goto label_freeRequest;
+        }
+    }
+
+    if((*episodeInfo)->episode == 0){
+        UTIL_LOG_CONSOLE_(LOG_INFO, "Failed to extract episode number from file: '%s'.", fileName);
+
+        UTIL_LOG_CONSOLE(LOG_INFO, "Please enter the episode number...");
+
+        if((error = util_stringToInt(util_readUserInput(NULL), &(*episodeInfo)->episode)) != ERROR_NO_ERROR){
+            goto label_freeRequest;
+        }
+    }
+
+    if((*episodeInfo)->name == NULL){
+        UTIL_LOG_CONSOLE_(LOG_INFO, "Failed to extract episode name from file: '%s'.", fileName);
+
+        UTIL_LOG_CONSOLE(LOG_INFO, "Please enter the episode name...");
+
+        int_fast64_t userInputLength;
+        (*episodeInfo)->name = util_readUserInput(&userInputLength); 
+
+        (*episodeInfo)->nameLength = userInputLength;
+    }
+
+    UTIL_LOG_CONSOLE(LOG_INFO, "Are these values correct? Yes/No.");
+    UTIL_LOG_CONSOLE_(LOG_INFO, "\tShow:'%s'.", (*episodeInfo)->showName);
+    UTIL_LOG_CONSOLE_(LOG_INFO, "\tSeason:'%" PRIdFAST16 "'.", (*episodeInfo)->season);
+    UTIL_LOG_CONSOLE_(LOG_INFO, "\tEpisode:'%" PRIdFAST16 "'.", (*episodeInfo)->episode);
+    UTIL_LOG_CONSOLE_(LOG_INFO, "\t\t'%s'.", (*episodeInfo)->name);
+
+    int_fast64_t userInputLength;
+    char* userInput;    
+label_invalidUserInput:    
+    userInput = util_readUserInput(&userInputLength);
+    util_toLowerChase(userInput);
+
+    if(strncmp("no", userInput, userInputLength) == 0){
+        // Show name.
+        UTIL_LOG_CONSOLE_(LOG_INFO, "Show name:'%s'. Press <Enter> to accept.", (*episodeInfo)->showName);
+
+        char* showName = util_readUserInput(&userInputLength);
+        if(userInputLength != 0){
+            free((*episodeInfo)->showName);
+
+            (*episodeInfo)->showName = showName;
+            (*episodeInfo)->showNameLength = userInputLength;
+        }
+
+    label_seasonNumber:
+        // Season number.
+        UTIL_LOG_CONSOLE_(LOG_INFO, "Season:'%" PRIiFAST16 "'. Press <Enter> to accept.", (*episodeInfo)->season);
+
+        char* season = util_readUserInput(&userInputLength);
+        if(userInputLength != 0){
+            if((error = util_stringToInt(season, &(*episodeInfo)->season)) != ERROR_NO_ERROR){
+                free(season);
+
+                UTIL_LOG_CONSOLE_(LOG_ERR, "%s.", util_toErrorString(error));
+
+                goto label_seasonNumber;
+            }
+
+            free(season);
+        }
+
+        label_episodeNumber:
+        // Episode number.
+        UTIL_LOG_CONSOLE_(LOG_INFO, "Episode:'%" PRIiFAST16 "'. Press <Enter> to accept.", (*episodeInfo)->episode);
+
+        char* episode = util_readUserInput(&userInputLength);
+        if(userInputLength != 0){
+            if((error = util_stringToInt(episode, &(*episodeInfo)->episode)) != ERROR_NO_ERROR){
+                free(episode);
+
+                UTIL_LOG_CONSOLE_(LOG_ERR, "%s.", util_toErrorString(error));
+
+                goto label_episodeNumber;
+            }
+
+            free(episode);
+        }
+
+        // Episode name.
+        UTIL_LOG_CONSOLE_(LOG_INFO, "Episode name:'%s'. Press <Enter> to accept.", (*episodeInfo)->name);
+
+        char* episodeName = util_readUserInput(&userInputLength);
+        if(userInputLength != 0){
+            free((*episodeInfo)->name);
+
+            (*episodeInfo)->name = episodeName;
+            (*episodeInfo)->nameLength = userInputLength;
+        }
+    }else{
+        if(strncmp("yes", userInput, userInputLength) != 0){
+            UTIL_LOG_CONSOLE_(LOG_INFO, "'%s' is not a valid answer, please type Yes/No.", userInput);
+
+            free(userInput);
+
+            goto label_invalidUserInput;
+        }
+    }
+
+    free(userInput);
+    
 label_freeRequest:
     http_freeHTTP_Request(&request);
 
@@ -827,23 +1007,6 @@ label_unMap:
         UTIL_LOG_ERROR(util_toErrorString(ERROR_FAILED_TO_UNMAP_MEMORY));
     }
 
-    // TODO: Extract this to its own function . (Jan - 2018.12.07)
-    if((*episodeInfo)->showName == NULL){
-        UTIL_LOG_CONSOLE_(LOG_INFO, "Failed to extract show name from file: '%s'.", fileName);
-
-        UTIL_LOG_CONSOLE(LOG_INFO, "Please enter the show name...");
-
-       (*episodeInfo)->showName = util_readUserInput();
-    }
-
-     if((*episodeInfo)->name == NULL){
-        UTIL_LOG_CONSOLE_(LOG_INFO, "Failed to extract episode name from file: '%s'.", fileName);
-
-        UTIL_LOG_CONSOLE(LOG_INFO, "Please enter the episode name...");
-
-        (*episodeInfo)->name = util_readUserInput();
-    }
-    
     return ERROR(error);
 }
 
@@ -864,7 +1027,7 @@ inline ERROR_CODE herder_argumentSetImportDirectory(Argument* argumentSetImportD
     }
 
     if(ARGUMENT_PARSER_ARGUMENT_HAS_VALUE((*argumentSetImportDirectory))){
-        if(PROPERTY_IS_NOT_SET(importDirectory)){
+        if(PROPERTY_IS_NOT_SET(*importDirectory)){
             if(propertyFile_addProperty(propertyFile, importDirectory, PROPERTY_IMPORT_DIRECTORY_NAME, importDirectoryLength + 1) != ERROR_NO_ERROR){
                 return ERROR_(ERROR_FAILED_TO_ADD_PROPERTY, "'%s'", PROPERTY_IMPORT_DIRECTORY_NAME);
             }
@@ -1010,8 +1173,21 @@ inline ERROR_CODE herder_argumentSetLibraryDirectory(Argument* argumentSetLibrar
     return ERROR(ERROR_NO_ERROR);
 }
 
-inline ERROR_CODE herder_argumentImport(Argument* argumentImport, PropertyFile* propertyFile){
-    return ERROR(ERROR_FUNCTION_NOT_IMPLEMENTED);
+// -i, --import optional:<path>
+inline ERROR_CODE herder_argumentImport(Argument* argumentImport, PropertyFile* propertyFile, Property* remoteHost, Property* remotePort, Property* libraryDirectory, Property* importDirectory){
+    if(ARGUMENT_PARSER_ARGUMENT_HAS_VALUE((*argumentImport))){
+        // Import from path.
+        return ERROR(herder_import(remoteHost, remotePort, libraryDirectory, argumentImport->value));
+    }else{
+        if(PROPERTY_IS_SET(importDirectory)){
+            // Import from importDirectory_setting.
+            return ERROR(herder_import(remoteHost, remotePort, libraryDirectory, (char*) importDirectory->buffer));
+        }else{
+            UTIL_LOG_CONSOLE(LOG_ERR, "Import directory not set, Use '--setImportDirectory <path>' to set an import directory, or specify the directory to import from when running '-i, --import optional:<path>'.");
+
+            return ERROR_(ERROR_PROPERTY_NOT_SET, "%s", PROPERTY_IMPORT_DIRECTORY_NAME);
+        }
+    }
 }
 
 inline ERROR_CODE herder_argumentKillDaemon(Argument* argumentImport, PropertyFile* propertyFile){
@@ -1019,21 +1195,18 @@ inline ERROR_CODE herder_argumentKillDaemon(Argument* argumentImport, PropertyFi
 }
 
 inline ERROR_CODE herder_argumentShowInfo(Argument* argumentShowInfo, PropertyFile* propertyFile, Property* remoteHost, Property* remotePort){
-    if(REMOTE_HOST_PROPERTIES_SET()){
-        if(!ARGUMENT_PARSER_ARGUMENT_HAS_VALUE((*argumentShowInfo))){
-            UTIL_LOG_CONSOLE(LOG_INFO, "Invalid command. Usage --info <name>.");
-
-            return ERROR(ERROR_INVALID_COMMAND_USAGE);
-        }else{
-            return ERROR(herder_pullShowInfo(remoteHost, remotePort, argumentShowInfo->value, argumentShowInfo->valueLength));
-        }
+    if(!ARGUMENT_PARSER_ARGUMENT_HAS_VALUE((*argumentShowInfo))){
+        return ERROR(ERROR_INVALID_COMMAND_USAGE);
     }else{
-        return ERROR(ERROR_PROPERTY_NOT_SET);
+        if(REMOTE_HOST_PROPERTIES_SET()){
+            return ERROR(herder_pullShowInfo(remoteHost, remotePort, argumentShowInfo->value, argumentShowInfo->valueLength));
+        }else{
+            return ERROR(ERROR_PROPERTY_NOT_SET);
+        }
     }
 }
-
+  
 inline ERROR_CODE herder_argumentListShows(Argument* argumentListShows, PropertyFile* propertyFile, Property* remoteHost, Property* remotePort){
-
      if(ARGUMENT_PARSER_ARGUMENT_HAS_VALUE((*argumentListShows))){
             UTIL_LOG_CONSOLE(LOG_INFO, "Invalid command. Usage -l, --list <show>.");
 
@@ -1059,6 +1232,150 @@ inline ERROR_CODE herder_argumentAdd(Argument* argumentAddShow, PropertyFile* pr
             return ERROR(ERROR_PROPERTY_NOT_SET);
         }
     }
+}
+
+local ARRAY_LIST_EXPAND_FUNCTION(herder_importFilesExpandFunction){
+     return previousSize * 2;
+}
+
+ERROR_CODE herder_import(Property* remoteHost, Property* remotePort, Property* libraryDirectory, const char* directory){
+    ERROR_CODE error;
+
+     if(!REMOTE_HOST_PROPERTIES_SET() || PROPERTY_IS_NOT_SET(libraryDirectory)){
+        return ERROR(ERROR_PROPERTY_NOT_SET);
+     }
+
+    ArrayList files;
+    if((error = arrayList_init(&files, 64, herder_importFilesExpandFunction)) != ERROR_NO_ERROR){
+        goto label_return;
+    }
+
+    if((error = herder_walkDirectory(&files, directory)) != ERROR_NO_ERROR){
+        goto label_return;
+    }
+
+    ArrayListIterator it;
+    arrayList_initIterator(&it, &files);
+
+    while(ARRAY_LIST_ITERATOR_HAS_NEXT(&it)){
+        DirectoryEntry* entry = ARRAY_LIST_ITERATOR_NEXT(&it);
+
+        if(error == ERROR_NO_ERROR && (error = herder_addEpisode(remoteHost, remotePort, libraryDirectory, entry->path, entry->pathLength)) != ERROR_NO_ERROR){
+            UTIL_LOG_CONSOLE_(LOG_ERR, "Failed to add '%s' to library. [%s]", entry->path,  util_toErrorString(error));
+        }
+
+        free(entry->path);
+        free(entry->fileName);
+        free(entry);
+    }
+
+    arrayList_free(&files);
+
+label_return:
+    return ERROR(error);
+}
+
+/*  printf("#define HASH_MP4 %d\n", util_hashString(".mp4"));
+    printf("#define HASH_MKV %d\n", util_hashString(".mkv"));
+    printf("#define HASH_AVI %d\n", util_hashString(".avi")); */
+local inline bool herder_walkDirectoryAcceptFunction(const char* s, const uint_fast64_t length){
+    #define HASH_MP4 -1839843325
+    #define HASH_MKV -1840171254
+    #define HASH_AVI -1938587738
+
+    switch(util_hashString(s, length)){
+        case HASH_MP4:
+        case HASH_MKV:
+        case HASH_AVI:{
+            return true;
+        }
+
+        default:
+            return false;
+    }
+
+    #undef HASH_MP4
+    #undef HASH_MKV
+    #undef HASH_AVI
+}
+
+ERROR_CODE herder_walkDirectory(ArrayList* list, const char* directory){
+    ERROR_CODE error = ERROR_NO_ERROR;
+
+    DIR* currentDirectory = opendir(directory);
+    if(currentDirectory == NULL){
+        error = ERROR_FAILED_TO_OPEN_DIRECTORY;
+
+        goto label_closeDir;
+    }
+
+    struct dirent* directoryEntry;
+
+    const uint_fast64_t directoryLength = strlen(directory);
+
+    char* directoryPath = NULL;
+    while((directoryEntry = readdir(currentDirectory)) != NULL){
+        // Avoid reentering current and parent directory.
+        const uint_fast64_t currentEntryLength = strlen(directoryEntry->d_name);
+        if(strncmp(directoryEntry->d_name, ".", currentEntryLength) == 0 || strncmp(directoryEntry->d_name, "..", currentEntryLength) == 0){
+            continue;
+        }
+    
+        const uint_fast64_t directoryPathLength = directoryLength + currentEntryLength;            
+
+        directoryPath = malloc(sizeof(*directoryPath) * (directoryPathLength + 1));
+        if(directoryPath ==  NULL){
+            error = ERROR_OUT_OF_MEMORY;
+
+            goto label_closeDir;
+        }
+            
+        strncpy(directoryPath, directory, directoryLength);
+        directoryPath[directoryLength] = '\0';
+        
+        util_append(directoryPath + directoryLength, directoryPathLength - directoryLength, directoryEntry->d_name, currentEntryLength);
+
+        if(util_isDirectory(directoryPath)){
+            UTIL_LOG_CONSOLE_(LOG_DEBUG, "Directory: %s.\n", directoryPath);
+
+            // TODO: Decide if spinning up another thread and doing this in parallel is a good idea.(Requires locking of the import list). (jan - 2019.03.18)
+            if((error = herder_walkDirectory(list, directoryPath)) != ERROR_NO_ERROR){
+                goto label_closeDir;
+            }
+
+            free(directoryPath);
+        }else{
+            const uint_fast64_t fileNameLength = strlen(directoryEntry->d_name);
+            const uint_fast64_t fileExtensionOffset = util_findLast(directoryEntry->d_name, fileNameLength, '.');
+
+            if(herder_walkDirectoryAcceptFunction(directoryEntry->d_name + fileExtensionOffset, fileNameLength - fileExtensionOffset)){
+                char* file = malloc(sizeof(*file) * (fileNameLength + 1));
+                if(directoryPath ==  NULL){
+                    error = ERROR_OUT_OF_MEMORY;
+
+                    goto label_closeDir;
+                }
+                            
+                strncpy(file, directoryEntry->d_name, fileNameLength);
+                file[fileNameLength] = '\0';
+
+                DirectoryEntry* dirEnt = malloc(sizeof(*dirEnt));
+                dirEnt->path = directoryPath;
+                dirEnt->fileName = file;                    
+                dirEnt->pathLength = directoryPathLength;
+                dirEnt->fileNameLength = fileNameLength;
+
+                if((error = arrayList_add(list, dirEnt)) !=ERROR_NO_ERROR){
+                    goto label_closeDir;
+                }
+            }
+        }   
+    }
+
+label_closeDir:
+    closedir(currentDirectory);
+        
+    return ERROR(error);
 }
 
 #undef HERDER_PROGRAM_NAME

@@ -1518,7 +1518,7 @@ TEST_TEST_FUNCTION(herder_constructFilePath){
     return ret;
 }
 
-int main(void){
+int main(void){    
     TEST_BEGIN();
 
     TEST_SUIT_BEGIN("arrayList");
@@ -1540,7 +1540,7 @@ int main(void){
         // Integer to ByteArray conversions.
         TEST(util_uint16ToByteArray);
         TEST(util_uint32ToByteArray);
-        TEST(util_uint64ToByteArray);
+        TEST(util_uint64ToByteArray); 
         TEST(util_formatNumber);
         // String utils.
         TEST(util_findFirst);

@@ -118,7 +118,8 @@ local const char* UTIL_ERROR_CODE_MESSAGE_MAPPING_ARRAY[] = {
     "ERROR_FAILED_TO_UPDATE_PROPERTY",
     "ERROR_INVALID_STRING",
     "ERROR_INVALID_VALUE",
-    "ERROR_FUNCTION_NOT_IMPLEMENTED"
+    "ERROR_FUNCTION_NOT_IMPLEMENTED",
+    "ERROR_FAILED_TO_OPEN_DIRECTORY",
 };
 
 inline const char* util_toErrorString(const ERROR_CODE errorCode){
@@ -343,8 +344,8 @@ inline ERROR_CODE util_deleteFile(const char* file){
 }
 
 // http://www.stroustrup.com/new_learning.pdf
-char* util_readUserInput(void){
-    uint_fast16_t limit = 32;
+char* util_readUserInput(int_fast64_t* charRead){
+    uint_fast16_t limit = 64;
     char* s = malloc(limit);
     if(s == NULL){
         UTIL_LOG_ERROR(util_toErrorString(ERROR_OUT_OF_MEMORY));
@@ -360,7 +361,7 @@ char* util_readUserInput(void){
             break;
         }
 
-        if(!isspace(c)) {
+        if(!isspace(c) || c == '\n') {
              ungetc(c, stdin);
 
              break;
@@ -369,10 +370,10 @@ char* util_readUserInput(void){
 
     uint_fast64_t i = 0;
     while (true) {
-        int_fast32_t c = fgetc(stdin);
+        const int_fast32_t c = fgetc(stdin);
     
         if(c == '\n' || c == '\0' || c == EOF){
-            s[i] = 0;
+            s[i] = '\0';
 
             break;
         }
@@ -386,6 +387,10 @@ char* util_readUserInput(void){
         }
 
         i++;
+    }
+
+    if(charRead != NULL){
+        *charRead = i;
     }
 
     return s;

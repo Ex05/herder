@@ -11,8 +11,6 @@
 
 local const Version MEDIA_LIBRARY_FILE_VERSION = {0, 1, 0};
 
-local bool mediaLibrary_isFileTypeAllowed(const char*, const uint_fast64_t);
-
 local ERROR_CODE mediaLibrary_extractShowName(EpisodeInfo*, LinkedList*, char*, const uint_fast64_t);
 
 local ERROR_CODE mediaLibrary_extractEpisodeNumber(EpisodeInfo*, char*, const uint_fast64_t);
@@ -20,8 +18,6 @@ local ERROR_CODE mediaLibrary_extractEpisodeNumber(EpisodeInfo*, char*, const ui
 local ERROR_CODE mediaLibrary_extractEpisodeName(EpisodeInfo*, char*, const uint_fast64_t);
 
 local ERROR_CODE mediaLibrary_extractSeasonNumber(EpisodeInfo*, char*, const uint_fast64_t);
-
-local void mediaLibrary_fillEpisodeInfo(EpisodeInfo*);
 
 local ERROR_CODE mediaLibrary_containsShow(LinkedList*, Show**, const char*, const uint_fast64_t);
 
@@ -349,21 +345,25 @@ inline void mediaLibrary_free(MediaLibrary* library){
 }
 
 inline ERROR_CODE mediaLibrary_extractEpisodeInfo(EpisodeInfo* info, LinkedList* shows, char* fileName, const uint_fast64_t fileNameLength){
+    char* lowerChaseFileName = alloca(sizeof(*lowerChaseFileName) * (fileNameLength + 1));
+    util_stringCopy(lowerChaseFileName, fileName, fileNameLength + 1);
+    util_toLowerChase(lowerChaseFileName);
+
     // NOTE:(jan) All the strlen calls are needed, as each of the 'medialibrary_extract*' calls modify the file name.
     ERROR_CODE error = ERROR_NO_ERROR;
-    if(mediaLibrary_extractEpisodeNumber(info, fileName, fileNameLength) != ERROR_NO_ERROR){
+    if(mediaLibrary_extractEpisodeNumber(info, lowerChaseFileName, fileNameLength) != ERROR_NO_ERROR){
         error = ERROR_INCOMPLETE;
     }
 
-    if(mediaLibrary_extractSeasonNumber(info, fileName, strlen(fileName)) != ERROR_NO_ERROR){
+    if(mediaLibrary_extractSeasonNumber(info, lowerChaseFileName, strlen(lowerChaseFileName)) != ERROR_NO_ERROR){
         error = ERROR_INCOMPLETE;
     }
 
-    if(mediaLibrary_extractShowName(info, shows, fileName, strlen(fileName)) != ERROR_NO_ERROR){
+    if(mediaLibrary_extractShowName(info, shows, lowerChaseFileName, strlen(lowerChaseFileName)) != ERROR_NO_ERROR){
         error = ERROR_INCOMPLETE;
     }
 
-    if(mediaLibrary_extractEpisodeName(info, fileName, strlen(fileName)) != ERROR_NO_ERROR){
+    if(mediaLibrary_extractEpisodeName(info, lowerChaseFileName, strlen(lowerChaseFileName)) != ERROR_NO_ERROR){
         error = ERROR_INCOMPLETE;
     }
 
@@ -599,88 +599,6 @@ ERROR_CODE mediaLibrary_import(MediaLibrary* library, const char* importDirector
 
     return ERROR(ERROR_NO_ERROR);
 }   
-
-inline void mediaLibrary_fillEpisodeInfo(EpisodeInfo* info){
-    if(info->showName == NULL){
-        printf("Please enter the name of the show.\n");
-
-        char* s = util_readUserInput();
-        
-        util_replaceAllChars(s, ' ', '_');
-
-        info->showName = s;
-    }
-
-    if(info->season == -1){
-        printf("Please enter the season number of this episode.\n");
-
-        char* s = util_readUserInput();
-
-        info->season = atoi(s);
-    }
-    
-   if(info->episode == -1){
-        printf("Please enter the episode number.\n");
-
-        char* s = util_readUserInput();
-
-        info->episode = atoi(s);
-    }
-
-    if(info->name == NULL){
-        printf("Please enter the episode name.\n");
-
-        char* s = util_readUserInput();
-
-        util_replaceAllChars(s, ' ', '_');
-
-        info->name = s;
-    }else{
-        printf("Is the episode name correct? (yes/no)\n");
-
-        char* userInput = util_readUserInput();
-
-        util_toLowerChase(userInput);
-
-        if(strncmp(userInput, "no", 2) == 0 || strncmp(userInput, "n", 1) == 0){
-            printf("Please enter the episode name.\n");
-
-            char* s = util_readUserInput();
-
-            util_replaceAllChars(s, ' ', '_');
-
-            info->name = s;
-        }
-
-        util_replaceAllChars(info->name, ' ', '_');
-
-        free(userInput);
-    }
-}
-
-/*  printf("#define HASH_MP4 %d\n", util_hashString(".mp4"));
-    printf("#define HASH_MKV %d\n", util_hashString(".mkv"));
-    printf("#define HASH_AVI %d\n", util_hashString(".avi")); */
-inline bool mediaLibrary_isFileTypeAllowed(const char* s, const uint_fast64_t length){
-    #define HASH_MP4 -1839843325
-    #define HASH_MKV -1840171254
-    #define HASH_AVI -1938587738
-
-    switch(util_hashString(s, length)){
-        case HASH_MP4:
-        case HASH_MKV:
-        case HASH_AVI:{
-            return true;
-        }
-
-        default:
-            return false;
-    }
-
-    #undef HASH_MP4
-    #undef HASH_MKV
-    #undef HASH_AVI
-}
 
 inline ERROR_CODE mediaLibrary_addShow(MediaLibrary* library, Show** show, const char* name, const uint_fast64_t nameLength){
     *show = NULL;
@@ -970,7 +888,7 @@ inline ERROR_CODE mediaLibrary_initEpisodeInfo(EpisodeInfo* info){
 inline void mediaLibrary_freeEpisodeInfo(EpisodeInfo* info){
     free(info->showName);
     free(info->name);
-    free(info->fileExtension);
+    // free(info->fileExtension);
 }
 
 #undef PROPERTY_LIBRARY_DIRECTORY_NAME
