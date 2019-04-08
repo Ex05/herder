@@ -1259,6 +1259,10 @@ ERROR_CODE herder_import(Property* remoteHost, Property* remotePort, Property* l
     ArrayListIterator it;
     arrayList_initIterator(&it, &files);
 
+    if(ARRAY_LIST_LENGTH((&files)) == 0){
+        UTIL_LOG_CONSOLE_(LOG_INFO, "No files recorgnised for import in '%s'.", directory);
+    }
+
     while(ARRAY_LIST_ITERATOR_HAS_NEXT(&it)){
         DirectoryEntry* entry = ARRAY_LIST_ITERATOR_NEXT(&it);
 
