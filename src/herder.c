@@ -323,21 +323,21 @@ label_free:
 }
 
 inline void herder_printHelp(void){
-    printf("Usage: herder --[command]/-[alias] <arguments>.\n\n");
+    UTIL_LOG_CONSOLE(LOG_INFO, "Usage: herder --[command]/-[alias] <arguments>.\n\n");
 
-    printf("\t%s\t\t\t%s\n", "-l, --list", "Fetches and prints a list of all shows in the library.");
-    printf("\t%s\t\t\t%s\n", "--info <name>", "Prints all Episodes of the given show.");
-    printf("\t%s\t\t%s\n", "-a, --add <file>", "Adds the given file to the library.");
-    printf("\t%s\t\t%s\n", "--addShow <name>", "Adds the given show to the library.");
-    printf("\t%s\t%s\n", "-i, --import optional:<path>", "Imports all files from the specified import path to the library (See '--setImportDirectory').");
-    printf("\t%s\t%s\n", "--setImportDirectory <path>", "Sets the 'import directory' to the given path.");
-    printf("\t%s\t%s\n", "--setLibraryDirectory <path>", "Sets the 'library directory' to the given path.");
-    printf("\t%s\t\t%s\n", "--setRemoteHost <URL>", "Sets the 'remote host' address to the given URL.");
-    printf("\t%s\t\t%s\n", "--setRemotePort <port>", "Sets the 'remote host' port to the given port.");
-    printf("\t%s\t\t\t%s\n", "--killDeamon", "Kills the deamon process running the 'herder' server.");
-    printf("\t%s\t\t\t%s\n", "--restartDeamon", "Restarts the deamon process running the 'herder' server.");
-    printf("\t%s\t\t\t%s\n", "--showSettings", "Prints all available settings and their value.");
-    printf("\t%s\t\t%s\n", "-?, -h, -help, --help", "Displays this help.");
+   UTIL_LOG_CONSOLE_(LOG_INFO, "\t%s\t\t\t%s", "-l, --list", "Fetches and prints a list of all shows in the library.");
+   UTIL_LOG_CONSOLE_(LOG_INFO, "\t%s\t\t\t%s", "--info <name>", "Prints all Episodes of the given show.");
+   UTIL_LOG_CONSOLE_(LOG_INFO, "\t%s\t\t%s", "-a, --add <file>", "Adds the given file to the library.");
+   UTIL_LOG_CONSOLE_(LOG_INFO, "\t%s\t\t%s", "--addShow <name>", "Adds the given show to the library.");
+   UTIL_LOG_CONSOLE_(LOG_INFO, "\t%s\t%s", "-i, --import optional:<path>", "Imports all files from the specified import path to the library (See '--setImportDirectory').");
+   UTIL_LOG_CONSOLE_(LOG_INFO, "\t%s\t%s", "--setImportDirectory <path>", "Sets the 'import directory' to the given path.");
+   UTIL_LOG_CONSOLE_(LOG_INFO, "\t%s\t%s", "--setLibraryDirectory <path>", "Sets the 'library directory' to the given path.");
+   UTIL_LOG_CONSOLE_(LOG_INFO, "\t%s\t\t%s", "--setRemoteHost <URL>", "Sets the 'remote host' address to the given URL.");
+   UTIL_LOG_CONSOLE_(LOG_INFO, "\t%s\t\t%s", "--setRemotePort <port>", "Sets the 'remote host' port to the given port.");
+   UTIL_LOG_CONSOLE_(LOG_INFO, "\t%s\t\t\t%s", "--killDeamon", "Kills the deamon process running the 'herder' server.");
+   UTIL_LOG_CONSOLE_(LOG_INFO, "\t%s\t\t\t%s", "--restartDeamon", "Restarts the deamon process running the 'herder' server.");
+   UTIL_LOG_CONSOLE_(LOG_INFO, "\t%s\t\t\t%s", "--showSettings", "Prints all available settings and their value.");
+   UTIL_LOG_CONSOLE_(LOG_INFO, "\t%s\t\t%s", "-?, -h, -help, --help", "Displays this help.");
 }
 
 inline ERROR_CODE herder_listShows(Property* remoteHostProperty, Property* remoteHostPortProperty){
@@ -575,7 +575,7 @@ local ERROR_CODE herder_pullShowInfo(Property* remoteHost, Property* remotePort,
 
     http_closeConnection(socketFD);
 
-    printf("%s:\n", showName);
+   UTIL_LOG_CONSOLE_(LOG_INFO, "%s:", showName);
 
     if(response.statusCode == _200_OK){
         uint_fast64_t readOffset = 0;
@@ -590,7 +590,7 @@ local ERROR_CODE herder_pullShowInfo(Property* remoteHost, Property* remotePort,
                 const uint_fast16_t season = util_byteArrayTo_uint16(response.data + readOffset);
                 readOffset += sizeof(uint16_t);
 
-                printf("\tSeason: %02" PRIuFAST16 ".\n", season);
+               UTIL_LOG_CONSOLE_(LOG_INFO, "\tSeason: %02" PRIuFAST16 ".", season);
 
                 // Num_Episodes.
                 uint_fast64_t numEpisodes = util_byteArrayTo_uint64(response.data + readOffset);
@@ -610,7 +610,7 @@ local ERROR_CODE herder_pullShowInfo(Property* remoteHost, Property* remotePort,
                     memcpy(name, response.data + readOffset, nameLength);
                     readOffset += nameLength;
 
-                    printf("\t\t  -> %02" PRIuFAST16 ": '%s'.\n", episode, name);
+                   UTIL_LOG_CONSOLE_(LOG_INFO, "\t\t  -> %02" PRIuFAST16 ": '%s'.", episode, name);
                 }
             }
         }else{

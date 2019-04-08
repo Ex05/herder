@@ -514,13 +514,13 @@ label_return:
         if(argumentParser_contains(&parser, &argumentHelp)){
             noValidArgument = false;
 
-            printf("Usage: herder --[command]/-[alias] <arguments>.\n\n");
+            UTIL_LOG_CONSOLE(LOG_INFO, "Usage: herder --[command]/-[alias] <arguments>.\n");
 
-            printf("\t%s\t%s\n", "--setServerRootDirectory <path>", "Sets the 'server root directory' to the given path.");
-            printf("\t%s\t%s\n", "--setServerExternalPort <port>", "Sets the external port to the given port.");
-            printf("\t%s\t%s\n", "--showSettings", "Shows a quick overview of all the user settings.");
+            UTIL_LOG_CONSOLE_(LOG_INFO, "\t%s\t%s", "--setServerRootDirectory <path>", "Sets the 'server root directory' to the given path.");
+            UTIL_LOG_CONSOLE_(LOG_INFO, "\t%s\t%s", "--setServerExternalPort <port>", "Sets the external port to the given port.");
+            UTIL_LOG_CONSOLE_(LOG_INFO, "\t%s\t%s", "--showSettings", "Shows a quick overview of all the user settings.");
 
-            printf("\t%s\t\t%s\n", "-?, -h, -help, --help", "Displays this help.");
+            UTIL_LOG_CONSOLE_(LOG_INFO, "\t%s\t\t%s", "-?, -h, -help, --help", "Displays this help.");
 
             goto label_exit;
         }

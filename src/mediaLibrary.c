@@ -19,8 +19,6 @@ local ERROR_CODE mediaLibrary_extractEpisodeName(EpisodeInfo*, char*, const uint
 
 local ERROR_CODE mediaLibrary_extractSeasonNumber(EpisodeInfo*, char*, const uint_fast64_t);
 
-local void mediaLibrary_fillEpisodeInfo(EpisodeInfo*);
-
 local ERROR_CODE mediaLibrary_containsShow(LinkedList*, Show**, const char*, const uint_fast64_t);
 
 local Episode* mediaLibrary_containsEpisode(ArrayList*, const uint_fast16_t, const char*, const uint_fast64_t);
@@ -601,64 +599,6 @@ ERROR_CODE mediaLibrary_import(MediaLibrary* library, const char* importDirector
 
     return ERROR(ERROR_NO_ERROR);
 }   
-
-inline void mediaLibrary_fillEpisodeInfo(EpisodeInfo* info){
-    if(info->showName == NULL){
-        printf("Please enter the name of the show.\n");
-
-        char* s = util_readUserInput(NULL);
-        
-        util_replaceAllChars(s, ' ', '_');
-
-        info->showName = s;
-    }
-
-    if(info->season == -1){
-        printf("Please enter the season number of this episode.\n");
-
-        char* s = util_readUserInput(NULL);
-
-        info->season = atoi(s);
-    }
-    
-   if(info->episode == -1){
-        printf("Please enter the episode number.\n");
-
-        char* s = util_readUserInput(NULL);
-
-        info->episode = atoi(s);
-    }
-
-    if(info->name == NULL){
-        printf("Please enter the episode name.\n");
-
-        char* s = util_readUserInput(NULL);
-
-        util_replaceAllChars(s, ' ', '_');
-
-        info->name = s;
-    }else{
-        printf("Is the episode name correct? (yes/no)\n");
-
-        char* userInput = util_readUserInput(NULL);
-
-        util_toLowerChase(userInput);
-
-        if(strncmp(userInput, "no", 2) == 0 || strncmp(userInput, "n", 1) == 0){
-            printf("Please enter the episode name.\n");
-
-            char* s = util_readUserInput(NULL);
-
-            util_replaceAllChars(s, ' ', '_');
-
-            info->name = s;
-        }
-
-        util_replaceAllChars(info->name, ' ', '_');
-
-        free(userInput);
-    }
-}
 
 inline ERROR_CODE mediaLibrary_addShow(MediaLibrary* library, Show** show, const char* name, const uint_fast64_t nameLength){
     *show = NULL;
