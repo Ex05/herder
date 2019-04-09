@@ -162,7 +162,9 @@ ERROR_CODE mediaLibrary_init(MediaLibrary* library, const char* libraryLocation,
 
             Show* show;
             if((error = mediaLibrary_addShow(library, &show, showName, showNameLength)) != ERROR_NO_ERROR){
-                return ERROR(error);
+                if(error != ERROR_DUPLICATE_ENTRY){
+                    return ERROR(error);
+                }
             }
 
             // Season_Number.
@@ -216,6 +218,7 @@ ERROR_CODE mediaLibrary_init(MediaLibrary* library, const char* libraryLocation,
 
             uint_fast64_t episodeNameLength = util_byteArrayTo_uint64(readBuffer);
 
+            // TODO: ...............
             char* episodeName = malloc(sizeof(*episodeName) * (episodeNameLength + 1));
             if(episodeName == NULL){
                 error = ERROR_OUT_OF_MEMORY;
@@ -621,8 +624,9 @@ inline ERROR_CODE mediaLibrary_addShow(MediaLibrary* library, Show** show, const
 
     ERROR_CODE error;
     __UTIL_SUPPRESS_NEXT_ERROR_OF_TYPE__(ERROR_ENTRY_NOT_FOUND);
-    if((error = mediaLibrary_containsShow(&library->shows, show, noneWhiteSpaceName, noneWhiteSpaceNameLength)) != ERROR_ENTRY_NOT_FOUND){
-        return ERROR(ERROR_DUPLICATE_ENTRY);
+    if((error = mediaLibrary_containsShow(&library->shows, show, noneWhiteSpaceName, noneWhiteSpaceNameLength)) == ERROR_NO_ERROR){
+        // NOTE: One could make a strong argument here to return "ERROR_DUPLICATE_ENTRY' but the current eco-system does not support nested suppresion of error. But because the caller can not distinguish from the outside, we are for now just gona pretend everything is 'OK' and return 'ERROR_NO_ERROR'. (jan - 2019.09.04)*/
+        return ERROR(ERROR_NO_ERROR);
     }
 
     *show = malloc(sizeof(**show));
@@ -800,7 +804,7 @@ ERROR_CODE mediaLibrary_addEpisode(MediaLibrary* library, Episode** episode, Sho
         }
 
         // FileExtension
-        util_uint64ToByteArray(writeBuffer, (*episode)->fileExtensionLength);
+        util_uint16ToByteArray(writeBuffer, (*episode)->fileExtensionLength);
 
         if(fwrite(writeBuffer, 1, sizeof(uint16_t), file) != sizeof(uint16_t)){            
             return ERROR_(ERROR_WRITE_ERROR, "Failed to write file extension length to library file. '%s'.", strerror(errno));

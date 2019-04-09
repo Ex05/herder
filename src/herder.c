@@ -1270,12 +1270,12 @@ ERROR_CODE herder_import(Property* remoteHost, Property* remotePort, Property* l
     while(ARRAY_LIST_ITERATOR_HAS_NEXT(&it)){
         DirectoryEntry* entry = ARRAY_LIST_ITERATOR_NEXT(&it);
 
-        UTIL_LOG_CONSOLE_(LOG_ERR, "Adding '%s'...", entry->path);
+        UTIL_LOG_CONSOLE_(LOG_INFO, "Adding '%s'...", entry->path);
 
         if(error == ERROR_NO_ERROR && (error = herder_addEpisode(remoteHost, remotePort, libraryDirectory, entry->path, entry->pathLength)) != ERROR_NO_ERROR){
             UTIL_LOG_CONSOLE_(LOG_ERR, "Failed to add to library. [%s]", util_toErrorString(error));
         }else{
-            UTIL_LOG_CONSOLE_(LOG_ERR, "Successfully added '%s'. to library.\n", entry->path);
+            UTIL_LOG_CONSOLE_(LOG_INFO, "Successfully added '%s'. to library.%s", entry->path, ARRAY_LIST_ITERATOR_HAS_NEXT(&it) ? "\n" : "");
         }
 
         free(entry->path);
