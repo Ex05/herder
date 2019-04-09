@@ -509,6 +509,7 @@ ERROR_CODE mediaLibrary_extractShowName(EpisodeInfo* info, LinkedList* shows, ch
         }
 
         memcpy(info->showName, showName, nameLength);
+        util_replaceAllChars(info->showName, '_', ' ');
         info->showName[nameLength] = '\0';
         info->showNameLength = nameLength;
 
