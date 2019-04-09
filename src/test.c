@@ -1531,9 +1531,7 @@ TEST_TEST_FUNCTION(herder_constructFilePath){
     return ret;
 }
 
-int main(void){    
-    TEST_BEGIN();
-
+int main(void){
     TEST_SUIT_BEGIN("arrayList");
         TEST(arraylist_iteration);
         TEST(arraylist_fixedSizedHeapList);
