@@ -609,8 +609,8 @@ local ERROR_CODE herder_pullShowInfo(Property* remoteHost, Property* remotePort,
 
                     // Episode_Name.
                     char* name = alloca(sizeof(*name) * (nameLength + 1));
-                    memcpy(name, response.data + readOffset, nameLength);
-                    readOffset += nameLength;
+                    memcpy(name, response.data + readOffset, nameLength + 1);
+                    readOffset += nameLength + 1;
 
                    UTIL_LOG_CONSOLE_(LOG_INFO, "\t\t  -> %02" PRIuFAST16 ": '%s'.", episode, name);
                 }
@@ -1275,7 +1275,7 @@ ERROR_CODE herder_import(Property* remoteHost, Property* remotePort, Property* l
         if(error == ERROR_NO_ERROR && (error = herder_addEpisode(remoteHost, remotePort, libraryDirectory, entry->path, entry->pathLength)) != ERROR_NO_ERROR){
             UTIL_LOG_CONSOLE_(LOG_ERR, "Failed to add to library. [%s]", util_toErrorString(error));
         }else{
-            UTIL_LOG_CONSOLE_(LOG_ERR, "Successfully added '%s'. to library", entry->path);
+            UTIL_LOG_CONSOLE_(LOG_ERR, "Successfully added '%s'. to library.\n", entry->path);
         }
 
         free(entry->path);

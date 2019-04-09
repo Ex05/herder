@@ -365,12 +365,12 @@ local SERVER_CONTEXT_HANDLER(server_pageShowInfo){
                 response->dataLength += sizeof(uint16_t);
 
                 // Episode_NameLength.
-                util_uint64ToByteArray(response->data + response->dataLength, episode->nameLength + 1);
+                util_uint64ToByteArray(response->data + response->dataLength, episode->nameLength);
                 response->dataLength += sizeof(uint64_t);
 
                 // Episode_Name.
                 memcpy(response->data + response->dataLength, episode->name, episode->nameLength + 1);
-                response->dataLength += episode->nameLength;
+                response->dataLength += episode->nameLength + 1;
             }
         }
     }
