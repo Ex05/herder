@@ -931,7 +931,7 @@ label_invalidUserInput:
     userInput = util_readUserInput(&userInputLength);
     util_toLowerChase(userInput);
 
-    if(strncmp("no", userInput, userInputLength) == 0){
+    if(userInputLength != 0 && strncmp("no", userInput, userInputLength) == 0){
         // Show name.
         UTIL_LOG_CONSOLE_(LOG_INFO, "Show name:'%s'. Press <Enter> to accept.", (*episodeInfo)->showName);
 
@@ -990,7 +990,7 @@ label_invalidUserInput:
             (*episodeInfo)->nameLength = userInputLength;
         }
     }else{
-        if(strncmp("yes", userInput, userInputLength) != 0){
+        if(userInputLength != 0 || strncmp("yes", userInput, userInputLength) != 0){
             UTIL_LOG_CONSOLE_(LOG_INFO, "'%s' is not a valid answer, please type Yes/No.", userInput);
 
             free(userInput);
