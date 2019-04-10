@@ -739,7 +739,6 @@ ERROR_CODE herder_addEpisode(Property* remoteHost, Property* remotePort, Propert
 
     strncpy(fileDst + writeOffset, fileExtension, fileExtensionLength);
     writeOffset += fileExtensionLength;
-
     fileDst[writeOffset] = '\0';
 
     if((error = util_createAllDirectories(fileDst, fileDstLength)) != ERROR_NO_ERROR){
@@ -999,6 +998,8 @@ label_invalidUserInput:
             goto label_invalidUserInput;
         }
     }
+
+    util_replaceAllChars((*episodeInfo)->showName, ' ', '_');
 
     free(userInput);
     
@@ -1274,6 +1275,12 @@ ERROR_CODE herder_import(Property* remoteHost, Property* remotePort, Property* l
 
         if(error == ERROR_NO_ERROR && (error = herder_addEpisode(remoteHost, remotePort, libraryDirectory, entry->path, entry->pathLength)) != ERROR_NO_ERROR){
             UTIL_LOG_CONSOLE_(LOG_ERR, "Failed to add to library. [%s]", util_toErrorString(error));
+
+            free(entry->path);
+            free(entry->fileName);
+            free(entry);
+
+            goto label_freeFiles;
         }else{
             UTIL_LOG_CONSOLE_(LOG_INFO, "Successfully added '%s'. to library.%s", entry->path, ARRAY_LIST_ITERATOR_HAS_NEXT(&it) ? "\n" : "");
         }
@@ -1283,6 +1290,7 @@ ERROR_CODE herder_import(Property* remoteHost, Property* remotePort, Property* l
         free(entry);
     }
 
+label_freeFiles:
     arrayList_free(&files);
 
 label_return:
