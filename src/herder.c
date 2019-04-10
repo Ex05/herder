@@ -45,6 +45,8 @@ local void herder_printHelp(void);
 
 local ERROR_CODE herder_listShows(Property*, Property*);
 
+local ERROR_CODE herder_listAllShows(Property*, Property*);
+
 local ERROR_CODE herder_pullShowList(ArrayList*, const char*, const uint_fast16_t);
 
 local ERROR_CODE herder_addShow(Property*, Property*, char*, const uint_fast64_t);
@@ -70,6 +72,8 @@ local ERROR_CODE herder_argumentKillDaemon(Argument*, PropertyFile*);
 local ERROR_CODE herder_argumentShowInfo(Argument*, PropertyFile*, Property*, Property*);
 
 local ERROR_CODE herder_argumentListShows(Argument*, PropertyFile*, Property*, Property*);
+
+local ERROR_CODE herder_argumentListAll(Argument*, PropertyFile*, Property*, Property*);
 
 local ERROR_CODE herder_argumentAdd(Argument*, PropertyFile*, Property*, Property*);
 
@@ -99,7 +103,8 @@ local ERROR_CODE herder_import(Property*, Property*, Property*, const char*);
     ARGUMENT_PARSER_ADD_ARGUMENT(SetRemoteHostPort, 1, "--setRemotePort");
     ARGUMENT_PARSER_ADD_ARGUMENT(KillDeamon, 1, "--killDeamon");
     ARGUMENT_PARSER_ADD_ARGUMENT(Import, 2, "-i", "--import");
-    ARGUMENT_PARSER_ADD_ARGUMENT(ListShows, 3, "-l", "--list", "--listShows");
+    ARGUMENT_PARSER_ADD_ARGUMENT(ListShows, 2, "-l", "--list");
+    ARGUMENT_PARSER_ADD_ARGUMENT(ListAll, 2, "--listAll", "--listShows");
     ARGUMENT_PARSER_ADD_ARGUMENT(ShowInfo, 1, "--info");
     ARGUMENT_PARSER_ADD_ARGUMENT(ShowSettings, 1, "--showSettings");
 
@@ -255,6 +260,18 @@ local ERROR_CODE herder_import(Property*, Property*, Property*, const char*);
         }
     }
 
+    if(argumentParser_contains(&parser, &argumentListAll)){
+        noValidArgument = false;
+
+        if((error = herder_argumentListAll(&argumentListAll, &properties, remoteHost, remotePort)) != ERROR_NO_ERROR){       
+            if(error == ERROR_FAILED_TO_CONNECT){
+                UTIL_LOG_CONSOLE_(LOG_INFO, "Failed to list all shows. [%s] (%s:%" PRIdFAST16 ")", util_toErrorString(error) , (char*) remoteHost->buffer, util_byteArrayTo_uint64(remotePort->buffer));
+            }else{
+                UTIL_LOG_CONSOLE_(LOG_ERR, "Unexpected error:'%s'.", util_toErrorString(error));
+            }
+        }
+    }
+
     if(argumentParser_contains(&parser, &argumentAddShow)){
         noValidArgument = false;
 
@@ -340,6 +357,45 @@ inline void herder_printHelp(void){
     UTIL_LOG_CONSOLE_(LOG_INFO, "\t%s\t\t\t%s", "--restartDeamon", "Restarts the deamon process running the 'herder' server.");
     UTIL_LOG_CONSOLE_(LOG_INFO, "\t%s\t\t\t%s", "--showSettings", "Prints all available settings and their value.");
     UTIL_LOG_CONSOLE_(LOG_INFO, "\t%s\t\t%s", "-?, -h, -help, --help", "Displays this help.");
+}
+
+inline ERROR_CODE herder_listAllShows(Property* remoteHostProperty, Property* remoteHostPortProperty){
+    ERROR_CODE error = ERROR_NO_ERROR;
+
+    char* host = (char*) remoteHostProperty->buffer;
+    uint_fast16_t port = util_byteArrayTo_uint64(remoteHostPortProperty->buffer);
+
+    ArrayList shows;
+    if((error = herder_pullShowList(&shows, host, port)) != ERROR_NO_ERROR){
+        goto label_freeShowList;
+    }
+
+    if(shows.length == 0){
+        UTIL_LOG_CONSOLE(LOG_INFO, "Library is empty.");
+
+        goto label_freeShowList;
+    }
+
+    ArrayListIterator it;
+    arrayList_initIterator(&it, &shows);
+
+    uint_fast64_t i = 0;
+    while(ARRAY_LIST_ITERATOR_HAS_NEXT(&it)){
+        char* show = ARRAY_LIST_ITERATOR_NEXT(&it);
+        
+        if((error = herder_pullShowInfo(remoteHostProperty, remoteHostPortProperty, show, strlen(show))) != ERROR_NO_ERROR){
+            UTIL_LOG_CONSOLE(LOG_ERR, util_toErrorString(error));
+        }
+
+        i++;
+
+        free(show);
+    }
+
+label_freeShowList:
+    arrayList_free(&shows);
+
+    return ERROR(error);
 }
 
 inline ERROR_CODE herder_listShows(Property* remoteHostProperty, Property* remoteHostPortProperty){
@@ -610,13 +666,14 @@ local ERROR_CODE herder_pullShowInfo(Property* remoteHost, Property* remotePort,
                     // Episode_Name.
                     char* name = alloca(sizeof(*name) * (nameLength + 1));
                     memcpy(name, response.data + readOffset, nameLength + 1);
+                    util_replaceAllChars(name, '_', ' ');
                     readOffset += nameLength + 1;
 
                    UTIL_LOG_CONSOLE_(LOG_INFO, "\t\t  -> %02" PRIuFAST16 ": '%s'.", episode, name);
                 }
             }
         }else{
-            UTIL_LOG_CONSOLE(LOG_INFO, "Show is empty.");
+            UTIL_LOG_CONSOLE(LOG_INFO, "\tShow is empty.");
         }
     }else{
         error = ERROR_INVALID_STATUS_CODE;
@@ -1221,6 +1278,20 @@ inline ERROR_CODE herder_argumentListShows(Argument* argumentListShows, Property
         }else{
             if(REMOTE_HOST_PROPERTIES_SET()){
                 return ERROR(herder_listShows(remoteHost, remotePort));
+            }else{
+                return ERROR(ERROR_PROPERTY_NOT_SET);
+            }
+        }
+}
+
+inline ERROR_CODE herder_argumentListAll(Argument* argumentListShows, PropertyFile* propertyFile, Property* remoteHost, Property* remotePort){
+     if(ARGUMENT_PARSER_ARGUMENT_HAS_VALUE((*argumentListShows))){
+            UTIL_LOG_CONSOLE(LOG_INFO, "Invalid command. Usage --listAll, --listShows.");
+
+            return ERROR(ERROR_INVALID_COMMAND_USAGE);
+        }else{
+            if(REMOTE_HOST_PROPERTIES_SET()){
+                return ERROR(herder_listAllShows(remoteHost, remotePort));
             }else{
                 return ERROR(ERROR_PROPERTY_NOT_SET);
             }
