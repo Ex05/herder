@@ -141,13 +141,7 @@ ERROR_CODE mediaLibrary_init(MediaLibrary* library, const char* libraryLocation,
             const uint_fast64_t showNameLength = util_byteArrayTo_uint64(readBuffer);
             
             // TODO:(jan) Free allocated memory on error.
-            char* showName = malloc(sizeof(*showName) * (showNameLength + 1));
-            if(showName == NULL){
-                error = ERROR_OUT_OF_MEMORY;
-
-                goto label_freeShowName;
-            }
-
+            char* showName = alloca(sizeof(*showName) * (showNameLength + 1));
             if(fread(showName, 1, showNameLength + 1, file) != showNameLength + 1){
                 if(feof(file) != 0){
                     break;
@@ -156,7 +150,7 @@ ERROR_CODE mediaLibrary_init(MediaLibrary* library, const char* libraryLocation,
 
                     error = ERROR_READ_ERROR;
 
-                    goto label_freeShowName;
+                    goto label_return;
                 }
             }
 
@@ -176,7 +170,7 @@ ERROR_CODE mediaLibrary_init(MediaLibrary* library, const char* libraryLocation,
 
                     error = ERROR_READ_ERROR;
 
-                    goto label_freeShowName;
+                    goto label_return;
                 }
             }
 
@@ -185,7 +179,7 @@ ERROR_CODE mediaLibrary_init(MediaLibrary* library, const char* libraryLocation,
             Season* season;
             if((error = mediaLibrary_addSeason(library, &season, show, seasonNumber)) != ERROR_NO_ERROR){
 
-                goto label_freeShowName;
+                goto label_return;
             }
 
             // Episode_Number.
@@ -197,7 +191,7 @@ ERROR_CODE mediaLibrary_init(MediaLibrary* library, const char* libraryLocation,
 
                     error = ERROR_READ_ERROR;
 
-                    goto label_freeShowName;
+                    goto label_return;
                 }
             }
 
@@ -212,20 +206,13 @@ ERROR_CODE mediaLibrary_init(MediaLibrary* library, const char* libraryLocation,
 
                     error = ERROR_READ_ERROR;
 
-                    goto label_freeShowName;
+                    goto label_return;
                 }
             }
 
             uint_fast64_t episodeNameLength = util_byteArrayTo_uint64(readBuffer);
 
-            // TODO: ...............
-            char* episodeName = malloc(sizeof(*episodeName) * (episodeNameLength + 1));
-            if(episodeName == NULL){
-                error = ERROR_OUT_OF_MEMORY;
-
-                goto label_freeEpisodeName;
-            }
-
+            char* episodeName = alloca(sizeof(*episodeName) * (episodeNameLength + 1));
             if(fread(episodeName, 1, episodeNameLength + 1, file) != episodeNameLength + 1){
                 if(feof(file) != 0){
                     break;
@@ -234,7 +221,7 @@ ERROR_CODE mediaLibrary_init(MediaLibrary* library, const char* libraryLocation,
 
                     error = ERROR_READ_ERROR;
 
-                    goto label_freeEpisodeName;
+                    goto label_return;
                 }
             }
 
@@ -247,19 +234,13 @@ ERROR_CODE mediaLibrary_init(MediaLibrary* library, const char* libraryLocation,
 
                     error = ERROR_READ_ERROR;
 
-                    goto label_freeShowName;
+                    goto label_return;
                 }
             }
 
             uint_fast64_t fileExtensionLength = util_byteArrayTo_uint16(readBuffer);
 
-            char* fileExtension = malloc(sizeof(*fileExtension) * (fileExtensionLength + 1));
-            if(fileExtension == NULL){
-                error = ERROR_OUT_OF_MEMORY;
-
-                goto label_freeEpisodeName;
-            }
-
+            char* fileExtension = alloca(sizeof(*fileExtension) * (fileExtensionLength + 1));
             if(fread(fileExtension, 1, fileExtensionLength + 1, file) != fileExtensionLength + 1){
                 if(feof(file) != 0){
                     break;
@@ -268,19 +249,14 @@ ERROR_CODE mediaLibrary_init(MediaLibrary* library, const char* libraryLocation,
 
                     error = ERROR_READ_ERROR;
 
-                    goto label_freeEpisodeName;
+                    goto label_return;
                 }
             }
             
             Episode* episode;
             error = mediaLibrary_addEpisode(library, &episode, show, season, episodeNumber, episodeName, episodeNameLength, fileExtension, fileExtensionLength,  false);
 
-        label_freeEpisodeName:
-            free(episodeName);
-
-        label_freeShowName:
-            free(showName);
-
+        label_return:
             if(error != ERROR_NO_ERROR){
                 return ERROR(error);
             }
