@@ -25,11 +25,14 @@
 #define HTTP_PROCESSING_BUFFER_SIZE 8192 //16384
 
 #define HERDER_CONSTRUCT_FILE_PATH(path, stringLength, episodeInfo) \
+    char* noWhiteSpaceShowName = alloca(sizeof(*noWhiteSpaceShowName) * ((episodeInfo)->showNameLength + 1)); \
+    strncpy(noWhiteSpaceShowName, (episodeInfo)->showName, (episodeInfo)->showNameLength + 1); \
+    util_replaceAllChars(noWhiteSpaceShowName, ' ', '_'); \
     *stringLength = ((episodeInfo)->showNameLength * 3) + ((episodeInfo)->nameLength) + (3/*" - "*/ + 7/*"Season_"*/ + 2/*"/"*/) + (UTIL_UINT16_STRING_LENGTH * 3); \
-    \
+     \
     *(path) = alloca(sizeof(**(path)) * (*stringLength + 1)); \
-    *stringLength = snprintf(*path, *stringLength, "%s/%s - Season_%02" PRIdFAST16 "/%s_s%02" PRIdFAST16 "e%02" PRIdFAST16 "_%s", (episodeInfo)->showName, (episodeInfo)->showName, (episodeInfo)->season, (episodeInfo)->showName, (episodeInfo)->season, (episodeInfo)->episode, (episodeInfo)->name); \
-    \
+    *stringLength = snprintf(*path, *stringLength, "%s/%s - Season_%02" PRIdFAST16 "/%s_s%02" PRIdFAST16 "e%02" PRIdFAST16 "_%s", noWhiteSpaceShowName, noWhiteSpaceShowName, (episodeInfo)->season, noWhiteSpaceShowName, (episodeInfo)->season, (episodeInfo)->episode, (episodeInfo)->name); \
+     \
     util_replaceAllChars(*path + (*stringLength - ((episodeInfo)->showNameLength + (2 * UTIL_UINT16_STRING_LENGTH) + (episodeInfo)->nameLength + 4)), ' ', '_')
 
 #define REMOTE_HOST_PROPERTIES_SET() ((propertyFile_propertySet(remoteHost, PROPERTY_REMOTE_HOST_NAME) == ERROR_NO_ERROR) && (propertyFile_propertySet(remotePort, PROPERTY_REMOTE_PORT_NAME) == ERROR_NO_ERROR))
@@ -666,7 +669,6 @@ local ERROR_CODE herder_pullShowInfo(Property* remoteHost, Property* remotePort,
                     // Episode_Name.
                     char* name = alloca(sizeof(*name) * (nameLength + 1));
                     memcpy(name, response.data + readOffset, nameLength + 1);
-                    util_replaceAllChars(name, '_', ' ');
                     readOffset += nameLength + 1;
 
                    UTIL_LOG_CONSOLE_(LOG_INFO, "\t\t  -> %02" PRIuFAST16 ": '%s'.", episode, name);
@@ -1055,8 +1057,6 @@ label_invalidUserInput:
             goto label_invalidUserInput;
         }
     }
-
-    util_replaceAllChars((*episodeInfo)->showName, ' ', '_');
 
     free(userInput);
     

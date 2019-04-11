@@ -488,7 +488,6 @@ ERROR_CODE mediaLibrary_extractShowName(EpisodeInfo* info, LinkedList* shows, ch
         }
 
         memcpy(info->showName, showName, nameLength);
-        util_replaceAllChars(info->showName, '_', ' ');
         info->showName[nameLength] = '\0';
         info->showNameLength = nameLength;
 
@@ -596,8 +595,6 @@ inline ERROR_CODE mediaLibrary_addShow(MediaLibrary* library, Show** show, const
     }
     while(noneWhiteSpaceNameLength < nameLength);
 
-    util_replaceAllChars(noneWhiteSpaceName, ' ', '_');
-
     ERROR_CODE error;
     __UTIL_SUPPRESS_NEXT_ERROR_OF_TYPE__(ERROR_ENTRY_NOT_FOUND);
     if((error = mediaLibrary_containsShow(&library->shows, show, noneWhiteSpaceName, noneWhiteSpaceNameLength)) == ERROR_NO_ERROR){
@@ -622,8 +619,6 @@ inline ERROR_CODE mediaLibrary_addShow(MediaLibrary* library, Show** show, const
 inline ERROR_CODE medialibrary_getShow(MediaLibrary* library, Show** show,  const char* name, const uint_fast64_t nameLength){
     char* noneWhiteSpaceName = alloca(sizeof(*noneWhiteSpaceName) * (nameLength + 1));
     strncpy(noneWhiteSpaceName, name, nameLength + 1);
-
-    util_replaceAllChars(noneWhiteSpaceName, ' ', '_');
 
     return mediaLibrary_containsShow(&library->shows, show, noneWhiteSpaceName, nameLength);
 }
