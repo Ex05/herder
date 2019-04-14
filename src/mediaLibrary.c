@@ -177,9 +177,14 @@ ERROR_CODE mediaLibrary_init(MediaLibrary* library, const char* libraryLocation,
             const uint_fast16_t seasonNumber = util_byteArrayTo_uint16(readBuffer);
 
             Season* season;
-            if((error = mediaLibrary_addSeason(library, &season, show, seasonNumber)) != ERROR_NO_ERROR){
-
-                goto label_return;
+            if((error = medialibrary_getSeason(show, &season, seasonNumber)) != ERROR_NO_ERROR){
+                if(error == ERROR_ENTRY_NOT_FOUND){
+                    if((error = mediaLibrary_addSeason(library, &season, show, seasonNumber)) != ERROR_NO_ERROR){
+                        goto label_return;
+                    }
+                }else{
+                    goto label_return;
+                }
             }
 
             // Episode_Number.
