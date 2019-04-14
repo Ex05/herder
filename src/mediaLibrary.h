@@ -70,6 +70,8 @@ ERROR_CODE mediaLibrary_extractEpisodeInfo(EpisodeInfo*, LinkedList*, char*, con
 
 ERROR_CODE mediaLibrary_initEpisodeInfo(EpisodeInfo*);
 
+ERROR_CODE mediaLibrary_extractPrefixedNumber(char*, uint_fast64_t, int_fast16_t*, const char);
+
 void mediaLibrary_freeEpisodeInfo(EpisodeInfo*);
 
 #endif

@@ -44,7 +44,7 @@ typedef TEST_TEST_FUNCTION(testFunction);
 #define __TEST_NO_SETUP__(void) do { \
     TestSuit* testSuit = arrayList_get(&testSuits, ARRAY_LIST_LENGTH((&testSuits)) - 1); \
     testSuit->noSetup = TEST_NO_SETUP_FLAG; \
-}while(0);
+}while(0)
 
 static ArrayList testSuits;
 
@@ -1389,6 +1389,28 @@ label_freeShows:
     return ret;
 }
 
+TEST_TEST_FUNCTION(mediaLibrary_extractPrefixedNumber){
+    bool ret = true;
+
+    char a[] = "Family_Guy_s10e21_The_Fattening";
+
+    int_fast16_t val;
+
+    if(mediaLibrary_extractPrefixedNumber(a, strlen(a), &val, 'e') != ERROR_NO_ERROR){
+        ret = false;
+    }
+
+    if(val != 21){
+        ret = false;
+    }
+
+    if(strncmp(a, "Family_Guy_s10_The_Fattening", strlen("Family_Guy_s10_The_Fattening") != 0)){
+        ret = false;
+    }
+
+    return ret;
+}
+
 TEST_TEST_FUNCTION(server_addContext){
     bool ret = true;
 
@@ -1652,7 +1674,8 @@ int main(void){
         TEST(mediaLibrary_getShow);
         TEST(mediaLibrary_getSeason);
         TEST(mediaLibrary_addEpisode);
-        TEST(mediaLibrary_extractShowName);
+        __TEST_NO_SETUP__(); TEST(mediaLibrary_extractShowName);
+        __TEST_NO_SETUP__(); TEST(mediaLibrary_extractPrefixedNumber);
     TEST_SUIT_END();
 
     TEST_SUIT_BEGIN("herder");

@@ -324,25 +324,21 @@ inline void mediaLibrary_free(MediaLibrary* library){
 }
 
 inline ERROR_CODE mediaLibrary_extractEpisodeInfo(EpisodeInfo* info, LinkedList* shows, char* fileName, const uint_fast64_t fileNameLength){
-    char* lowerChaseFileName = alloca(sizeof(*lowerChaseFileName) * (fileNameLength + 1));
-    util_stringCopy(lowerChaseFileName, fileName, fileNameLength + 1);
-    util_toLowerChase(lowerChaseFileName);
-
     // NOTE:(jan) All the strlen calls are needed, as each of the 'medialibrary_extract*' calls modify the file name.
     ERROR_CODE error = ERROR_NO_ERROR;
-    if(mediaLibrary_extractEpisodeNumber(info, lowerChaseFileName, fileNameLength) != ERROR_NO_ERROR){
+    if(mediaLibrary_extractEpisodeNumber(info, fileName, fileNameLength) != ERROR_NO_ERROR){
         error = ERROR_INCOMPLETE;
     }
 
-    if(mediaLibrary_extractSeasonNumber(info, lowerChaseFileName, strlen(lowerChaseFileName)) != ERROR_NO_ERROR){
+    if(mediaLibrary_extractSeasonNumber(info, fileName, strlen(fileName)) != ERROR_NO_ERROR){
         error = ERROR_INCOMPLETE;
     }
 
-    if(mediaLibrary_extractShowName(info, shows, lowerChaseFileName, strlen(lowerChaseFileName)) != ERROR_NO_ERROR){
+    if(mediaLibrary_extractShowName(info, shows, fileName, strlen(fileName)) != ERROR_NO_ERROR){
         error = ERROR_INCOMPLETE;
     }
 
-    if(mediaLibrary_extractEpisodeName(info, lowerChaseFileName, strlen(lowerChaseFileName)) != ERROR_NO_ERROR){
+    if(mediaLibrary_extractEpisodeName(info, fileName, strlen(fileName)) != ERROR_NO_ERROR){
         error = ERROR_INCOMPLETE;
     }
 
@@ -383,14 +379,58 @@ inline ERROR_CODE mediaLibrary_extractEpisodeName(EpisodeInfo* info, char* fileN
 
     strncpy(info->name, fileName, fileNameLength + 1);
 
+    util_replaceAllChars(info->name, '_', ' ');
+
     info->nameLength = fileNameLength;
 
     return ERROR(ERROR_NO_ERROR);
 }
 
+inline ERROR_CODE mediaLibrary_extractPrefixedNumber(char* fileName, uint_fast64_t fileNameLength, int_fast16_t* value, const char prefix){
+    char* lowerChaseFileName = alloca(sizeof(*lowerChaseFileName) * (fileNameLength + 1));
+    util_stringCopy(lowerChaseFileName, fileName, fileNameLength + 1);
+    util_toLowerChase(lowerChaseFileName);
+
+    int_fast64_t offset;
+    while((offset = util_findFirst(lowerChaseFileName, fileNameLength, prefix)) != -1){
+        lowerChaseFileName += ++offset;
+        fileNameLength -= offset;
+
+        uint_fast64_t i;
+        for(i = 0; i < fileNameLength; i++){
+            if(isdigit(*(lowerChaseFileName + i)) == 0){
+                break;
+            }
+        }
+
+        if(i > 0){
+            char* numberString = alloca(sizeof(*numberString) * (i + 1));
+            strncpy(numberString, lowerChaseFileName, i);
+            numberString[i] = '\0';
+
+            util_stringCopy(fileName + offset - 1, fileName + offset + i, strlen(fileName + offset) + 1 - i);
+
+            char* endPtr;
+            *value = strtol(numberString, &endPtr, 10);
+
+            if((*value == 0 && endPtr == numberString) || *value == LONG_MIN || *value == LONG_MAX){
+                *value = 0;
+
+                return ERROR_(ERROR_CONVERSION_ERROR, "'%s' is not a valid number.", numberString);
+            }
+
+            return ERROR(ERROR_NO_ERROR);
+        }
+    }
+
+    *value = 0;
+
+    return ERROR(ERROR_ENTRY_NOT_FOUND);
+}
+
 inline ERROR_CODE mediaLibrary_extractEpisodeNumber(EpisodeInfo* info, char* fileName, const uint_fast64_t fileNameLength){
     ERROR_CODE error;
-    if((error = util_extractPrefixedNumber(fileName, fileNameLength, &info->episode, 'e')) != ERROR_NO_ERROR){
+    if((error = mediaLibrary_extractPrefixedNumber(fileName, fileNameLength, &info->episode, 'e')) != ERROR_NO_ERROR){
         return ERROR(error);
     }
 
@@ -403,7 +443,7 @@ inline ERROR_CODE mediaLibrary_extractEpisodeNumber(EpisodeInfo* info, char* fil
 
 inline ERROR_CODE mediaLibrary_extractSeasonNumber(EpisodeInfo* info, char* fileName, const uint_fast64_t fileNameLength){
     ERROR_CODE error;
-    if((error = util_extractPrefixedNumber(fileName, fileNameLength, &info->season, 's')) != ERROR_NO_ERROR){
+    if((error = mediaLibrary_extractPrefixedNumber(fileName, fileNameLength, &info->season, 's')) != ERROR_NO_ERROR){
         return ERROR(error);
     }
 

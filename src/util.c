@@ -605,46 +605,6 @@ inline char* util_getHomeDirectory(void){
     #endif
 }
 
-inline char* util_getFileName(char* filePath, const uint_fast64_t filePathLength){
-    return filePath + (util_findLast(filePath, filePathLength, '/') + 1);
-}
-
-inline ERROR_CODE util_extractPrefixedNumber(char* s, uint_fast64_t stringLength, int_fast16_t* value, const char prefix){
-    int_fast64_t offset;
-    while((offset = util_findFirst(s, stringLength, prefix)) != -1){
-        s += ++offset;
-        stringLength -= offset;
-
-        uint_fast64_t i;
-        for(i = 0; i < stringLength; i++){
-            if(isdigit(*(s + i)) == 0){
-                break;
-            }
-        }
-
-        if(i > 0){
-            char* numberString = alloca(sizeof(*numberString) * (i + 1));
-            strncpy(numberString, s, i);
-            numberString[i] = '\0';
-
-            util_stringCopy(s - 1, s + i, strlen(s) + 1 - i);
-
-            char* endPtr;
-            *value = strtol(numberString, &endPtr, 10);
-
-            if((*value == 0 && endPtr == numberString) || *value == LONG_MIN || *value == LONG_MAX){
-                return ERROR_(ERROR_CONVERSION_ERROR, "'%s' is not a valid number.", numberString);
-            }
-
-            return ERROR(ERROR_NO_ERROR);
-        }
-    }
-
-    *value = 0;
-
-    return ERROR(ERROR_ENTRY_NOT_FOUND);
-}
-
 inline ERROR_CODE util_stringToInt(const char* s, int64_t* value){
     char* endPtr;
     *value = strtol(s, &endPtr, 10/*Decimal*/);
@@ -677,6 +637,10 @@ ERROR_CODE util_getFileExtension(char** extension, char* fileName, const uint_fa
     *extension = fileName + (fileExtensionOffset + 1);
 
     return ERROR(ERROR_NO_ERROR);
+}
+
+inline char* util_getFileName(char* filePath, const uint_fast64_t filePathLength){
+    return filePath + (util_findLast(filePath, filePathLength, '/') + 1);
 }
 
 #endif

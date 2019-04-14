@@ -294,8 +294,6 @@ char* util_getFileName(char*, const uint_fast64_t);
 
 char* util_readUserInput(int_fast64_t*);
 
-ERROR_CODE util_extractPrefixedNumber(char*, uint_fast64_t, int_fast16_t*, const char);
-
 ERROR_CODE util_stringToInt(const char*, int64_t*);
 
 ERROR_CODE util_getCurrentWorkingDirectory(char*, const uint_fast64_t);
