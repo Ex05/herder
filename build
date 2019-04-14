@@ -173,7 +173,7 @@ buildAndRunTest(){
         valgrind --leak-check=full --track-origins=yes --show-leak-kinds=all ./$2 > /dev/null
     fi
 
-    # Remove temorary test directory.
+    # Remove temporary test directory.
     rm -r "./tmp/"
 }   
 

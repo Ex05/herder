@@ -838,6 +838,7 @@ ERROR_CODE herder_extractShowInfo(Property* remoteHost, Property* remotePort, Ep
     uint_fast16_t port = util_byteArrayTo_uint64(remotePort->buffer);
 
     void* httpProcessingBuffer;
+label_extractShowInfo:
     if((error = util_blockAlloc(&httpProcessingBuffer, HTTP_PROCESSING_BUFFER_SIZE)) != ERROR_NO_ERROR){
         goto label_unMap;
     }
@@ -861,6 +862,8 @@ ERROR_CODE herder_extractShowInfo(Property* remoteHost, Property* remotePort, Ep
     (*episodeInfo)->fileExtensionLength = strlen((*episodeInfo)->fileExtension);
 
     HTTP_Request request;
+
+
     if((error = http_initRequest(&request, url, strlen(url), httpProcessingBuffer, HTTP_PROCESSING_BUFFER_SIZE, HTTP_VERSION_1_1, REQUEST_TYPE_POST)) != ERROR_NO_ERROR){
         goto label_freeRequest;
     }
@@ -945,6 +948,19 @@ ERROR_CODE herder_extractShowInfo(Property* remoteHost, Property* remotePort, Ep
         (*episodeInfo)->showName = util_readUserInput(&userInputLength);
 
         (*episodeInfo)->showNameLength = userInputLength;
+
+        if((error = herder_addShow(remoteHost, remotePort, (*episodeInfo)->showName, (*episodeInfo)->showNameLength)) != ERROR_NO_ERROR){
+            goto label_freeRequest;
+        }
+        
+        http_freeHTTP_Request(&request);
+        http_freeHTTP_Response(&response);
+
+        if(util_unMap(httpProcessingBuffer, HTTP_PROCESSING_BUFFER_SIZE) != ERROR_NO_ERROR){
+            UTIL_LOG_ERROR(util_toErrorString(ERROR_FAILED_TO_UNMAP_MEMORY));
+        }
+
+        goto label_extractShowInfo;
     }
 
     if((*episodeInfo)->season == 0){

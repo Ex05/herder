@@ -1337,6 +1337,58 @@ TEST_TEST_FUNCTION_(mediaLibrary_addEpisode, MediaLibrary, library){
     return true;
 }
 
+TEST_TEST_FUNCTION(mediaLibrary_extractShowName){
+    bool ret = true;
+
+    LinkedList shows;
+    linkedList_init(&shows);
+
+    Show familyGuy;
+    familyGuy.name = "Family Guy";
+    familyGuy.nameLength = strlen(familyGuy.name);
+
+    linkedList_add(&shows, &familyGuy);
+
+    Show americanDad;
+    americanDad.name = "American Dad";
+    americanDad.nameLength = strlen(americanDad.name);
+
+    linkedList_add(&shows, &americanDad);
+
+    Show avatar;
+    avatar.name = "Avatar - The Last Airbender";
+    avatar.nameLength = strlen(avatar.name);
+
+    linkedList_add(&shows, &avatar);
+
+    EpisodeInfo info = {0};
+
+    char fileName[] = "American_Dad_Rogers_Spot";
+
+    if(mediaLibrary_extractShowName(&info, &shows, fileName, strlen(fileName)) != ERROR_NO_ERROR){
+        ret =  false;
+
+        goto label_freeShows;
+    }
+
+    if(strncmp(info.showName, americanDad.name, americanDad.nameLength) != 0){
+        ret = false;
+
+        goto label_freeShows;
+    }
+
+    if(strncmp(fileName, "Rogers_Spot", strlen("Rogers_Spot")) != 0){
+        ret = false;
+    }
+
+label_freeShows:
+    linkedList_free(&shows);
+    
+    mediaLibrary_freeEpisodeInfo(&info);
+
+    return ret;
+}
+
 TEST_TEST_FUNCTION(server_addContext){
     bool ret = true;
 
@@ -1524,7 +1576,7 @@ TEST_TEST_FUNCTION(herder_constructFilePath){
     uint_fast64_t pathLength;
     HERDER_CONSTRUCT_FILE_PATH(&path, &pathLength, &info);
 
-    if(strcmp(path, "American Dad/American Dad - Season_02/American_Dad_s02e14_The_last_Smith") == 0){
+    if(strcmp(path, "American_Dad/American_Dad - Season_02/American_Dad_s02e14_The_last_Smith") == 0){
         ret = true;
     }
 
@@ -1600,6 +1652,7 @@ int main(void){
         TEST(mediaLibrary_getShow);
         TEST(mediaLibrary_getSeason);
         TEST(mediaLibrary_addEpisode);
+        TEST(mediaLibrary_extractShowName);
     TEST_SUIT_END();
 
     TEST_SUIT_BEGIN("herder");
