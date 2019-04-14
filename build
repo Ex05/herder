@@ -52,9 +52,15 @@ prepareBuildDirectory(){
 preprocess(){
     pushd src > /dev/null
 
-    printf "Preprocess:\n"
+    if hash time 2>/dev/null; then
+        printf "Preprocess:\n"
 
-    \time --format '\tUser time: %Us\n\tSystem time: %Ss\n\tCPU utilization: %P' $1 $2 -o ../$3/$4.i $4.c    
+        \time --format '\tUser time: %Us\n\tSystem time: %Ss\n\tCPU utilization: %P' $1 $2 -o ../$3/$4.i $4.c
+    else
+        printf "Preprocess...\n"
+
+        $1 $2 -o ../$3/$4.i $4.c
+    fi
 
     popd > /dev/null
 }
@@ -63,9 +69,15 @@ preprocess(){
 assemble(){
     pushd src > /dev/null
 
-    printf "Assembling:\n"
+    if hash time 2>/dev/null; then
+        printf "Assembling:\n"
 
-    \time --format '\tUser time: %Us\n\tSystem time: %Ss\n\tCPU utilization: %P' $1 $2 -o ../$3/$4.s ../$3/$4.i    
+        \time --format '\tUser time: %Us\n\tSystem time: %Ss\n\tCPU utilization: %P' $1 $2 -o ../$3/$4.s ../$3/$4.i    
+    else
+        printf "Assembling...\n"
+
+        $1 $2 -o ../$3/$4.s ../$3/$4.i    
+    fi
 
     popd > /dev/null
 }
@@ -74,10 +86,16 @@ assemble(){
 compile(){
     pushd src >/dev/null
 
-    printf "Compile:\n"
-
     # Compile.
-    \time --format '\tUser time: %Us\n\tSystem time: %Ss\n\tCPU utilization: %P' $1 $2 -o ../$3/$5 $4
+    if hash time 2>/dev/null; then
+        printf "Compile:\n"
+
+         \time --format '\tUser time: %Us\n\tSystem time: %Ss\n\tCPU utilization: %P' $1 $2 -o ../$3/$5 $4
+    else
+        printf "Compile...\n"
+
+        $1 $2 -o ../$3/$5 $4
+    fi
 
     popd > /dev/null
 }
@@ -86,10 +104,16 @@ compile(){
 link(){
     pushd $4 > /dev/null
     
-    printf "Link:\n"
-
     # Link.
-    \time --format '\tUser time: %Us\n\tSystem time: %Ss\n\tCPU utilization: %P' $1 $2 $3 -o ../$6 ../$4/$5.o
+    if hash time 2>/dev/null; then
+        printf "Link:\n"
+
+        \time --format '\tUser time: %Us\n\tSystem time: %Ss\n\tCPU utilization: %P' $1 $2 $3 -o ../$6 ../$4/$5.o
+    else
+        printf "Link...\n"
+
+        $1 $2 $3 -o ../$6 ../$4/$5.o
+    fi
     
     popd >/dev/null
 }
@@ -204,7 +228,7 @@ if [ "$1" == "herder" ] || [ "$1" == "all" ]; then
     else
         buildRelease herder herder
 
-        printf "Build completeted.\n"
+        printf "\nBuild completeted.\n"
 
         if [ "$1" != "all" ]; then
             exit 0
@@ -220,9 +244,11 @@ if [ "$1" == "server" ] || [ "$1" == "all" ]; then
 
         exit 0
     else
+        printf "\n"
+
         buildRelease server herderServerDaemon
 
-        printf "Build completeted.\n"
+        printf "\nBuild completeted.\n"
 
         exit 0
     fi
