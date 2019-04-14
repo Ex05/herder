@@ -428,8 +428,6 @@ ERROR_CODE mediaLibrary_extractShowName(EpisodeInfo* info, LinkedList* shows, ch
     strncpy(s, fileName, fileNameLength + 1);
     util_toLowerChase(s);
 
-    UTIL_LOG_CONSOLE_(LOG_DEBUG, "FileName:'%s'.", s);
-
     while(remainingCharacter > 0){
         char c;
         do{
@@ -493,6 +491,7 @@ label_continue:
             return ERROR(ERROR_OUT_OF_MEMORY);
         }
         strncpy(info->showName, mostLikely->name, mostLikely->nameLength + 1);
+        info->showNameLength = mostLikely->nameLength;
 
         char* lowerCaseFileName = alloca(sizeof(*s) * (fileNameLength + 1));
         strncpy(lowerCaseFileName, fileName, fileNameLength + 1);
