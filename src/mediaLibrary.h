@@ -5,7 +5,6 @@
 
 #include <dirent.h>
 
-#include "arrayList.h"  
 #include "linkedList.h"
 #include "propertyFile.h"
 
@@ -21,12 +20,12 @@ typedef struct{
 typedef struct{
     char* name;
     uint_fast64_t nameLength;
-    ArrayList seasons;
+    LinkedList seasons;
 }Show;
 
 typedef struct{
     uint_fast16_t number;
-    ArrayList episodes;
+    LinkedList episodes;
 }Season;
 
 typedef struct{

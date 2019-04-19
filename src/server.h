@@ -4,7 +4,7 @@
 #include "util.h"
 #include "threadPool.h"
 #include "http.h"
-#include "arrayList.h"
+#include "linkedList.h"
 #include "mediaLibrary.h"
 #include "cache.h"
 
@@ -17,7 +17,7 @@ typedef struct{
     uint_fast16_t port;
     ThreadPool threadPool;
     volatile bool alive;
-    ArrayList contexts;
+    LinkedList contexts;
     MediaLibrary library;
     Cache cache;
     char* rootDirectory;

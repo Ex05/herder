@@ -42,7 +42,7 @@ typedef TEST_TEST_FUNCTION(testFunction);
 #define TEST(name) test_test((test_testFunction*)test_ ## name, #name)
 
 #define __TEST_NO_SETUP__(void) do { \
-    TestSuit* testSuit = arrayList_get(&testSuits, ARRAY_LIST_LENGTH((&testSuits)) - 1); \
+    TestSuit* testSuit = ARRAY_LIST_GET_PTR(&testSuits, ARRAY_LIST_LENGTH((&testSuits)) - 1, TestSuit); \
     testSuit->noSetup = TEST_NO_SETUP_FLAG; \
 }while(0)
 
@@ -62,12 +62,8 @@ typedef struct{
     bool failed;
 }Test;
 
-local ARRAY_LIST_EXPAND_FUNCTION(test_failedTestsExpandFunction){
-    return previousSize * 2;
-}
-
 void test_testBegin(void){
-    arrayList_init(&testSuits, 16, test_failedTestsExpandFunction);
+    arrayList_init(&testSuits, 16, sizeof(TestSuit), arrayList_defaultExpandFunction);
 }
 
 TestSuit* test_testSuitBegin(const char*);
@@ -81,18 +77,18 @@ int32_t test_testEnd(void){
     arrayList_initIterator(&testSuitIterator, &testSuits);
 
     while(ARRAY_LIST_ITERATOR_HAS_NEXT(&testSuitIterator)){
-        TestSuit* testSuit = ARRAY_LIST_ITERATOR_NEXT(&testSuitIterator);
+        TestSuit testSuit = ARRAY_LIST_ITERATOR_NEXT(&testSuitIterator, TestSuit);
 
         ArrayListIterator testIterator;
-        arrayList_initIterator(&testIterator, &testSuit->testedFunctions);
+        arrayList_initIterator(&testIterator, &testSuit.testedFunctions);
 
-        uint_fast64_t testSuitTests = testSuit->testedFunctions.length;
+        uint_fast64_t testSuitTests = testSuit.testedFunctions.length;
         uint_fast64_t failedTestSuitTests  = 0;
 
         while(ARRAY_LIST_ITERATOR_HAS_NEXT(&testIterator)){
-            Test* test = ARRAY_LIST_ITERATOR_NEXT(&testIterator);
+            Test test = ARRAY_LIST_ITERATOR_NEXT(&testIterator, Test);
 
-            if(test->failed){
+            if(test.failed){
                 failedTestSuitTests++;
                 failedTests++;
             }else{
@@ -102,28 +98,26 @@ int32_t test_testEnd(void){
             totalTests++;
         }
 
-        arrayList_initIterator(&testIterator, &testSuit->testedFunctions);
+        arrayList_initIterator(&testIterator, &testSuit.testedFunctions);
 
         if(failedTestSuitTests != 0){
-            printf("\nTestSuit: %s", testSuit->name);
+            printf("\nTestSuit: %s", testSuit.name);
             printf(" [%" PRIdFAST64 "/%" PRIdFAST64"]\n", testSuitTests - failedTestSuitTests, testSuitTests);
         }
 
         while(ARRAY_LIST_ITERATOR_HAS_NEXT(&testIterator)){
-            Test* test = ARRAY_LIST_ITERATOR_NEXT(&testIterator);
+            Test test = ARRAY_LIST_ITERATOR_NEXT(&testIterator, Test);
 
-            if(test->failed){
-                printf("\t  %s: failed\n", test->name);
+            if(test.failed){
+                printf("\t  %s: failed\n", test.name);
             }
 
-            free(test->name);
-            free(test);
+            free(test.name);
         }
 
-        arrayList_free(&testSuit->testedFunctions);
+        arrayList_free(&testSuit.testedFunctions);
 
-        free(testSuit->name);
-        free(testSuit);
+        free(testSuit.name);
     }
 
     arrayList_free(&testSuits);
@@ -141,29 +135,20 @@ void test_testSuitBegin_(const char* name, test_TestSuitConstructFunction* const
 }
 
 TestSuit* test_testSuitBegin(const char* name){
-    TestSuit* testSuit = malloc(sizeof(*testSuit));
-    if(testSuit == NULL){
+    TestSuit testSuit = {0};
+    
+    testSuit.name = malloc(sizeof(char*) * (strlen(name) + 1));
+    if(testSuit.name == NULL){
         UTIL_LOG_ERROR(util_toErrorString(ERROR_OUT_OF_MEMORY));
-
-        return NULL;
     }
 
-    memset(testSuit, 0, sizeof(*testSuit));
+    strcpy(testSuit.name, name);
 
-    testSuit->name = malloc(sizeof(char*) * (strlen(name) + 1));
-    if(testSuit->name == NULL){
-        UTIL_LOG_ERROR(util_toErrorString(ERROR_OUT_OF_MEMORY));
+    arrayList_init(&testSuit.testedFunctions, 16, sizeof(Test), arrayList_defaultExpandFunction);
 
-        return NULL;
-    }
+    ARRAY_LIST_ADD(&testSuits, testSuit, TestSuit);
 
-    strcpy(testSuit->name, name);
-
-    arrayList_init(&testSuit->testedFunctions, 16, &test_failedTestsExpandFunction); 
-
-    arrayList_add(&testSuits, testSuit);
-
-    return testSuit;
+    return ARRAY_LIST_GET_PTR(&testSuits, ARRAY_LIST_LENGTH(&testSuits) - 1, TestSuit);
 }
 
 // Note: Intentionally empty. (jan - 2019.03.01)
@@ -172,57 +157,48 @@ void test_testSuitEnd(void){
 }
 
 void test_test(test_testFunction func, const char* name){    
-    TestSuit* testSuit = arrayList_get(&testSuits, testSuits.length - 1);
+    TestSuit* testSuit = ARRAY_LIST_GET_PTR(&testSuits, testSuits.length - 1, TestSuit);
 
-    Test* test = malloc(sizeof(*test));
-    if(test == NULL){
+    Test test = {0};
+    test.name = malloc(sizeof(*name) * (strlen(name) + 1));
+    if(test.name == NULL){
         UTIL_LOG_ERROR(util_toErrorString(ERROR_OUT_OF_MEMORY));
     }
 
-    test->name = malloc(sizeof(*name) * (strlen(name) + 1));
-    if(test->name == NULL){
-        UTIL_LOG_ERROR(util_toErrorString(ERROR_OUT_OF_MEMORY));
-    }
-
-    strcpy(test->name, name);
+    strcpy(test.name, name);
 
     ERROR_CODE error = ERROR_NO_ERROR;
     if(testSuit->constructFunction != NULL && testSuit->noSetup != TEST_NO_SETUP_FLAG){
         if((error = testSuit->constructFunction(&testSuit->data)) != ERROR_NO_ERROR){
-            test->failed = true;       
+            test.failed = true;       
         }
     }
 
     if(error == ERROR_NO_ERROR){
-        test->failed = !func(testSuit->data);
+        test.failed = !func(testSuit->data);
     }
 
-     if(testSuit->destructFunction != NULL && testSuit->noSetup != TEST_NO_SETUP_FLAG){
+    if(testSuit->destructFunction != NULL && testSuit->noSetup != TEST_NO_SETUP_FLAG){
         if(testSuit->destructFunction(testSuit->data) != ERROR_NO_ERROR){
-            test->failed = true;
+            test.failed = true;
         } 
     }
 
-    arrayList_add(&testSuit->testedFunctions, test);  
+    ARRAY_LIST_ADD(&testSuit->testedFunctions, test, Test);  
 
     testSuit->noSetup = 0;
 }
-
 // END_HEADER.
 
+// arrayList.c
 TEST_TEST_FUNCTION(arraylist_iteration){
     ArrayList list;
-    arrayList_initFixedSizeList(&list, 12);
+    arrayList_initFixedSizeList(&list, 12, sizeof(uint8_t));
 
-    uint8_t a = 0;
-    uint8_t b = 1;
-    uint8_t c = 2;
-    uint8_t d = 3;
-
-    arrayList_add(&list, &a);
-    arrayList_add(&list, &b);
-    arrayList_add(&list, &c);
-    arrayList_add(&list, &d);
+    ARRAY_LIST_ADD(&list, 0, uint8_t);
+    ARRAY_LIST_ADD(&list, 1, uint8_t);
+    ARRAY_LIST_ADD(&list, 2, uint8_t);
+    ARRAY_LIST_ADD(&list, 3, uint8_t);
 
     uint8_t buf[4] = {0};
 
@@ -231,7 +207,7 @@ TEST_TEST_FUNCTION(arraylist_iteration){
 
     uint_fast64_t i = 0;
     while(ARRAY_LIST_ITERATOR_HAS_NEXT(&it)){
-        buf[i++] = *(uint8_t*) ARRAY_LIST_ITERATOR_NEXT(&it);
+        buf[i++] = ARRAY_LIST_ITERATOR_NEXT(&it, uint8_t);
     }
 
     bool ret = true;
@@ -246,17 +222,12 @@ TEST_TEST_FUNCTION(arraylist_iteration){
 
 TEST_TEST_FUNCTION(arraylist_fixedSizedHeapList){
     ArrayList list;
-    ARRAY_LIST_INIT_FIXED_SIZE_HEAP_LIST((&list), 4);
+    ARRAY_LIST_INIT_FIXED_SIZE_HEAP_LIST((&list), 4, sizeof(uint8_t));
 
-    uint8_t a = 0;
-    uint8_t b = 1;
-    uint8_t c = 2;
-    uint8_t d = 3;
-
-    arrayList_add(&list, &a);
-    arrayList_add(&list, &b);
-    arrayList_add(&list, &c);
-    arrayList_add(&list, &d);
+    ARRAY_LIST_ADD(&list, 0, uint8_t);
+    ARRAY_LIST_ADD(&list, 1, uint8_t);
+    ARRAY_LIST_ADD(&list, 2, uint8_t);
+    ARRAY_LIST_ADD(&list, 3, uint8_t);
 
     uint8_t buf[4] = {0};
 
@@ -265,7 +236,7 @@ TEST_TEST_FUNCTION(arraylist_fixedSizedHeapList){
 
     uint_fast64_t i = 0;
     while(ARRAY_LIST_ITERATOR_HAS_NEXT(&it)){
-        buf[i++] = *(uint8_t*) ARRAY_LIST_ITERATOR_NEXT(&it);
+        buf[i++] = ARRAY_LIST_ITERATOR_NEXT(&it, uint8_t);
     }
 
     bool ret = true;
@@ -278,28 +249,64 @@ TEST_TEST_FUNCTION(arraylist_fixedSizedHeapList){
 
 TEST_TEST_FUNCTION(arraylist_get){
     ArrayList list;
-    ARRAY_LIST_INIT_FIXED_SIZE_HEAP_LIST((&list), 4);
+    ARRAY_LIST_INIT_FIXED_SIZE_HEAP_LIST((&list), 4, sizeof(uint8_t));
 
-    uint8_t a = 0;
-    uint8_t b = 1;
-    uint8_t c = 2;
-    uint8_t d = 3;
+    ARRAY_LIST_ADD(&list, 0, uint8_t);
+    ARRAY_LIST_ADD(&list, 1, uint8_t);
+    ARRAY_LIST_ADD(&list, 2, uint8_t);
+    ARRAY_LIST_ADD(&list, 3, uint8_t);
 
-    arrayList_add(&list, &a);
-    arrayList_add(&list, &b);
-    arrayList_add(&list, &c);
-    arrayList_add(&list, &d);
-
-    uint8_t* val = arrayList_get(&list, 1);
-
-    bool ret = true;
-    if(*val != 1){
-        ret = false;
+    bool ret = false;
+    if(ARRAY_LIST_GET(&list, 1, uint8_t) == 1){
+        ret = true;
     }
 
     return ret;
 }
 
+// arguemntParser.c
+TEST_TEST_FUNCTION(argumentParser_parse){
+    ArgumentParser parser;
+    argumentParser_init(&parser);
+
+    #if !defined __GNUC__ && !defined __GNUG__
+        // TODO:(jan); Add preprocessor macros for other compiler.
+    #endif
+
+    ARGUMENT_PARSER_ADD_ARGUMENT(Test, 2, "-t", "--test");
+    ARGUMENT_PARSER_ADD_ARGUMENT(Import, 1, "-i");
+
+    bool ret = false;
+
+    const char* argc[] = {"-i", "test", "12", "--test", "abbab", "---Tester", "12"};
+
+    if(argumentParser_parse(&parser, UTIL_ARRAY_LENGTH(argc), argc) != ERROR_NO_ERROR){
+        UTIL_LOG_ERROR("Failed to parse command line arguments.");
+
+        goto label_free;
+    }
+
+    if(argumentParser_contains(&parser, &argumentTest)){
+         if(ARGUMENT_PARSER_ARGUMENT_HAS_VALUE(argumentTest)){
+             if(strncmp("abbab", argumentTest.value, argumentTest.valueLength) == 0){
+                ret = true;
+             }
+        }
+    }
+
+    if(argumentParser_contains(&parser, &argumentImport)){
+        if(!ARGUMENT_PARSER_ARGUMENT_HAS_VALUE(argumentImport)){
+            ret = true;
+        }
+    }
+
+label_free:
+    argumentParser_free(&parser);
+
+    return ret;
+}
+
+// linkedList.c
 TEST_TEST_SUIT_CONSTRUCT_FUNCTION(linkedList, list){
     ERROR_CODE error;
 
@@ -385,6 +392,7 @@ TEST_TEST_FUNCTION_(linkedList_remove, LinkedList, list){
     return ret;
 }
 
+// util.c
 TEST_TEST_FUNCTION(util_byteArrayTo_uint16){
     const uint16_t testData[] = {
         0,
@@ -782,45 +790,7 @@ TEST_TEST_FUNCTION(util_append){
     return true;
 }
 
-TEST_TEST_FUNCTION(argumentParser_parse){
-    ArgumentParser parser;
-    argumentParser_init(&parser);
-
-    #if !defined __GNUC__ && !defined __GNUG__
-        // TODO:(jan); Add preprocessor macros for other compiler.
-    #endif
-
-    ARGUMENT_PARSER_ADD_ARGUMENT(Test, 2, "-t", "--test");
-    ARGUMENT_PARSER_ADD_ARGUMENT(Import, 1, "-i");
-
-    bool ret = false;
-
-    const char* argc[] = {"-i", "test", "12", "--test", "abbab", "---Tester", "12"};
-
-    if(argumentParser_parse(&parser, UTIL_ARRAY_LENGTH(argc), argc) != ERROR_NO_ERROR){
-        UTIL_LOG_ERROR("Failed to parse command line arguments.");
-
-        goto label_free;
-    }
-
-    if(argumentParser_contains(&parser, &argumentTest)){
-         if(ARGUMENT_PARSER_ARGUMENT_HAS_VALUE(argumentTest)){
-             if(strncmp("abbab", argumentTest.value, argumentTest.valueLength) == 0){
-                ret = true;
-             }
-        }
-
-        if(!ARGUMENT_PARSER_ARGUMENT_HAS_VALUE(argumentImport)){
-            ret = true;
-        }
-    }
-
-label_free:
-    argumentParser_free(&parser);
-
-    return ret;
-}
-
+// http.c
 TEST_TEST_FUNCTION(http_addHeaderField){
     #define BUFFER_SIZE 8192
 
@@ -855,6 +825,7 @@ label_free:
     return ret;
 }
 
+// que.c
 TEST_TEST_FUNCTION(que_deAndEnque){
     Que que;
     que_init(&que);
@@ -907,6 +878,7 @@ TEST_TEST_FUNCTION(que_clear){
     return ret;
 }
 
+// threadPool.c
 local uint_fast64_t counter = 0;
 
 local pthread_mutex_t counterLock;
@@ -968,6 +940,7 @@ TEST_TEST_FUNCTION(threadPool_run){
     return ret;
 }
 
+// cache.c
 TEST_TEST_FUNCTION(cache_load){
     #define TEST_FILE_NAME "/tmp/herder_cache_test_file_XXXXXX"
 
@@ -1049,6 +1022,7 @@ TEST_TEST_FUNCTION(cache_load){
     return ret;
 }
 
+// propertyFile.c
 TEST_TEST_FUNCTION(propertyFile_create){
     char currentDir[PATH_MAX];
     util_getCurrentWorkingDirectory(currentDir, PATH_MAX);
@@ -1202,6 +1176,38 @@ TEST_TEST_FUNCTION(propertyFile_remove){
 
     return ret;
 }    
+
+// herder.c
+TEST_TEST_FUNCTION(herder_constructFilePath){
+    bool ret = false;
+
+    EpisodeInfo info;
+    mediaLibrary_initEpisodeInfo(&info);
+
+    char showName[] = "American Dad";
+    char episodeName[] = "The last Smith";
+
+    info.showName = showName;
+    info.showNameLength = strlen(showName);
+
+    info.name = episodeName;
+    info.nameLength = strlen(episodeName);
+
+    info.season = 2;
+    info.episode = 14;
+
+    char* path;
+    uint_fast64_t pathLength;
+    HERDER_CONSTRUCT_FILE_PATH(&path, &pathLength, &info);
+
+    if(strcmp(path, "American_Dad/American_Dad - Season_02/American_Dad_s02e14_The_last_Smith") == 0){
+        ret = true;
+    }
+
+    return ret;
+}
+
+// mediaLibrary.c
 
 TEST_TEST_SUIT_CONSTRUCT_FUNCTION(mediaLibrary, library){
     ERROR_CODE error = ERROR_NO_ERROR;
@@ -1411,6 +1417,7 @@ TEST_TEST_FUNCTION(mediaLibrary_extractPrefixedNumber){
     return ret;
 }
 
+// server.c
 TEST_TEST_FUNCTION(server_addContext){
     bool ret = true;
 
@@ -1576,35 +1583,7 @@ label_free:
     return ret;
 }
 
-TEST_TEST_FUNCTION(herder_constructFilePath){
-    bool ret = false;
-
-    EpisodeInfo info;
-    mediaLibrary_initEpisodeInfo(&info);
-
-    char showName[] = "American Dad";
-    char episodeName[] = "The last Smith";
-
-    info.showName = showName;
-    info.showNameLength = strlen(showName);
-
-    info.name = episodeName;
-    info.nameLength = strlen(episodeName);
-
-    info.season = 2;
-    info.episode = 14;
-
-    char* path;
-    uint_fast64_t pathLength;
-    HERDER_CONSTRUCT_FILE_PATH(&path, &pathLength, &info);
-
-    if(strcmp(path, "American_Dad/American_Dad - Season_02/American_Dad_s02e14_The_last_Smith") == 0){
-        ret = true;
-    }
-
-    return ret;
-}
-
+// main
 int main(void){
     TEST_BEGIN();
 
@@ -1682,13 +1661,12 @@ int main(void){
         TEST(herder_constructFilePath);
     TEST_SUIT_END();
 
-    // The following comment is 'bs', there is a sleep in the test function because someone was to lazy to sync opening the server port with making the http request. (Jan - 2018.09.06)
     /* TEST_SUIT_BEGIN("server");
         // Note:(jan) Running the server in valgrind takes to long, probably due to the 'accept' call having to be interrupted in the server loop.
         TEST(server_addContext);
         // Note:(jan) No need to run this, as this was not meant to be an automated test, and needed console output in 'http.c' that is no longer present to be useful.
-        TEST(server_send);
-    TEST_SUIT_END();    */
+        //TEST(server_send);
+    TEST_SUIT_END(); */
 
     TEST_END();
 }

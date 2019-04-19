@@ -2,7 +2,7 @@
 #define HTTP_H
 
 #include "util.h"
-#include "arrayList.h"
+#include "linkedList.h"
 #include "cache.h"
 
 #define HTTP_VERSION_1_0 "HTTP/1.0"
@@ -20,7 +20,7 @@
     headerField ##  _name->value = malloc(sizeof(headerField ##  _name->value) * (headerField ##  _nameValueLength + 1)); \
     strncpy(headerField ##  _name->value, _value, headerField ##  _nameValueLength + 1); \
     \
-    arrayList_add(&request.headerFields, headerField ##  _name);\
+    linkedList_add(&request.headerFields, headerField ##  _name);\
     }while(0)
 
 #define HTTP_PROCESSING_BUFFER_SIZE 8192 //16384
@@ -122,7 +122,7 @@ typedef enum{
 }HTTP_ContentType;
 
 typedef struct{
-    ArrayList headerFields;
+    LinkedList headerFields;
     char httpVersion[9];
     HTTP_RequestType type;
     char* requestURL;
@@ -133,7 +133,7 @@ typedef struct{
 }HTTP_Request;
 
 typedef struct{
-    ArrayList headerFields;
+    LinkedList headerFields;
     char httpVersion[9];
     HTTP_ContentType contentType;
     char* statusMsg;

@@ -3,7 +3,7 @@
 
 #include "propertyFile.h"
 
-#include "arrayList.c"
+#include "linkedList.c"
 
 #define PAGE_ENTRY_SIZE (sizeof(uint64_t) * 4)
 
@@ -15,10 +15,6 @@ local ERROR_CODE propertyFile_addPropertyPage(PropertyFile*, PropertyPage**);
 
 local ERROR_CODE propertyFile_initPropertyPage(PropertyPage*, const uint8_t, const uint_fast64_t);
 
-local ARRAY_LIST_EXPAND_FUNCTION(propertyFile_expandPageList){
-    return previousSize + 1;
-}
-
 ERROR_CODE propertyFile_init(PropertyFile* propertyFile, const char* fileName){
     propertyFile->file = fopen(fileName, "r+");
 
@@ -27,7 +23,7 @@ ERROR_CODE propertyFile_init(PropertyFile* propertyFile, const char* fileName){
     }
 
     ERROR_CODE error;
-    if((error = arrayList_init(&propertyFile->pages, 1, propertyFile_expandPageList) != ERROR_NO_ERROR)){
+    if((error = linkedList_init(&propertyFile->pages) != ERROR_NO_ERROR)){
         return error;
     }
 
@@ -57,7 +53,7 @@ ERROR_CODE propertyFile_init(PropertyFile* propertyFile, const char* fileName){
 
         propertyFile_initPropertyPage(propertyPage, propertyFile->maxPageEntries, ftell(file));
 
-        arrayList_add(&propertyFile->pages, propertyPage);
+        linkedList_add(&propertyFile->pages, propertyPage);
 
         int i;
         for(i = 0; i < propertyFile->maxPageEntries; i++){
@@ -192,11 +188,11 @@ ERROR_CODE propertyFile_create(const char* fileName, const uint8_t numPageEntrie
 }
 
 inline ERROR_CODE propertyFile_getProperty(PropertyFile* propertyFile, Property** property, const char* name){
-    ArrayListIterator it;
-    arrayList_initIterator(&it, &propertyFile->pages);
+    LinkedListIterator it;
+    linkedList_initIterator(&it, &propertyFile->pages);
 
-    while(ARRAY_LIST_ITERATOR_HAS_NEXT(&it)){
-        PropertyPage* propertyPage = ARRAY_LIST_ITERATOR_NEXT(&it);
+    while(LINKED_LIST_ITERATOR_HAS_NEXT(&it)){
+        PropertyPage* propertyPage = LINKED_LIST_ITERATOR_NEXT(&it);
 
         uint_fast8_t i;
         for(i = 0; i < propertyFile->maxPageEntries; i++){
@@ -245,11 +241,11 @@ inline ERROR_CODE propertyFile_initProperty(Property* property, PropertyFileEntr
 inline void propertyFile_free(PropertyFile* propertyFile){
     fclose(propertyFile->file);
 
-    ArrayListIterator it;
-    arrayList_initIterator(&it, &propertyFile->pages);
+    LinkedListIterator it;
+    linkedList_initIterator(&it, &propertyFile->pages);
 
-    while(ARRAY_LIST_ITERATOR_HAS_NEXT(&it)){
-        PropertyPage* propertyPage = ARRAY_LIST_ITERATOR_NEXT(&it);
+    while(LINKED_LIST_ITERATOR_HAS_NEXT(&it)){
+        PropertyPage* propertyPage = LINKED_LIST_ITERATOR_NEXT(&it);
 
         uint_fast8_t i;
         for(i = 0; i < propertyFile->maxPageEntries; i++){
@@ -263,15 +259,15 @@ inline void propertyFile_free(PropertyFile* propertyFile){
         free(propertyPage);
     }
 
-    arrayList_free(&propertyFile->pages);
+    linkedList_free(&propertyFile->pages);
 }
 
 inline bool propertyFile_contains(PropertyFile* propertyFile, const char* name){
-    ArrayListIterator it;
-    arrayList_initIterator(&it, &propertyFile->pages);
+    LinkedListIterator it;
+    linkedList_initIterator(&it, &propertyFile->pages);
 
-    while(ARRAY_LIST_ITERATOR_HAS_NEXT(&it)){
-        PropertyPage* propertyPage = ARRAY_LIST_ITERATOR_NEXT(&it);
+    while(LINKED_LIST_ITERATOR_HAS_NEXT(&it)){
+        PropertyPage* propertyPage = LINKED_LIST_ITERATOR_NEXT(&it);
 
         uint_fast8_t i;
         for(i = 0; i < propertyFile->maxPageEntries; i++){
@@ -295,11 +291,11 @@ ERROR_CODE propertyFile_addProperty(PropertyFile* propertyFile, Property** prope
 
     PropertyFileEntry* entry = NULL;
 
-    ArrayListIterator it;
-    arrayList_initIterator(&it, &propertyFile->pages);
+    LinkedListIterator it;
+    linkedList_initIterator(&it, &propertyFile->pages);
 
-    while(ARRAY_LIST_ITERATOR_HAS_NEXT(&it)){
-        PropertyPage* propertyPage = ARRAY_LIST_ITERATOR_NEXT(&it);
+    while(LINKED_LIST_ITERATOR_HAS_NEXT(&it)){
+        PropertyPage* propertyPage = LINKED_LIST_ITERATOR_NEXT(&it);
 
         int i;
         for(i = 0; i < propertyFile->maxPageEntries; i++){
@@ -426,7 +422,17 @@ inline ERROR_CODE propertyFile_setBuffer(Property* property, int8_t* buffer){
 ERROR_CODE propertyFile_addPropertyPage(PropertyFile* propertyFile, PropertyPage** propertyPage){
     FILE* file = propertyFile->file;
 
-    const uint_fast64_t prevPageOffset = ((PropertyPage*) arrayList_get(&propertyFile->pages, propertyFile->pages.length - 1))->offset;
+    LinkedListIterator it;
+    linkedList_initIterator(&it, &propertyFile->pages);
+
+    uint_fast64_t prevPageOffset;
+    while(LINKED_LIST_ITERATOR_HAS_NEXT(&it)){
+        Node* node = linkedList_iteratorNextNode(&it);
+
+        if(node->next == NULL){
+            prevPageOffset = ((PropertyPage*) node)->offset;
+        }
+    }
 
     *propertyPage = malloc(sizeof(**propertyPage));
     if(*propertyPage == NULL){
@@ -452,7 +458,7 @@ ERROR_CODE propertyFile_addPropertyPage(PropertyFile* propertyFile, PropertyPage
     }
 
     ERROR_CODE error;
-    if((error = arrayList_add(&propertyFile->pages, *propertyPage)) != ERROR_NO_ERROR){
+    if((error = linkedList_add(&propertyFile->pages, *propertyPage)) != ERROR_NO_ERROR){
         return ERROR(error);
     }
 
@@ -491,11 +497,11 @@ inline ERROR_CODE propertyFile_initPropertyPage(PropertyPage* propertyPage, cons
 ERROR_CODE propertyFile_removeProperty(Property* property){
     FILE* file = property->callBack->file;
 
-    ArrayListIterator it;
-    arrayList_initIterator(&it, &property->callBack->pages);
+    LinkedListIterator it;
+    linkedList_initIterator(&it, &property->callBack->pages);
 
-    while(ARRAY_LIST_ITERATOR_HAS_NEXT(&it)){
-        PropertyPage* propertyPage = ARRAY_LIST_ITERATOR_NEXT(&it);
+    while(LINKED_LIST_ITERATOR_HAS_NEXT(&it)){
+        PropertyPage* propertyPage = LINKED_LIST_ITERATOR_NEXT(&it);
 
         int i;
         for(i = 0; i < property->callBack->maxPageEntries; i++){

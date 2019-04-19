@@ -3,21 +3,17 @@
     
 #include "argumentParser.h"
 
-#include "arrayList.c"
+#include "linkedList.c"
 
 // Note:(Jan) If the value of an argument points to this flag, then the Argument was present, but had no value assosiatet with it. e.g: ('--help', '-?') as opposed to ("--setImportDirectory '/herder/import'")
 char ARGUMENT_PARSER_ARGUMENT_PRESENT_FLAG = {0};
 
 local ERROR_CODE argumentParser_initArgument(Argument*, const uint_fast8_t);
 
-local ARRAY_LIST_EXPAND_FUNCTION(argumentParser_expandArgumentList){
-    return 2 * previousSize;
-}
-
 inline ERROR_CODE argumentParser_init(ArgumentParser* parser){
     int_fast32_t error;
 
-    if((error = arrayList_init(&parser->arguments, 2, argumentParser_expandArgumentList)) != 0){
+    if((error = linkedList_init(&parser->arguments)) != 0){
         UTIL_LOG_ERROR_("Failed to initialise argument list [%" PRIdFAST32 "]", error);
 
         return ERROR(error);
@@ -62,7 +58,7 @@ ERROR_CODE argumentParser_addArgument(ArgumentParser* parser, Argument* argument
         strncpy(argument->arguments[i], s, strLength + 1);
     }
 
-    arrayList_add(&parser->arguments, argument);
+    linkedList_add(&parser->arguments, argument);
 
     va_end(args);
 
@@ -70,13 +66,13 @@ ERROR_CODE argumentParser_addArgument(ArgumentParser* parser, Argument* argument
 }
 
 inline ERROR_CODE argumentParser_parse(ArgumentParser* parser, const int numArguments, const char** arguments){
-    ArrayListIterator it;
+    LinkedListIterator it;
     register int i;
     for(i = 0; i < numArguments; i++){
-        arrayList_initIterator(&it, &parser->arguments);
+        linkedList_initIterator(&it, &parser->arguments);
 
-        while(ARRAY_LIST_ITERATOR_HAS_NEXT(&it)){
-            Argument* argument = ARRAY_LIST_ITERATOR_NEXT(&it);
+        while(LINKED_LIST_ITERATOR_HAS_NEXT(&it)){
+            Argument* argument = LINKED_LIST_ITERATOR_NEXT(&it);
 
             register uint_fast8_t j;
             for(j = 0; j < argument->numArguments; j++){
@@ -104,11 +100,11 @@ inline ERROR_CODE argumentParser_parse(ArgumentParser* parser, const int numArgu
 }
 
 inline bool argumentParser_contains(ArgumentParser* parser, Argument* argument){
-    ArrayListIterator it;
-    arrayList_initIterator(&it, &parser->arguments);
+    LinkedListIterator it;
+    linkedList_initIterator(&it, &parser->arguments);
 
-    while(ARRAY_LIST_ITERATOR_HAS_NEXT(&it)){
-        const Argument* _argument = ARRAY_LIST_ITERATOR_NEXT(&it);
+    while(LINKED_LIST_ITERATOR_HAS_NEXT(&it)){
+        const Argument* _argument = LINKED_LIST_ITERATOR_NEXT(&it);
 
         if(argument == _argument && (_argument->value == &ARGUMENT_PARSER_ARGUMENT_PRESENT_FLAG || _argument->value != NULL)){
             return true;
@@ -119,11 +115,11 @@ inline bool argumentParser_contains(ArgumentParser* parser, Argument* argument){
 }
 
 void argumentParser_free(ArgumentParser* parser){
-    ArrayListIterator it;
-    arrayList_initIterator(&it, &parser->arguments);
+    LinkedListIterator it;
+    linkedList_initIterator(&it, &parser->arguments);
 
-    while(ARRAY_LIST_ITERATOR_HAS_NEXT(&it)){
-        Argument* argument = ARRAY_LIST_ITERATOR_NEXT(&it);
+    while(LINKED_LIST_ITERATOR_HAS_NEXT(&it)){
+        Argument* argument = LINKED_LIST_ITERATOR_NEXT(&it);
 
         register uint_fast8_t i;
         for(i = 0; i < argument->numArguments; i++){
@@ -137,7 +133,7 @@ void argumentParser_free(ArgumentParser* parser){
         free(argument->arguments);
     }
 
-    arrayList_free(&parser->arguments);
+    linkedList_free(&parser->arguments);
 }
 
 #endif

@@ -3,7 +3,7 @@
 
 #include "util.h"
 
-#include "arrayList.h"
+#include "linkedList.h"
 
 #define PROPERTY_IS_NOT_SET(property) (property == NULL)
 #define PROPERTY_IS_SET(property) (property != NULL)
@@ -18,7 +18,7 @@ typedef struct{
 	FILE* file;
 	Version version;
     uint_fast8_t maxPageEntries;
-    ArrayList pages;
+    LinkedList pages;
 }PropertyFile;
     
 typedef struct{

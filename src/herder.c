@@ -10,6 +10,7 @@
 #include <signal.h>
 
 #include "util.c"
+#include "linkedList.c"
 #include "http.c"
 #include "argumentParser.c"
 #include "propertyFile.c"
@@ -50,7 +51,7 @@ local ERROR_CODE herder_listShows(Property*, Property*);
 
 local ERROR_CODE herder_listAllShows(Property*, Property*);
 
-local ERROR_CODE herder_pullShowList(ArrayList*, const char*, const uint_fast16_t);
+local ERROR_CODE herder_pullShowList(LinkedList*, const char*, const uint_fast16_t);
 
 local ERROR_CODE herder_addShow(Property*, Property*, char*, const uint_fast64_t);
 
@@ -80,7 +81,7 @@ local ERROR_CODE herder_argumentListAll(Argument*, PropertyFile*, Property*, Pro
 
 local ERROR_CODE herder_argumentAdd(Argument*, PropertyFile*, Property*, Property*);
 
-local ERROR_CODE herder_walkDirectory(ArrayList*, const char*);
+local ERROR_CODE herder_walkDirectory(LinkedList*, const char*);
 
 local ERROR_CODE herder_import(Property*, Property*, Property*, const char*);
 
@@ -368,7 +369,7 @@ inline ERROR_CODE herder_listAllShows(Property* remoteHostProperty, Property* re
     char* host = (char*) remoteHostProperty->buffer;
     uint_fast16_t port = util_byteArrayTo_uint64(remoteHostPortProperty->buffer);
 
-    ArrayList shows;
+    LinkedList shows;
     if((error = herder_pullShowList(&shows, host, port)) != ERROR_NO_ERROR){
         goto label_freeShowList;
     }
@@ -379,12 +380,12 @@ inline ERROR_CODE herder_listAllShows(Property* remoteHostProperty, Property* re
         goto label_freeShowList;
     }
 
-    ArrayListIterator it;
-    arrayList_initIterator(&it, &shows);
+    LinkedListIterator it;
+    linkedList_initIterator(&it, &shows);
 
     uint_fast64_t i = 0;
-    while(ARRAY_LIST_ITERATOR_HAS_NEXT(&it)){
-        char* show = ARRAY_LIST_ITERATOR_NEXT(&it);
+    while(LINKED_LIST_ITERATOR_HAS_NEXT(&it)){
+        char* show = LINKED_LIST_ITERATOR_NEXT(&it);
         
         if((error = herder_pullShowInfo(remoteHostProperty, remoteHostPortProperty, show, strlen(show))) != ERROR_NO_ERROR){
             UTIL_LOG_CONSOLE(LOG_ERR, util_toErrorString(error));
@@ -396,7 +397,7 @@ inline ERROR_CODE herder_listAllShows(Property* remoteHostProperty, Property* re
     }
 
 label_freeShowList:
-    arrayList_free(&shows);
+    linkedList_free(&shows);
 
     return ERROR(error);
 }
@@ -407,7 +408,7 @@ inline ERROR_CODE herder_listShows(Property* remoteHostProperty, Property* remot
     char* host = (char*) remoteHostProperty->buffer;
     uint_fast16_t port = util_byteArrayTo_uint64(remoteHostPortProperty->buffer);
 
-    ArrayList shows;
+    LinkedList shows;
     if((error = herder_pullShowList(&shows, host, port)) != ERROR_NO_ERROR){
         goto label_freeShowList;
     }
@@ -418,12 +419,12 @@ inline ERROR_CODE herder_listShows(Property* remoteHostProperty, Property* remot
         goto label_freeShowList;
     }
 
-    ArrayListIterator it;
-    arrayList_initIterator(&it, &shows);
+    LinkedListIterator it;
+    linkedList_initIterator(&it, &shows);
 
     uint_fast64_t i = 0;
-    while(ARRAY_LIST_ITERATOR_HAS_NEXT(&it)){
-        char* show = ARRAY_LIST_ITERATOR_NEXT(&it);
+    while(LINKED_LIST_ITERATOR_HAS_NEXT(&it)){
+        char* show = LINKED_LIST_ITERATOR_NEXT(&it);
         
         UTIL_LOG_CONSOLE_(LOG_INFO, "%02" PRIuFAST64 ":'%s'.", i, show);
         i++;
@@ -432,16 +433,16 @@ inline ERROR_CODE herder_listShows(Property* remoteHostProperty, Property* remot
     }
 
 label_freeShowList:
-    arrayList_free(&shows);
+    linkedList_free(&shows);
 
     return ERROR(error);
 }
 
-ERROR_CODE herder_pullShowList(ArrayList* shows, const char* host, const uint_fast16_t port){
+ERROR_CODE herder_pullShowList(LinkedList* shows, const char* host, const uint_fast16_t port){
     ERROR_CODE error = ERROR_NO_ERROR;
     
     // Note: We have to zero out shows here to not free garbage values in the ArrayList if we fail to connect, as the initialisation of shows requires the number of shows to be send from the server. (jan - 2019.04.04)
-    memset(shows, 0, sizeof(*shows));
+    // memset(shows, 0, sizeof(*shows));
 
     void* httpProcessingBuffer;    
     if((error = util_blockAlloc(&httpProcessingBuffer, HTTP_PROCESSING_BUFFER_SIZE)) != ERROR_NO_ERROR){
@@ -485,7 +486,7 @@ ERROR_CODE herder_pullShowList(ArrayList* shows, const char* host, const uint_fa
     const uint_fast64_t numShows = util_byteArrayTo_uint64(response.data + readOffset);
     readOffset += sizeof(uint64_t);
 
-    if((error = arrayList_initFixedSizeList(shows, numShows)) != ERROR_NO_ERROR){
+    if((error = linkedList_init(shows)) != ERROR_NO_ERROR){
         goto label_freeRequest;
     }
 
@@ -507,7 +508,7 @@ ERROR_CODE herder_pullShowList(ArrayList* shows, const char* host, const uint_fa
 
         readOffset += nameLength;
 
-        arrayList_add(shows, name);
+        linkedList_add(shows, name);
     }
 
 label_freeRequest:
@@ -1328,10 +1329,6 @@ inline ERROR_CODE herder_argumentAdd(Argument* argumentAddShow, PropertyFile* pr
     }
 }
 
-local ARRAY_LIST_EXPAND_FUNCTION(herder_importFilesExpandFunction){
-     return previousSize * 2;
-}
-
 ERROR_CODE herder_import(Property* remoteHost, Property* remotePort, Property* libraryDirectory, const char* directory){
     ERROR_CODE error;
 
@@ -1339,8 +1336,8 @@ ERROR_CODE herder_import(Property* remoteHost, Property* remotePort, Property* l
         return ERROR(ERROR_PROPERTY_NOT_SET);
      }
 
-    ArrayList files;
-    if((error = arrayList_init(&files, 64, herder_importFilesExpandFunction)) != ERROR_NO_ERROR){
+    LinkedList files;
+    if((error = linkedList_init(&files)) != ERROR_NO_ERROR){
         goto label_return;
     }
 
@@ -1348,15 +1345,15 @@ ERROR_CODE herder_import(Property* remoteHost, Property* remotePort, Property* l
         goto label_return;
     }
 
-    ArrayListIterator it;
-    arrayList_initIterator(&it, &files);
+    LinkedListIterator it;
+    linkedList_initIterator(&it, &files);
 
-    if(ARRAY_LIST_LENGTH((&files)) == 0){
+    if(LINKED_LIST_IS_EMPTY(&files)){
         UTIL_LOG_CONSOLE_(LOG_INFO, "No files recorgnised for import in '%s'.", directory);
     }
 
-    while(ARRAY_LIST_ITERATOR_HAS_NEXT(&it)){
-        DirectoryEntry* entry = ARRAY_LIST_ITERATOR_NEXT(&it);
+    while(LINKED_LIST_ITERATOR_HAS_NEXT(&it)){
+        DirectoryEntry* entry = LINKED_LIST_ITERATOR_NEXT(&it);
 
         UTIL_LOG_CONSOLE_(LOG_INFO, "Adding '%s'...", entry->path);
 
@@ -1369,7 +1366,7 @@ ERROR_CODE herder_import(Property* remoteHost, Property* remotePort, Property* l
 
             goto label_freeFiles;
         }else{
-            UTIL_LOG_CONSOLE_(LOG_INFO, "Successfully added '%s'. to library.%s", entry->path, ARRAY_LIST_ITERATOR_HAS_NEXT(&it) ? "\n" : "");
+            UTIL_LOG_CONSOLE_(LOG_INFO, "Successfully added '%s'. to library.%s", entry->path, LINKED_LIST_ITERATOR_HAS_NEXT(&it) ? "\n" : "");
         }
 
         free(entry->path);
@@ -1378,7 +1375,7 @@ ERROR_CODE herder_import(Property* remoteHost, Property* remotePort, Property* l
     }
 
 label_freeFiles:
-    arrayList_free(&files);
+    linkedList_free(&files);
 
 label_return:
     return ERROR(error);
@@ -1408,7 +1405,7 @@ local inline bool herder_walkDirectoryAcceptFunction(const char* s, const uint_f
     #undef HASH_AVI
 }
 
-ERROR_CODE herder_walkDirectory(ArrayList* list, const char* directory){
+ERROR_CODE herder_walkDirectory(LinkedList* list, const char* directory){
     ERROR_CODE error = ERROR_NO_ERROR;
 
     DIR* currentDirectory = opendir(directory);
@@ -1474,7 +1471,7 @@ ERROR_CODE herder_walkDirectory(ArrayList* list, const char* directory){
                 dirEnt->pathLength = directoryPathLength;
                 dirEnt->fileNameLength = fileNameLength;
 
-                if((error = arrayList_add(list, dirEnt)) !=ERROR_NO_ERROR){
+                if((error = linkedList_add(list, dirEnt)) !=ERROR_NO_ERROR){
                     goto label_closeDir;
                 }
             }

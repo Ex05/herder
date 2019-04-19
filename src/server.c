@@ -47,10 +47,6 @@ local ERROR_CODE server_setRootDirectory(Argument*, PropertyFile*, Property**);
 local ERROR_CODE server_setServerExternalPort(Argument*, PropertyFile*, Property**);
 
 local HerderServer server;
-
-local ARRAY_LIST_EXPAND_FUNCTION(server_expandContextList){
-    return previousSize * 2;
-}
  
 SERVER_CONTEXT_HANDLER(server_defaultContextHandler){
     uint_fast64_t fileLocationLength;
@@ -340,11 +336,11 @@ local SERVER_CONTEXT_HANDLER(server_pageShowInfo){
         util_uint64ToByteArray(response->data + response->dataLength, show->seasons.length);
         response->dataLength += sizeof(uint64_t);
 
-        ArrayListIterator it;
-        arrayList_initIterator(&it, &show->seasons);
+        LinkedListIterator it;
+        linkedList_initIterator(&it, &show->seasons);
 
-        while(ARRAY_LIST_ITERATOR_HAS_NEXT(&it)){
-            Season* season = ARRAY_LIST_ITERATOR_NEXT(&it);
+        while(LINKED_LIST_ITERATOR_HAS_NEXT(&it)){
+            Season* season = LINKED_LIST_ITERATOR_NEXT(&it);
 
             // Season_Number.
             util_uint16ToByteArray(response->data + response->dataLength, season->number);
@@ -354,11 +350,11 @@ local SERVER_CONTEXT_HANDLER(server_pageShowInfo){
             util_uint64ToByteArray(response->data + response->dataLength, season->episodes.length);
             response->dataLength += sizeof(uint64_t);
 
-            ArrayListIterator episodeIterator;
-            arrayList_initIterator(&episodeIterator, &season->episodes);
+            LinkedListIterator episodeIterator;
+            linkedList_initIterator(&episodeIterator, &season->episodes);
 
-            while(ARRAY_LIST_ITERATOR_HAS_NEXT(&episodeIterator)){
-                Episode* episode = ARRAY_LIST_ITERATOR_NEXT(&episodeIterator);
+            while(LINKED_LIST_ITERATOR_HAS_NEXT(&episodeIterator)){
+                Episode* episode = LINKED_LIST_ITERATOR_NEXT(&episodeIterator);
 
                 // Episode_Number.
                 util_uint16ToByteArray(response->data + response->dataLength, episode->number);
@@ -668,7 +664,7 @@ ERROR_CODE server_init(HerderServer* server, const char* rootDirectory, const ui
     server->sockAddr.sin_addr.s_addr = INADDR_ANY;
     server->sockAddr.sin_port = htons(port);
 
-    arrayList_init(&server->contexts, 16, server_expandContextList);
+    linkedList_init(&server->contexts);
 
     if((error = mediaLibrary_init(&server->library, rootDirectory, rootDirectoryLength)) != ERROR_NO_ERROR){
         return ERROR(error);
@@ -788,18 +784,18 @@ inline void server_free(HerderServer* server){
 
     threadPool_free(&server->threadPool);
 
-    ArrayListIterator it;
-    arrayList_initIterator(&it, &server->contexts);
+    LinkedListIterator it;
+    linkedList_initIterator(&it, &server->contexts);
 
-    while(ARRAY_LIST_ITERATOR_HAS_NEXT(&it)){
-        Context* context = ARRAY_LIST_ITERATOR_NEXT(&it);
+    while(LINKED_LIST_ITERATOR_HAS_NEXT(&it)){
+        Context* context = LINKED_LIST_ITERATOR_NEXT(&it);
 
         server_freeContext(context);
 
         free(context);
     }
 
-    arrayList_free(&server->contexts);
+    linkedList_free(&server->contexts);
 
     free(server->rootDirectory);
 
@@ -824,7 +820,7 @@ inline ERROR_CODE server_addContext(HerderServer* server, const char* location, 
 
     server_initContext(context, location, strlen(location), contextHandler);
 
-    arrayList_add(&server->contexts, context);
+    linkedList_add(&server->contexts, context);
 
     return ERROR(ERROR_NO_ERROR);
 }
@@ -836,11 +832,11 @@ inline ERROR_CODE server_getContext(HerderServer* server, ContextHandler** conte
         return ERROR_(ERROR_INVALID_REQUEST_URL, "Failed to find baseDirectory URL:'%s'.",request->requestURL);
     }
     
-    ArrayListIterator it;
-    arrayList_initIterator(&it, &server->contexts);
+    LinkedListIterator it;
+    linkedList_initIterator(&it, &server->contexts);
 
-    while(ARRAY_LIST_ITERATOR_HAS_NEXT(&it)){
-        Context* context = ARRAY_LIST_ITERATOR_NEXT(&it);
+    while(LINKED_LIST_ITERATOR_HAS_NEXT(&it)){
+        Context* context = LINKED_LIST_ITERATOR_NEXT(&it);
 
         if(strncmp(context->location, baseDirectory, baseDirectoryLength) == 0){
             *contextHandler = context->contextHandler;

@@ -11,7 +11,7 @@ inline ERROR_CODE linkedList_init(LinkedList* list) {
     return ERROR(ERROR_NO_ERROR);
 }
 
-inline void linkedList_add(LinkedList* list, void* data) {
+inline ERROR_CODE linkedList_add(LinkedList* list, void* data) {
     Node* node = linkedList_initNode(data);
     
     if(LINKED_LIST_IS_EMPTY(list)) {
@@ -22,6 +22,8 @@ inline void linkedList_add(LinkedList* list, void* data) {
     }
 
     list->length++;
+
+    return ERROR(ERROR_NO_ERROR);
 }
 
 inline Node* linkedList_initNode(void* data){
@@ -58,7 +60,7 @@ inline void linkedList_free(LinkedList* list){
 }
 
 inline bool linkedList_remove(LinkedList* list, void* data){
-/*  This is Linus Torvalds double Pointer based approach to removing links in LinkedLists, which compared to
+/*  This is Linus Torvalds double Pointer based approach to removing nodes in LinkedLists, which compared to
     other approachs (like the one shown below) removes a branch from the code.
     */
  Node** node;

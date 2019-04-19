@@ -3,7 +3,7 @@
 
 #include "util.h"
 
-#include "arrayList.h"
+#include "linkedList.h"
 
 #if !defined __GNUC__ && !defined __GNUG__
     TODO:(jan); Add preprocessor macros for other compiler.
@@ -22,7 +22,7 @@ typedef struct{
 }Argument;
 
 typedef struct{
-    ArrayList arguments;
+    LinkedList arguments;
 }ArgumentParser;
 
 ERROR_CODE argumentParser_init(ArgumentParser*);

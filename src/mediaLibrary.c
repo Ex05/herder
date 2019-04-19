@@ -3,7 +3,6 @@
 
 #include "mediaLibrary.h"
 
-#include "arrayList.c"
 #include "linkedList.c"
 #include "util.c"
 
@@ -21,7 +20,7 @@ local ERROR_CODE mediaLibrary_extractSeasonNumber(EpisodeInfo*, char*, const uin
 
 local ERROR_CODE mediaLibrary_containsShow(LinkedList*, Show**, const char*, const uint_fast64_t);
 
-local Episode* mediaLibrary_containsEpisode(ArrayList*, const uint_fast16_t, const char*, const uint_fast64_t);
+local Episode* mediaLibrary_containsEpisode(LinkedList*, const uint_fast16_t, const char*, const uint_fast64_t);
 
 local ERROR_CODE medialibrary_initShow(Show*, const char*, const uint_fast64_t);
 
@@ -36,14 +35,6 @@ local void mediaLibrary_freeShow(Show*);
 local void mediaLibrary_freeSeason(Season*);
 
 local void mediaLibrary_freeEpisode(Episode*);
-
-local ARRAY_LIST_EXPAND_FUNCTION(mediaLibrary_expandImportList){
-    return previousSize * 2;
-}
-
-local ARRAY_LIST_EXPAND_FUNCTION(mediaLibrary_seasonsExpandFunction){
-    return previousSize + 1;
-}
 
 // TODO:(jan) Clean up this mess.
 ERROR_CODE mediaLibrary_init(MediaLibrary* library, const char* libraryLocation, const uint_fast64_t libraryLocationLength){
@@ -272,14 +263,14 @@ ERROR_CODE mediaLibrary_init(MediaLibrary* library, const char* libraryLocation,
 }
 
 inline void mediaLibrary_freeShow(Show* show){
-    arrayList_free(&show->seasons);
+    linkedList_free(&show->seasons);
 
     free(show->name);
     free(show);
 }
 
 inline void mediaLibrary_freeSeason(Season* season){
-    arrayList_free(&season->episodes);
+    linkedList_free(&season->episodes);
 }
 
 inline void mediaLibrary_freeEpisode(Episode* episode){
@@ -294,17 +285,17 @@ inline void mediaLibrary_free(MediaLibrary* library){
     while(LINKED_LIST_ITERATOR_HAS_NEXT(&it)){
         Show* show = LINKED_LIST_ITERATOR_NEXT(&it);
 
-        ArrayListIterator seasonIterator;
-        arrayList_initIterator(&seasonIterator, &show->seasons);
+        LinkedListIterator seasonIterator;
+        linkedList_initIterator(&seasonIterator, &show->seasons);
 
-        while(ARRAY_LIST_ITERATOR_HAS_NEXT(&seasonIterator)){
-            Season* season = ARRAY_LIST_ITERATOR_NEXT(&seasonIterator);
+        while(LINKED_LIST_ITERATOR_HAS_NEXT(&seasonIterator)){
+            Season* season = LINKED_LIST_ITERATOR_NEXT(&seasonIterator);
 
-            ArrayListIterator episodeIterator;
-            arrayList_initIterator(&episodeIterator, &season->episodes);
+            LinkedListIterator episodeIterator;
+            linkedList_initIterator(&episodeIterator, &season->episodes);
 
-            while(ARRAY_LIST_ITERATOR_HAS_NEXT(&episodeIterator)){
-                Episode* episode = ARRAY_LIST_ITERATOR_NEXT(&episodeIterator);
+            while(LINKED_LIST_ITERATOR_HAS_NEXT(&episodeIterator)){
+                Episode* episode = LINKED_LIST_ITERATOR_NEXT(&episodeIterator);
 
                 mediaLibrary_freeEpisode(episode);
 
@@ -466,8 +457,8 @@ ERROR_CODE mediaLibrary_extractShowName(EpisodeInfo* info, LinkedList* shows, ch
     // We need the '/0' to terminate our loop.
     uint_fast64_t remainingCharacter = fileNameLength + 1;
 
-    ArrayList wordList;
-    arrayList_init(&wordList, 16, mediaLibrary_expandImportList);
+    LinkedList wordList;
+    linkedList_init(&wordList);
 
     char* s = alloca(sizeof(*s) * (fileNameLength + 1));
     strncpy(s, fileName, fileNameLength + 1);
@@ -487,7 +478,7 @@ ERROR_CODE mediaLibrary_extractShowName(EpisodeInfo* info, LinkedList* shows, ch
         memcpy(chunk, s, endIndex - 1);
         chunk[endIndex - 1] = '\0';
 
-        arrayList_add(&wordList, chunk);
+        linkedList_add(&wordList, chunk);
 
 label_continue:
         s += endIndex;
@@ -509,12 +500,12 @@ label_continue:
         strncpy(lowerChaseShowName, show->name, show->nameLength + 1);
         util_toLowerChase(lowerChaseShowName);
 
-        ArrayListIterator wordListIterator;
-        arrayList_initIterator(&wordListIterator, &wordList);
+        LinkedListIterator wordListIterator;
+        linkedList_initIterator(&wordListIterator, &wordList);
 
         uint_fast32_t hits = 0;
-        while(ARRAY_LIST_ITERATOR_HAS_NEXT(&wordListIterator)){
-            char* chunk = ARRAY_LIST_ITERATOR_NEXT(&wordListIterator);
+        while(LINKED_LIST_ITERATOR_HAS_NEXT(&wordListIterator)){
+            char* chunk = LINKED_LIST_ITERATOR_NEXT(&wordListIterator);
 
             if(strstr(lowerChaseShowName, chunk) != NULL){
                 hits++;
@@ -528,7 +519,7 @@ label_continue:
         }
     }
 
-    arrayList_free(&wordList);
+    linkedList_free(&wordList);
 
     if(mostLikely != NULL){
         info->showName = malloc(sizeof(*info->showName) * (mostLikely->nameLength + 1));
@@ -685,7 +676,7 @@ inline ERROR_CODE medialibrary_initShow(Show* show, const char* name, const uint
 
     strncpy(show->name, name, nameLength + 1);
 
-    arrayList_init(&show->seasons, 1, mediaLibrary_seasonsExpandFunction);
+    linkedList_init(&show->seasons);
 
     return ERROR_NO_ERROR;
 }
@@ -721,7 +712,7 @@ inline ERROR_CODE mediaLibrary_addSeason(MediaLibrary* library, Season** season,
         goto label_return;
     }
 
-    if((error = arrayList_add(&show->seasons, *season)) != ERROR_NO_ERROR){
+    if((error = linkedList_add(&show->seasons, *season)) != ERROR_NO_ERROR){
         goto label_return;
     }
 
@@ -732,11 +723,11 @@ label_return:
 }
 
 inline ERROR_CODE medialibrary_getSeason(Show* show, Season** season, const uint_fast16_t number){
-    ArrayListIterator it;
-    arrayList_initIterator(&it, &show->seasons);
+    LinkedListIterator it;
+    linkedList_initIterator(&it, &show->seasons);
 
-	while(ARRAY_LIST_ITERATOR_HAS_NEXT(&it)){
-        Season* season_ = ARRAY_LIST_ITERATOR_NEXT(&it);
+	while(LINKED_LIST_ITERATOR_HAS_NEXT(&it)){
+        Season* season_ = LINKED_LIST_ITERATOR_NEXT(&it);
 
         if(season_->number == number){
             *season = season_;
@@ -756,7 +747,7 @@ inline ERROR_CODE medialibrary_initSeason(Season* season, const uint_fast16_t nu
     memset(season, 0, sizeof(*season));
     season->number = number;
 
-    error = arrayList_init(&season->episodes, 1, mediaLibrary_seasonsExpandFunction);
+    error = linkedList_init(&season->episodes);
 
     return ERROR(error);
 }
@@ -775,7 +766,7 @@ ERROR_CODE mediaLibrary_addEpisode(MediaLibrary* library, Episode** episode, Sho
         goto label_return;
     }
 
-    if((error = arrayList_add(&season->episodes, *episode)) != ERROR_NO_ERROR){
+    if((error = linkedList_add(&season->episodes, *episode)) != ERROR_NO_ERROR){
         goto label_return;
     }
 
@@ -845,11 +836,11 @@ label_return:
 }
 
 inline ERROR_CODE mediaLibrary_getEpisode(Season* season, Episode** episode, const uint_fast16_t number){
-    ArrayListIterator it;
-    arrayList_initIterator(&it, &season->episodes);
+    LinkedListIterator it;
+    linkedList_initIterator(&it, &season->episodes);
 
-	while(ARRAY_LIST_ITERATOR_HAS_NEXT(&it)){
-        Episode* episode_ = ARRAY_LIST_ITERATOR_NEXT(&it);
+	while(LINKED_LIST_ITERATOR_HAS_NEXT(&it)){
+        Episode* episode_ = LINKED_LIST_ITERATOR_NEXT(&it);
 
         if(episode_->number == number){
             *episode = episode_;
@@ -890,12 +881,12 @@ label_return:
     return ERROR(error);
 }
 
-inline Episode* mediaLibrary_containsEpisode(ArrayList* episodes,const uint_fast16_t number, const char* name, const uint_fast64_t nameLength){
-    ArrayListIterator it;
-    arrayList_initIterator(&it, episodes);
+inline Episode* mediaLibrary_containsEpisode(LinkedList* episodes,const uint_fast16_t number, const char* name, const uint_fast64_t nameLength){
+    LinkedListIterator it;
+    linkedList_initIterator(&it, episodes);
 
-	while(ARRAY_LIST_ITERATOR_HAS_NEXT(&it)){
-        Episode* episode = ARRAY_LIST_ITERATOR_NEXT(&it);
+	while(LINKED_LIST_ITERATOR_HAS_NEXT(&it)){
+        Episode* episode = LINKED_LIST_ITERATOR_NEXT(&it);
 
         if(number == episode->number)
             return episode;

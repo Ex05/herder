@@ -4,24 +4,44 @@
 #include "util.h"
 
 #define ARRAY_LIST_IS_EMPTY(list)(list->length == 0)
-#define ARRAY_LIST_LENGTH(list)(list->length)
+#define ARRAY_LIST_LENGTH(list)((list)->length)
 
 #define ARRAY_LIST_ITERATOR_HAS_NEXT(it)(arrayList_iteratorHasNext(it))
-#define ARRAY_LIST_ITERATOR_NEXT(it)(arrayList_iteratorNext(it))
 
-#define ARRAY_LIST_INIT_FIXED_SIZE_HEAP_LIST(list, initialSize) do{ \
-    arrayList_init_(list, initialSize, NULL);\
-    list->elements = alloca(sizeof(void*) * list->maxLength);\
+#define ARRAY_LIST_INIT_FIXED_SIZE_HEAP_LIST(list, initialSize, stride) do{ \
+    arrayList_init_(list, initialSize, stride, NULL);\
+    list->elements = alloca(stride * list->maxLength);\
 } while(0)
+
+#define ARRAY_LIST_GET(list, index, type) ((type*) (list)->elements)[index]
+
+#define ARRAY_LIST_GET_PTR(list, index, type) &(((type*)(list)->elements)[index])
+
+#define ARRAY_LIST_ADD(list, value, type) do{ \
+    if((list)->length == (list)->maxLength){ \
+        ERROR_CODE error; \
+        if((error = arrayList_expandList((list))) != ERROR_NO_ERROR){ \
+            UTIL_LOG_CONSOLE(LOG_ERR, util_toErrorString(error)); \
+        } \
+    } \
+     \
+     ((type*)(list)->elements)[(list)->length] = value; \
+     (list)->length++; \
+     \
+    ERROR(ERROR_NO_ERROR); \
+} while(0)
+
+#define ARRAY_LIST_ITERATOR_NEXT(it, type) ARRAY_LIST_GET((it)->list, (it)->index++, type)
 
 #define ARRAY_LIST_EXPAND_FUNCTION(functionName) uint_fast64_t functionName(const uint_fast16_t expansions, const uint_fast64_t previousSize)
 typedef ARRAY_LIST_EXPAND_FUNCTION(ArrayList_ExpandFunction);
 
 typedef struct{
-    void** elements;
+    void* elements;
+    uint_fast64_t stride;
     uint_fast64_t length;
     uint_fast64_t maxLength;
-    uint_fast16_t expansions;
+    uint_fast64_t expansions;
     ArrayList_ExpandFunction* expandFunction;
 }ArrayList;
 
@@ -30,13 +50,9 @@ typedef struct{
     uint_fast64_t index;
 }ArrayListIterator;
 
-ERROR_CODE arrayList_init(ArrayList*, const uint_fast64_t, ArrayList_ExpandFunction*);
+ERROR_CODE arrayList_init(ArrayList*, const uint_fast64_t, const uint_fast64_t, ArrayList_ExpandFunction*);
 
-ERROR_CODE arrayList_initFixedSizeList(ArrayList*, const uint_fast64_t);
-
-void* arrayList_get(ArrayList*, const uint_fast64_t);
-
-ERROR_CODE arrayList_add(ArrayList*, void*);
+ERROR_CODE arrayList_initFixedSizeList(ArrayList*, const uint_fast64_t, const uint_fast64_t);
 
 void arrayList_initIterator(ArrayListIterator*, ArrayList*);
 

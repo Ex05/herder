@@ -3,18 +3,12 @@
 
 #include "http.h"
 
-#include "arrayList.c"
+#include "linkedList.c"
 
 #include <sys/types.h>
 #include <sys/socket.h>
 #include <netdb.h>
 #include <strings.h>
-
-local uint_fast64_t http_expandHeaderFields(const uint_fast16_t, const uint_fast64_t);
-
-local ARRAY_LIST_EXPAND_FUNCTION(http_expandHeaderFields){
-      return 2 * expansions;
-}
 
 inline ERROR_CODE http_initRequest(HTTP_Request* request, const char* url, const uint_fast64_t urlLength, void* buffer, const uint_fast64_t bufferSize, const char version[] , const HTTP_RequestType requestType){
     ERROR_CODE error;
@@ -41,7 +35,7 @@ inline ERROR_CODE http_initRequest_(HTTP_Request* request, void* buffer, const u
     request->bufferSize = bufferSize;    
 
     ERROR_CODE error;
-    error = arrayList_init(&request->headerFields, 16, http_expandHeaderFields);
+    error = linkedList_init(&request->headerFields);
 
     request->type = requestType;
 
@@ -55,7 +49,7 @@ inline ERROR_CODE http_initResponse(HTTP_Response* response, void* buffer, const
     response->bufferSize = bufferSize;    
 
     ERROR_CODE error;
-    error = arrayList_init(&response->headerFields, 16, http_expandHeaderFields);
+    error = linkedList_init(&response->headerFields);
                 
     response->statusCode = -1;
 
@@ -84,7 +78,7 @@ inline ERROR_CODE http_addHeaderField(HTTP_Request* request, char* name, const u
 
     http_initheaderField(headerField, name, nameLength, value, valueLength);
     
-    arrayList_add(&request->headerFields, headerField);
+    linkedList_add(&request->headerFields, headerField);
     
     #undef HTTP_MAX_HEADER_FIELDS
     
@@ -94,12 +88,12 @@ inline ERROR_CODE http_addHeaderField(HTTP_Request* request, char* name, const u
 inline HTTP_HeaderField* http_getHeaderField(HTTP_Request* request, char* name){
     HTTP_HeaderField* ret = NULL;
         
-    ArrayListIterator it;
-    arrayList_initIterator(&it, &request->headerFields);    
+    LinkedListIterator it;
+    linkedList_initIterator(&it, &request->headerFields);    
     
     const uint_fast64_t nameLength = strlen(name);
-    while(ARRAY_LIST_ITERATOR_HAS_NEXT(&it)){
-        HTTP_HeaderField* headerField = ARRAY_LIST_ITERATOR_NEXT(&it);
+    while(LINKED_LIST_ITERATOR_HAS_NEXT(&it)){
+        HTTP_HeaderField* headerField = LINKED_LIST_ITERATOR_NEXT(&it);
         
         if(strncasecmp(name, headerField->name, nameLength) == 0){
             ret = headerField;
@@ -207,11 +201,11 @@ ERROR_CODE http_sendRequest(HTTP_Request* request, HTTP_Response* response, cons
     http_addHeaderField(request, _contentLength, 16, contentLength, contentLengthLength);
 
     // HeaderFields.
-    ArrayListIterator it;   
-    arrayList_initIterator(&it, &request->headerFields);    
+    LinkedListIterator it;   
+    linkedList_initIterator(&it, &request->headerFields);    
 
-    while(ARRAY_LIST_ITERATOR_HAS_NEXT(&it)){
-        HTTP_HeaderField* headerField = ARRAY_LIST_ITERATOR_NEXT(&it);
+    while(LINKED_LIST_ITERATOR_HAS_NEXT(&it)){
+        HTTP_HeaderField* headerField = LINKED_LIST_ITERATOR_NEXT(&it);
                     
         writeOffset += snprintf(buffer + writeOffset, request->bufferSize - writeOffset, "%s: %s\r\n",
         headerField->name, 
@@ -320,11 +314,11 @@ ERROR_CODE http_sendResponse(HTTP_Response* response, const int_fast32_t connect
     HTTP_ADD_HEADER_FIELD((*response), Server, serverMessage);
 
     // HeaderFields.
-    ArrayListIterator it;   
-    arrayList_initIterator(&it, &response->headerFields);    
+    LinkedListIterator it;   
+    linkedList_initIterator(&it, &response->headerFields);    
 
-    while(ARRAY_LIST_ITERATOR_HAS_NEXT(&it)){
-        HTTP_HeaderField* headerField = ARRAY_LIST_ITERATOR_NEXT(&it);
+    while(LINKED_LIST_ITERATOR_HAS_NEXT(&it)){
+        HTTP_HeaderField* headerField = LINKED_LIST_ITERATOR_NEXT(&it);
                     
         writeOffset += snprintf(buffer + writeOffset, response->bufferSize - writeOffset, "%s: %s\r\n",
         headerField->name, 
@@ -891,11 +885,11 @@ ERROR_CODE http_receiveRequest(HTTP_Request* request, const int_fast32_t connect
 }
 
 void http_freeHTTP_Request(HTTP_Request* request){
-    ArrayListIterator it;
-    arrayList_initIterator(&it, &request->headerFields);
+    LinkedListIterator it;
+    linkedList_initIterator(&it, &request->headerFields);
    
-    while(ARRAY_LIST_ITERATOR_HAS_NEXT(&it)){
-        HTTP_HeaderField* headerField = ARRAY_LIST_ITERATOR_NEXT(&it);
+    while(LINKED_LIST_ITERATOR_HAS_NEXT(&it)){
+        HTTP_HeaderField* headerField = LINKED_LIST_ITERATOR_NEXT(&it);
         
         free(headerField->name);
         free(headerField->value);
@@ -904,22 +898,22 @@ void http_freeHTTP_Request(HTTP_Request* request){
             
     free(request->requestURL);
     
-    arrayList_free(&request->headerFields);
+    linkedList_free(&request->headerFields);
 }
 
 void http_freeHTTP_Response(HTTP_Response* response){
-    ArrayListIterator it;
-    arrayList_initIterator(&it, &response->headerFields);
+    LinkedListIterator it;
+    linkedList_initIterator(&it, &response->headerFields);
    
-    while(ARRAY_LIST_ITERATOR_HAS_NEXT(&it)){
-        HTTP_HeaderField* headerField = ARRAY_LIST_ITERATOR_NEXT(&it);
+    while(LINKED_LIST_ITERATOR_HAS_NEXT(&it)){
+        HTTP_HeaderField* headerField = LINKED_LIST_ITERATOR_NEXT(&it);
         
         free(headerField->name);
         free(headerField->value);
         free(headerField);
     }       
             
-    arrayList_free(&response->headerFields);
+    linkedList_free(&response->headerFields);
 }
 
 /*  

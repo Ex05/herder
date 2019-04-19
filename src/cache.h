@@ -7,10 +7,10 @@
 #include <pthread.h>
 #include <semaphore.h>
 
-#include "arrayList.h"
+#include "linkedList.h"
 
 typedef struct{
-    ArrayList elements;
+    LinkedList elements;
     uint_fast64_t maxSize;
     uint_fast64_t currentSize;
     sem_t activeAcesses;

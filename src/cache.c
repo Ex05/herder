@@ -9,10 +9,6 @@
 
 local ERROR_CODE cache_initCacheObject(CacheObject*, uint8_t*, const uint_fast64_t, char*, const uint_fast64_t, char*, const uint_fast64_t);
 
-ARRAY_LIST_EXPAND_FUNCTION(cache_expandCacheElements){
-    return previousSize * 2;
-}
-
 inline ERROR_CODE cache_init(Cache* cache, const uint_fast64_t numThreads, const uint_fast64_t size){
     memset(cache, 0, sizeof(*cache));
 
@@ -28,7 +24,7 @@ inline ERROR_CODE cache_init(Cache* cache, const uint_fast64_t numThreads, const
     cache->threads = numThreads;
 
     ERROR_CODE error;
-    if((error = arrayList_init(&cache->elements, 64, cache_expandCacheElements)) != ERROR_NO_ERROR){
+    if((error = linkedList_init(&cache->elements)) != ERROR_NO_ERROR){
         goto label_return;
     }
 
@@ -65,11 +61,11 @@ inline ERROR_CODE cache_initCacheObject(CacheObject* cacheObject, uint8_t* data,
 }
 
 inline ERROR_CODE cache_free(Cache* cache){
-    ArrayListIterator it;
-    arrayList_initIterator(&it, &cache->elements);
+    LinkedListIterator it;
+    linkedList_initIterator(&it, &cache->elements);
 
-    while(ARRAY_LIST_ITERATOR_HAS_NEXT(&it)){
-        CacheObject* cacheObject =  ARRAY_LIST_ITERATOR_NEXT(&it);
+    while(LINKED_LIST_ITERATOR_HAS_NEXT(&it)){
+        CacheObject* cacheObject =  LINKED_LIST_ITERATOR_NEXT(&it);
 
         free(cacheObject->data);
         free(cacheObject->fileLocation);
@@ -78,7 +74,7 @@ inline ERROR_CODE cache_free(Cache* cache){
         free(cacheObject);
     }
 
-    arrayList_free(&cache->elements);
+    linkedList_free(&cache->elements);
 
     sem_destroy(&cache->activeAcesses);
 
@@ -90,11 +86,11 @@ inline ERROR_CODE cache_free(Cache* cache){
 inline ERROR_CODE cache_get(Cache* cache, CacheObject** cacheObject, char* symbolicFileLocation, const uint_fast64_t symbolicFileLocationLength){    
     sem_wait(&cache->activeAcesses);
 
-    ArrayListIterator it;
-    arrayList_initIterator(&it, &cache->elements);
+    LinkedListIterator it;
+    linkedList_initIterator(&it, &cache->elements);
 
-    while(ARRAY_LIST_ITERATOR_HAS_NEXT(&it)){
-        CacheObject* o =  ARRAY_LIST_ITERATOR_NEXT(&it);
+    while(LINKED_LIST_ITERATOR_HAS_NEXT(&it)){
+        CacheObject* o =  LINKED_LIST_ITERATOR_NEXT(&it);
 
         if(strncmp(symbolicFileLocation, o->symbolicFileLocation, symbolicFileLocationLength > o->symbolicFileLocationLength ? symbolicFileLocationLength : o->symbolicFileLocationLength) == 0){
             *cacheObject = o;
@@ -161,7 +157,7 @@ inline ERROR_CODE cache_load(Cache* cache, CacheObject** cacheObject, char* file
         sem_wait(&cache->activeAcesses);
     }
 
-    arrayList_add(&cache->elements, *cacheObject);
+    linkedList_add(&cache->elements, *cacheObject);
 
     cache->currentSize += (*cacheObject)->size;
     
