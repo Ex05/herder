@@ -168,9 +168,11 @@ buildAndRunTest(){
     # Run test executable.
     ./$2
 
-    # If test run successfully, run a memory leak check.
+    # If tests run successfully, run a memory leak check.
     if [ $? -eq 0 ]; then
-        valgrind --leak-check=full --track-origins=yes --show-leak-kinds=all ./$2 > /dev/null
+        if hash valgrind 2>/dev/null; then
+            valgrind --leak-check=full --track-origins=yes --show-leak-kinds=all ./$2 > /dev/null
+        fi
     fi
 
     # Remove temporary test directory.
