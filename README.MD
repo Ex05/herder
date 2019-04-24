@@ -17,7 +17,7 @@ Herder is a media organization tool which allows you to have an ingest station t
 1. Clone the repository.
 2. (Optional, but advised) Compile and run a test build with **"./build test debug"**.
 3. Build the executables with your desired level of optimisation **"./build all Optimisation:[0-3]"**.
-4. Run the installation script. [Coming soon, this would move the executables and install bash-completion scripts.]
+4. Run the installation script. [Currently not available, this would move the executables and install bash-completion scripts.]
 
 
 #### Usage:
