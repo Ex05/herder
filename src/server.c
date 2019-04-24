@@ -46,6 +46,8 @@ local ERROR_CODE server_setRootDirectory(Argument*, PropertyFile*, Property**);
 
 local ERROR_CODE server_setServerExternalPort(Argument*, PropertyFile*, Property**);
 
+local ERROR_CODE server_sortEpisodes(Episode***, LinkedList*);
+
 local HerderServer server;
  
 SERVER_CONTEXT_HANDLER(server_defaultContextHandler){
@@ -350,11 +352,12 @@ local SERVER_CONTEXT_HANDLER(server_pageShowInfo){
             util_uint64ToByteArray(response->data + response->dataLength, season->episodes.length);
             response->dataLength += sizeof(uint64_t);
 
-            LinkedListIterator episodeIterator;
-            linkedList_initIterator(&episodeIterator, &season->episodes);
+            Episode** sortedEpisodes = alloca(sizeof(Episode*) * season->episodes.length);
+            server_sortEpisodes(&sortedEpisodes, &season->episodes);
 
-            while(LINKED_LIST_ITERATOR_HAS_NEXT(&episodeIterator)){
-                Episode* episode = LINKED_LIST_ITERATOR_NEXT(&episodeIterator);
+            uint_fast64_t i;
+            for(i = 0; i < season->episodes.length; i++){
+                Episode* episode = sortedEpisodes[i];
 
                 // Episode_Number.
                 util_uint16ToByteArray(response->data + response->dataLength, episode->number);
@@ -378,6 +381,49 @@ local SERVER_CONTEXT_HANDLER(server_pageShowInfo){
     const char connection[] = "close";
     HTTP_ADD_HEADER_FIELD((*response), Connection, connection);
    
+    return ERROR(ERROR_NO_ERROR);
+}
+
+// TODO: Implement better/faster sorting algorithm. (jan - 2019.04.24)
+ERROR_CODE server_sortEpisodes(Episode** sortedEpisodes[], LinkedList* episodes){
+    Episode** toBeSorted = *sortedEpisodes;
+
+    LinkedListIterator it;
+    linkedList_initIterator(&it, episodes);
+
+    toBeSorted[0] = LINKED_LIST_ITERATOR_NEXT(&it);
+
+    register uint_fast64_t endIndex = 0;
+    while(LINKED_LIST_ITERATOR_HAS_NEXT(&it)){
+        Episode* current = LINKED_LIST_ITERATOR_NEXT(&it);
+
+        if(current->number >= toBeSorted[endIndex]->number){
+            // Add new largest element to end of list.
+            toBeSorted[endIndex + 1] = current;
+        }else{
+            // Search for place to insert new element.
+            register uint_fast64_t searchIndex = 0;
+            while(current->number > toBeSorted[searchIndex]->number){
+                searchIndex++;
+            }
+
+            // Insert new element and move the rest up one place in the list.
+            Episode* tmp = toBeSorted[searchIndex];
+
+            toBeSorted[searchIndex] = current;
+
+            for(; ++searchIndex <= endIndex;){
+                toBeSorted[searchIndex] = tmp;
+
+                tmp = toBeSorted[searchIndex];
+            }
+
+            toBeSorted[searchIndex] = tmp;
+        }
+
+        endIndex++;
+    }
+
     return ERROR(ERROR_NO_ERROR);
 }
 
