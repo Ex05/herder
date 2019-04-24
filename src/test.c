@@ -1208,7 +1208,6 @@ TEST_TEST_FUNCTION(herder_constructFilePath){
 }
 
 // mediaLibrary.c
-
 TEST_TEST_SUIT_CONSTRUCT_FUNCTION(mediaLibrary, library){
     ERROR_CODE error = ERROR_NO_ERROR;
 
@@ -1398,24 +1397,91 @@ label_freeShows:
 TEST_TEST_FUNCTION(mediaLibrary_extractPrefixedNumber){
     bool ret = true;
 
-    char a[] = "Family_Guy_s10e21_The_Fattening";
+    char a[] = "American_Dad_s01e02_Threat_Levels.mkv";
 
     int_fast16_t val;
+    if(mediaLibrary_extractPrefixedNumber(a, strlen(a), &val, 's') != ERROR_NO_ERROR){
+        ret = false;
+
+        goto label_return;
+    }
+
+    if(val != 1){
+        ret = false;
+
+        goto label_return;
+    }
+
+    if(strncmp(a, "American_Dad_e02_Threat_Levels.mkv", strlen("American_Dad_e02_Threat_Levels.mkv") != 0)){
+        ret = false;
+
+        goto label_return;
+    }
 
     if(mediaLibrary_extractPrefixedNumber(a, strlen(a), &val, 'e') != ERROR_NO_ERROR){
         ret = false;
+
+        goto label_return;
     }
 
-    if(val != 21){
+    if(val != 2){
         ret = false;
+
+        goto label_return;
     }
 
-    if(strncmp(a, "Family_Guy_s10_The_Fattening", strlen("Family_Guy_s10_The_Fattening") != 0)){
+    if(strncmp(a, "American_Dad__Threat_Levels.mkv", strlen("American_Dad__Threat_Levels.mkv") != 0)){
         ret = false;
+
+        goto label_return;
     }
+
+label_return:
+    return ret;
+}
+
+TEST_TEST_FUNCTION(mediaLibrary_extractEpisodeInfo){
+    bool ret = true;
+
+    char a[] = "American_Dad_s01e01_Threat_Levels.mkv";
+
+    LinkedList shows;
+    linkedList_init(&shows);
+
+    const char showName[] = "American Dad";
+
+    Show americanDad;
+    medialibrary_initShow(&americanDad, showName, strlen(showName));
+
+    linkedList_add(&shows, &americanDad);
+
+    EpisodeInfo info;
+    mediaLibrary_initEpisodeInfo(&info);
+
+    if(mediaLibrary_extractEpisodeInfo(&info, &shows, a, strlen(a)) != ERROR_NO_ERROR){
+        ret = false;
+
+        goto label_free;
+    }
+
+    if(info.season != 1 || info.episode != 1 || strncmp(showName, info.showName, strlen(showName)) || strncmp("Threat Levels", info.name, strlen("Threat Levels"))){
+        ret = false;
+
+        goto label_free;
+    }
+
+label_free:
+    mediaLibrary_freeEpisodeInfo(&info);
+
+    linkedList_free(&americanDad.seasons);
+
+    free(americanDad.name);
+
+    linkedList_free(&shows);
 
     return ret;
 }
+
 
 // server.c
 TEST_TEST_FUNCTION(server_addContext){
@@ -1655,6 +1721,7 @@ int main(void){
         TEST(mediaLibrary_addEpisode);
         __TEST_NO_SETUP__(); TEST(mediaLibrary_extractShowName);
         __TEST_NO_SETUP__(); TEST(mediaLibrary_extractPrefixedNumber);
+        __TEST_NO_SETUP__(); TEST(mediaLibrary_extractEpisodeInfo);
     TEST_SUIT_END();
 
     TEST_SUIT_BEGIN("herder");
