@@ -48,6 +48,8 @@ local ERROR_CODE server_setServerExternalPort(Argument*, PropertyFile*, Property
 
 local ERROR_CODE server_sortEpisodes(Episode***, LinkedList*);
 
+local ERROR_CODE server_sortSeasons(Season***, LinkedList*);
+
 local HerderServer server;
  
 SERVER_CONTEXT_HANDLER(server_defaultContextHandler){
@@ -338,11 +340,12 @@ local SERVER_CONTEXT_HANDLER(server_pageShowInfo){
         util_uint64ToByteArray(response->data + response->dataLength, show->seasons.length);
         response->dataLength += sizeof(uint64_t);
 
-        LinkedListIterator it;
-        linkedList_initIterator(&it, &show->seasons);
+            Season** sortedSeasons = alloca(sizeof(Season*) * show->seasons.length);
+            server_sortSeasons(&sortedSeasons, &show->seasons);
 
-        while(LINKED_LIST_ITERATOR_HAS_NEXT(&it)){
-            Season* season = LINKED_LIST_ITERATOR_NEXT(&it);
+            uint_fast64_t j;
+            for(j = 0; j < show->seasons.length; j++){
+            Season* season = sortedSeasons[j];
 
             // Season_Number.
             util_uint16ToByteArray(response->data + response->dataLength, season->number);
@@ -355,9 +358,9 @@ local SERVER_CONTEXT_HANDLER(server_pageShowInfo){
             Episode** sortedEpisodes = alloca(sizeof(Episode*) * season->episodes.length);
             server_sortEpisodes(&sortedEpisodes, &season->episodes);
 
-            uint_fast64_t i;
-            for(i = 0; i < season->episodes.length; i++){
-                Episode* episode = sortedEpisodes[i];
+            uint_fast64_t j;
+            for(j = 0; j < season->episodes.length; j++){
+                Episode* episode = sortedEpisodes[j];
 
                 // Episode_Number.
                 util_uint16ToByteArray(response->data + response->dataLength, episode->number);
@@ -385,6 +388,48 @@ local SERVER_CONTEXT_HANDLER(server_pageShowInfo){
 }
 
 // TODO: Implement better/faster sorting algorithm. (jan - 2019.04.24)
+ERROR_CODE server_sortSeasons(Season** sortedSeasons[], LinkedList* seasons){
+    Season** toBeSorted = *sortedSeasons;
+
+    LinkedListIterator it;
+    linkedList_initIterator(&it, seasons);
+
+    toBeSorted[0] = LINKED_LIST_ITERATOR_NEXT(&it);
+
+    register uint_fast64_t endIndex = 0;
+    while(LINKED_LIST_ITERATOR_HAS_NEXT(&it)){
+        Season* current = LINKED_LIST_ITERATOR_NEXT(&it);
+
+        if(current->number >= toBeSorted[endIndex]->number){
+            // Add new largest element to end of list.
+            toBeSorted[endIndex + 1] = current;
+        }else{
+            // Search for place to insert new element.
+            register uint_fast64_t searchIndex = 0;
+            while(current->number > toBeSorted[searchIndex]->number){
+                searchIndex++;
+            }
+
+            // Insert new element and move the rest up one place in the list.
+            Season* tmp = toBeSorted[searchIndex];
+
+            toBeSorted[searchIndex] = current;
+
+            for(; ++searchIndex <= endIndex;){
+                toBeSorted[searchIndex] = tmp;
+
+                tmp = toBeSorted[searchIndex];
+            }
+
+            toBeSorted[searchIndex] = tmp;
+        }
+
+        endIndex++;
+    }
+
+    return ERROR(ERROR_NO_ERROR);
+}
+
 ERROR_CODE server_sortEpisodes(Episode** sortedEpisodes[], LinkedList* episodes){
     Episode** toBeSorted = *sortedEpisodes;
 
