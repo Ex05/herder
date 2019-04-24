@@ -369,7 +369,7 @@ inline ERROR_CODE herder_listAllShows(Property* remoteHostProperty, Property* re
     char* host = (char*) remoteHostProperty->buffer;
     uint_fast16_t port = util_byteArrayTo_uint64(remoteHostPortProperty->buffer);
 
-    LinkedList shows;
+    LinkedList shows = {0};
     if((error = herder_pullShowList(&shows, host, port)) != ERROR_NO_ERROR){
         goto label_freeShowList;
     }
