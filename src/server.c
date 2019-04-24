@@ -611,8 +611,8 @@ label_return:
 			server_addContext(&server, "/js", server_defaultContextHandler);
 
 			// Herder media library rest api.
-			server_addContext(&server, "/add", server_pageAdd);
-			server_addContext(&server, "/addShow", server_pageAddShow);
+            server_addContext(&server, "/add", server_pageAdd);
+            server_addContext(&server, "/addShow", server_pageAddShow);
 			server_addContext(&server, "/shows", server_pageShows);
 			server_addContext(&server, "/showInfo", server_pageShowInfo);
             server_addContext(&server, "/extractShowInfo", server_pageExtractShowInfo);
@@ -838,7 +838,7 @@ inline ERROR_CODE server_getContext(HerderServer* server, ContextHandler** conte
     while(LINKED_LIST_ITERATOR_HAS_NEXT(&it)){
         Context* context = LINKED_LIST_ITERATOR_NEXT(&it);
 
-        if(strncmp(context->location, baseDirectory, baseDirectoryLength) == 0){
+        if(strncmp(baseDirectory, context->location, context->locationLength + 1) == 0){
             *contextHandler = context->contextHandler;
 
             return ERROR(ERROR_NO_ERROR);

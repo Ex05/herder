@@ -322,11 +322,11 @@ inline void mediaLibrary_free(MediaLibrary* library){
 inline ERROR_CODE mediaLibrary_extractEpisodeInfo(EpisodeInfo* info, LinkedList* shows, char* fileName, const uint_fast64_t fileNameLength){
     // NOTE:(jan) All the strlen calls are needed, as each of the 'medialibrary_extract*' calls modify the file name.
     ERROR_CODE error = ERROR_NO_ERROR;
-    if(mediaLibrary_extractEpisodeNumber(info, fileName, fileNameLength) != ERROR_NO_ERROR){
+    if(mediaLibrary_extractSeasonNumber(info, fileName, strlen(fileName)) != ERROR_NO_ERROR){
         error = ERROR_INCOMPLETE;
     }
 
-    if(mediaLibrary_extractSeasonNumber(info, fileName, strlen(fileName)) != ERROR_NO_ERROR){
+    if(mediaLibrary_extractEpisodeNumber(info, fileName, strlen(fileName)) != ERROR_NO_ERROR){
         error = ERROR_INCOMPLETE;
     }
 
@@ -388,13 +388,17 @@ inline ERROR_CODE mediaLibrary_extractPrefixedNumber(char* fileName, uint_fast64
     util_toLowerChase(lowerChaseFileName);
 
     int_fast64_t offset;
+    int_fast64_t writeOffset = 0;
     while((offset = util_findFirst(lowerChaseFileName, fileNameLength, prefix)) != -1){
         lowerChaseFileName += ++offset;
         fileNameLength -= offset;
+        writeOffset += offset;
 
         uint_fast64_t i;
         for(i = 0; i < fileNameLength; i++){
-            if(isdigit(*(lowerChaseFileName + i)) == 0){
+            const char c = lowerChaseFileName[i];
+
+            if(isdigit(c) == 0){
                 break;
             }
         }
@@ -404,7 +408,7 @@ inline ERROR_CODE mediaLibrary_extractPrefixedNumber(char* fileName, uint_fast64
             strncpy(numberString, lowerChaseFileName, i);
             numberString[i] = '\0';
 
-            util_stringCopy(fileName + offset - 1, fileName + offset + i, strlen(fileName + offset) + 1 - i);
+            util_stringCopy(fileName + writeOffset - 1, fileName + writeOffset + i, strlen(fileName + writeOffset) + 1 - i);
 
             char* endPtr;
             *value = strtol(numberString, &endPtr, 10);
