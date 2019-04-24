@@ -514,7 +514,7 @@ label_return:
 
             UTIL_LOG_CONSOLE_(LOG_INFO, "\t%s\t%s", "--setServerRootDirectory <path>", "Sets the 'server root directory' to the given path.");
             UTIL_LOG_CONSOLE_(LOG_INFO, "\t%s\t%s", "--setServerExternalPort <port>", "Sets the external port to the given port.");
-            UTIL_LOG_CONSOLE_(LOG_INFO, "\t%s\t%s", "--showSettings", "Shows a quick overview of all the user settings.");
+            UTIL_LOG_CONSOLE_(LOG_INFO, "\t%s\t\t\t%s", "--showSettings", "Shows a quick overview of all the user settings.");
 
             UTIL_LOG_CONSOLE_(LOG_INFO, "\t%s\t\t%s", "-?, -h, -help, --help", "Displays this help.");
 
