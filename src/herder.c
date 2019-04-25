@@ -946,7 +946,9 @@ label_extractShowInfo:
         UTIL_LOG_CONSOLE(LOG_INFO, "Please enter the show name...");
 
         int_fast64_t userInputLength;
-        (*episodeInfo)->showName = util_readUserInput(&userInputLength);
+        if((error = util_readUserInput(&(*episodeInfo)->showName, &userInputLength)) != ERROR_NO_ERROR){
+            goto label_freeRequest;
+        }
 
         (*episodeInfo)->showNameLength = userInputLength;
 
@@ -969,7 +971,13 @@ label_extractShowInfo:
 
         UTIL_LOG_CONSOLE(LOG_INFO, "Please enter the season number...");
 
-        if((error = util_stringToInt(util_readUserInput(NULL), &(*episodeInfo)->season)) != ERROR_NO_ERROR){
+        char* seasonNumber;
+        int_fast64_t userInputLength;
+        if((error = util_readUserInput(&seasonNumber, &userInputLength)) != ERROR_NO_ERROR){
+            goto label_freeRequest;
+        }
+
+        if((error = util_stringToInt(seasonNumber, &(*episodeInfo)->season)) != ERROR_NO_ERROR){
             goto label_freeRequest;
         }
     }
@@ -979,7 +987,14 @@ label_extractShowInfo:
 
         UTIL_LOG_CONSOLE(LOG_INFO, "Please enter the episode number...");
 
-        if((error = util_stringToInt(util_readUserInput(NULL), &(*episodeInfo)->episode)) != ERROR_NO_ERROR){
+        char* eoisodeNumber;
+        int_fast64_t userInputLength;
+        if((error = util_readUserInput(&eoisodeNumber, &userInputLength)) != ERROR_NO_ERROR){
+            goto label_freeRequest;
+        }
+
+
+        if((error = util_stringToInt(eoisodeNumber, &(*episodeInfo)->episode)) != ERROR_NO_ERROR){
             goto label_freeRequest;
         }
     }
@@ -990,7 +1005,9 @@ label_extractShowInfo:
         UTIL_LOG_CONSOLE(LOG_INFO, "Please enter the episode name...");
 
         int_fast64_t userInputLength;
-        (*episodeInfo)->name = util_readUserInput(&userInputLength); 
+        if((error = util_readUserInput(&(*episodeInfo)->name, &userInputLength)) != ERROR_NO_ERROR){
+            goto label_freeRequest;
+        }
 
         (*episodeInfo)->nameLength = userInputLength;
     }
@@ -1004,14 +1021,21 @@ label_extractShowInfo:
     int_fast64_t userInputLength;
     char* userInput;    
 label_invalidUserInput:    
-    userInput = util_readUserInput(&userInputLength);
+    if((error = util_readUserInput(&userInput, &userInputLength)) != ERROR_NO_ERROR){
+        goto label_freeRequest;
+    }
+
     util_toLowerChase(userInput);
 
     if(userInputLength != 0 && strncmp("no", userInput, userInputLength) == 0){
         // Show name.
         UTIL_LOG_CONSOLE_(LOG_INFO, "Show name:'%s'. Press <Enter> to accept.", (*episodeInfo)->showName);
 
-        char* showName = util_readUserInput(&userInputLength);
+        char* showName;
+        if((error = util_readUserInput(&showName, &userInputLength)) != ERROR_NO_ERROR){
+            goto label_freeRequest;
+        }
+
         if(userInputLength != 0){
             free((*episodeInfo)->showName);
 
@@ -1025,7 +1049,11 @@ label_invalidUserInput:
         // Season number.
         UTIL_LOG_CONSOLE_(LOG_INFO, "Season:'%" PRIiFAST16 "'. Press <Enter> to accept.", (*episodeInfo)->season);
 
-        char* season = util_readUserInput(&userInputLength);
+        char* season;
+        if((error = util_readUserInput(&season, &userInputLength)) != ERROR_NO_ERROR){
+            goto label_freeRequest;
+        }
+
         if(userInputLength != 0){
             if((error = util_stringToInt(season, &(*episodeInfo)->season)) != ERROR_NO_ERROR){
                 free(season);
@@ -1042,7 +1070,11 @@ label_invalidUserInput:
         // Episode number.
         UTIL_LOG_CONSOLE_(LOG_INFO, "Episode:'%" PRIiFAST16 "'. Press <Enter> to accept.", (*episodeInfo)->episode);
 
-        char* episode = util_readUserInput(&userInputLength);
+        char* episode;
+        if((error = util_readUserInput(&episode, &userInputLength)) != ERROR_NO_ERROR){
+            goto label_freeRequest;
+        }
+
         if(userInputLength != 0){
             if((error = util_stringToInt(episode, &(*episodeInfo)->episode)) != ERROR_NO_ERROR){
                 free(episode);
@@ -1058,7 +1090,11 @@ label_invalidUserInput:
         // Episode name.
         UTIL_LOG_CONSOLE_(LOG_INFO, "Episode name:'%s'. Press <Enter> to accept.", (*episodeInfo)->name);
 
-        char* episodeName = util_readUserInput(&userInputLength);
+        char* episodeName;
+        if((error = util_readUserInput(&episodeName, &userInputLength)) != ERROR_NO_ERROR){
+            goto label_freeRequest;
+        }
+
         if(userInputLength != 0){
             free((*episodeInfo)->name);
 

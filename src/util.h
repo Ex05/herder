@@ -292,7 +292,7 @@ char* util_getHomeDirectory(void);
 
 char* util_getFileName(char*, const uint_fast64_t);
 
-char* util_readUserInput(int_fast64_t*);
+ERROR_CODE util_readUserInput(char**, int_fast64_t*);
 
 ERROR_CODE util_stringToInt(const char*, int64_t*);
 

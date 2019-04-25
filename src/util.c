@@ -344,13 +344,11 @@ inline ERROR_CODE util_deleteFile(const char* file){
 }
 
 // http://www.stroustrup.com/new_learning.pdf
-char* util_readUserInput(int_fast64_t* charRead){
+ERROR_CODE util_readUserInput(char** s, int_fast64_t* charRead){
     uint_fast16_t limit = 64;
-    char* s = malloc(limit);
-    if(s == NULL){
-        UTIL_LOG_ERROR(util_toErrorString(ERROR_OUT_OF_MEMORY));
-
-        return NULL;
+    *s = malloc(limit);
+    if(*s == NULL){
+        return ERROR(ERROR_OUT_OF_MEMORY);
     }
 
     // Skip leading whitespaces.
@@ -373,12 +371,12 @@ char* util_readUserInput(int_fast64_t* charRead){
         const int_fast32_t c = fgetc(stdin);
     
         if(c == '\n' || c == '\0' || c == EOF){
-            s[i] = '\0';
+            *s[i] = '\0';
 
             break;
         }
 
-        s[i] = c;
+        *s[i] = c;
 
         if(i == limit - 1) {
             limit *= 2;
@@ -389,11 +387,9 @@ char* util_readUserInput(int_fast64_t* charRead){
         i++;
     }
 
-    if(charRead != NULL){
-        *charRead = i;
-    }
+    *charRead = i;
 
-    return s;
+    return ERROR(ERROR_NO_ERROR);
 }
 
 inline void util_replaceAllChars(char* s, const char a, const char b){
