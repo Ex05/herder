@@ -1,12 +1,8 @@
 Herder
 ============
-A media organization tool.
+A media organization tool. Designed to easily store and archive digitalised copies of your favourite shows.
 
-Herder makes it possible to split the process of ingestion, storage and archiving of digitalised media files. 
-
-E.g. have an ingestion station on your local network to digitalise your media, a server to store media information and keep track of your favourite shows and a Network-attached storage (NAS) to store the large media files on.
-#
-This project was started as an exercice to help me understand the ins and outs of the C programming language, with an emphasis on multi threading, networking, advanced usage of macros, low level memory management. With the side goal of learning how to publish and maintain packages for different Linux distribution and try out different braning modelsin git e.g. GitFlow and OneFlow options #1-3.
+This project was started as an exercice to study the ins and outs of the C programming language, with an emphasis on multi threading, networking, advanced usage of macros and low level memory management. With the side goal of learning how to publish and maintain packages for different Linux distribution and try out different git branching models.
 
 ## Usage/Installation:
 
