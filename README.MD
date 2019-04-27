@@ -11,13 +11,17 @@ This project was started as an exercice to study the ins and outs of the C progr
 ### Installation:
 ##### Prerequisite:
 * GCC (GNU Compiler Collection).
-* time command/package (optional, gives more detailed information during compilation when available).
+* 'time' command/package (optional, prints detailed timing information during compilation).
 * Valgrind (optional, when available a memory leak check will be done when building a 'test' build).
 
 1. Clone the repository.
 2. (Optional, but advised) Compile and run a test build with **"./build test debug"**.
 3. Build the executables with your desired level of optimisation **"./build all Optimisation:[0-3]"**.
-4. Run the installation script. [Currently not available, this would move the executables and install bash-completion scripts.]
+4. ~~Run the installation script for bash-completion.~~ [Not yet available].
 
 #### Usage:
 This section is not yet complete, run **"./herder --help"** and **"./herderServerDaemon --help"** to get some usage tips.
+
+To not run the server as a linux deamon, uncomment "*server_daemonize(serverWorkingDirectory)*" in **"server.c:main"**.
+
+When running a **debug** build, debug information will be logged using **syslog** use **journalctl** or any other method supported by your distribution to see log messages, to access herders debug information.
