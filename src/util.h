@@ -107,7 +107,8 @@ typedef enum{
     ERROR_INVALID_STRING,
     ERROR_INVALID_VALUE,
     ERROR_FUNCTION_NOT_IMPLEMENTED,
-    ERROR_FAILED_TO_OPEN_DIRECTORY
+    ERROR_FAILED_TO_OPEN_DIRECTORY,
+    ERROR_NAME_MISSMATCH
 }ERROR_CODE;
 
 ERROR_CODE util_formatNumber(char*, uint_fast64_t*, const int_fast64_t);
@@ -158,13 +159,8 @@ ERROR_Supressor global_errorSupressionStruct = {0};
                     !global_errorSupressionStruct.supressNextErrorOfType &&
                     global_errorSupressionStruct.errorType != errorCode))){
 
-            char formatedLineNumber[UTIL_FORMATTED_NUMBER_LENGTH];
-
-            uint_fast64_t bufferSize = UTIL_FORMATTED_NUMBER_LENGTH;
-            util_formatNumber(formatedLineNumber, &bufferSize, line);
-
             util_toErrorString(errorCode);
-            syslog(LOG_ERR, "%s:%s %s [%" PRIdFAST32 "]%s%s.", file, formatedLineNumber, util_toErrorString(errorCode), errorCode, errorMessage[0] == '\0' ? "" : " ", errorMessage);
+            syslog(LOG_ERR, "%s:%d %s [%" PRIdFAST32 "]%s%s.", file, line, util_toErrorString(errorCode), errorCode, errorMessage[0] == '\0' ? "" : " ", errorMessage);
         }
 
         global_errorSupressionStruct.supressNextErrorOfType = false;

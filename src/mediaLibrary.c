@@ -20,8 +20,6 @@ local ERROR_CODE mediaLibrary_extractSeasonNumber(EpisodeInfo*, char*, const uin
 
 local ERROR_CODE mediaLibrary_containsShow(LinkedList*, Show**, const char*, const uint_fast64_t);
 
-local Episode* mediaLibrary_containsEpisode(LinkedList*, const uint_fast16_t, const char*, const uint_fast64_t);
-
 local ERROR_CODE medialibrary_initShow(Show*, const char*, const uint_fast64_t);
 
 local ERROR_CODE medialibrary_initEpisode(Episode*, const uint_fast16_t, const char*, const uint_fast64_t, const char*, const uint_fast16_t);
@@ -883,23 +881,6 @@ inline ERROR_CODE medialibrary_initEpisode(Episode* episode, const uint_fast16_t
 
 label_return:
     return ERROR(error);
-}
-
-inline Episode* mediaLibrary_containsEpisode(LinkedList* episodes,const uint_fast16_t number, const char* name, const uint_fast64_t nameLength){
-    LinkedListIterator it;
-    linkedList_initIterator(&it, episodes);
-
-	while(LINKED_LIST_ITERATOR_HAS_NEXT(&it)){
-        Episode* episode = LINKED_LIST_ITERATOR_NEXT(&it);
-
-        if(number == episode->number)
-            return episode;
-
-        if(name != NULL && episode->nameLength == nameLength && strncmp(name, episode->name, nameLength) == 0)
-            return episode;
-    }	    
-
-    return NULL;
 }
 
 inline ERROR_CODE mediaLibrary_initEpisodeInfo(EpisodeInfo* info){

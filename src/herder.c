@@ -775,6 +775,10 @@ ERROR_CODE herder_addEpisode(Property* remoteHost, Property* remotePort, Propert
     readOffset += sizeof(uint64_t);
 
     if(error != ERROR_NO_ERROR){
+        if(error == ERROR_NAME_MISSMATCH || ERROR_DUPLICATE_ENTRY){
+            UTIL_LOG_CONSOLE_(LOG_ERR, "Failed to add Season:%02" PRIdFAST16 " Episode:%02" PRIdFAST16 " of '%s' to the library, an entry for this episode %s. [%s]", episodeInfo->season, episodeInfo->episode, episodeInfo->showName, error == ERROR_NAME_MISSMATCH ? "with a different name is already present" : "is already present.", util_toErrorString(error));
+        }
+        
         goto label_freeRequest;
     }
 
@@ -1394,8 +1398,6 @@ ERROR_CODE herder_import(Property* remoteHost, Property* remotePort, Property* l
         UTIL_LOG_CONSOLE_(LOG_INFO, "Adding '%s'...", entry->path);
 
         if(error == ERROR_NO_ERROR && (error = herder_addEpisode(remoteHost, remotePort, libraryDirectory, entry->path, entry->pathLength)) != ERROR_NO_ERROR){
-            UTIL_LOG_CONSOLE_(LOG_ERR, "Failed to add to library. [%s]", util_toErrorString(error));
-
             free(entry->path);
             free(entry->fileName);
             free(entry);

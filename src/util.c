@@ -120,6 +120,7 @@ local const char* UTIL_ERROR_CODE_MESSAGE_MAPPING_ARRAY[] = {
     "ERROR_INVALID_VALUE",
     "ERROR_FUNCTION_NOT_IMPLEMENTED",
     "ERROR_FAILED_TO_OPEN_DIRECTORY",
+    "ERROR_NAME_MISSMATCH"
 };
 
 inline const char* util_toErrorString(const ERROR_CODE errorCode){
@@ -371,17 +372,17 @@ ERROR_CODE util_readUserInput(char** s, int_fast64_t* charRead){
         const int_fast32_t c = fgetc(stdin);
     
         if(c == '\n' || c == '\0' || c == EOF){
-            *s[i] = '\0';
+            (*s)[i] = '\0';
 
             break;
         }
 
-        *s[i] = c;
+        (*s)[i] = c;
 
         if(i == limit - 1) {
             limit *= 2;
 
-            s = realloc(s, limit);
+            *s = realloc(*s, limit);
         }
 
         i++;
