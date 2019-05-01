@@ -366,7 +366,7 @@ local SERVER_CONTEXT_HANDLER(server_pageShowInfo){
             uint_fast64_t j;
             for(j = 0; j < season->episodes.length; j++){
                 Episode* episode = sortedEpisodes[j];
-
+            
                 // Episode_Number.
                 util_uint16ToByteArray(response->data + response->dataLength, episode->number);
                 response->dataLength += sizeof(uint16_t);
@@ -410,23 +410,24 @@ ERROR_CODE server_sortSeasons(Season** sortedSeasons[], LinkedList* seasons){
             toBeSorted[endIndex + 1] = current;
         }else{
             // Search for place to insert new element.
-            register uint_fast64_t searchIndex = 0;
-            while(current->number > toBeSorted[searchIndex]->number){
-                searchIndex++;
+            register uint_fast64_t insertionIndex = 0;
+            while(current->number > toBeSorted[insertionIndex]->number){
+                insertionIndex++;
             }
-
+        
             // Insert new element and move the rest up one place in the list.
-            Season* tmp = toBeSorted[searchIndex];
+            Season* tmp = toBeSorted[insertionIndex];
 
-            toBeSorted[searchIndex] = current;
+            toBeSorted[insertionIndex] = current;
 
-            for(; ++searchIndex <= endIndex;){
-                toBeSorted[searchIndex] = tmp;
+            for(insertionIndex += 1; insertionIndex <= endIndex; insertionIndex++){
+                Season* swap = toBeSorted[insertionIndex];
+                toBeSorted[insertionIndex] = tmp;
 
-                tmp = toBeSorted[searchIndex];
+                tmp = swap;
             }
 
-            toBeSorted[searchIndex] = tmp;
+            toBeSorted[insertionIndex] = tmp;
         }
 
         endIndex++;
@@ -452,23 +453,24 @@ ERROR_CODE server_sortEpisodes(Episode** sortedEpisodes[], LinkedList* episodes)
             toBeSorted[endIndex + 1] = current;
         }else{
             // Search for place to insert new element.
-            register uint_fast64_t searchIndex = 0;
-            while(current->number > toBeSorted[searchIndex]->number){
-                searchIndex++;
+            register uint_fast64_t insertionIndex = 0;
+            while(current->number > toBeSorted[insertionIndex]->number){
+                insertionIndex++;
             }
-
+        
             // Insert new element and move the rest up one place in the list.
-            Episode* tmp = toBeSorted[searchIndex];
+            Episode* tmp = toBeSorted[insertionIndex];
 
-            toBeSorted[searchIndex] = current;
+            toBeSorted[insertionIndex] = current;
 
-            for(; ++searchIndex <= endIndex;){
-                toBeSorted[searchIndex] = tmp;
+            for(insertionIndex += 1; insertionIndex <= endIndex; insertionIndex++){
+                Episode* swap = toBeSorted[insertionIndex];
+                toBeSorted[insertionIndex] = tmp;
 
-                tmp = toBeSorted[searchIndex];
+                tmp = swap;
             }
 
-            toBeSorted[searchIndex] = tmp;
+            toBeSorted[insertionIndex] = tmp;
         }
 
         endIndex++;
