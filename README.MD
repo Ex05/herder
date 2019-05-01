@@ -22,4 +22,4 @@ This section is not yet complete, run **"./herder --help"** and **"./herderServe
 
 To not run the server as a linux deamon, uncomment "*server_daemonize(serverWorkingDirectory)*" in **"server.c:main"**.
 
-When running a **debug** build, debug information will be logged using **syslog** use **journalctl** or any other method supported by your distribution to see log messages, to access herders debug information.
+When running a **debug** build debug information will be logged using **syslog**, to view these messages, use **journalctl** or any other method supported by your distribution.
