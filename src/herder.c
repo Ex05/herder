@@ -79,7 +79,9 @@ local ERROR_CODE herder_argumentListShows(Argument*, PropertyFile*, Property*, P
 
 local ERROR_CODE herder_argumentListAll(Argument*, PropertyFile*, Property*, Property*);
 
-local ERROR_CODE herder_argumentAdd(Argument*, PropertyFile*, Property*, Property*);
+local ERROR_CODE herder_argumentAddShow(Argument*, PropertyFile*, Property*, Property*);
+
+local ERROR_CODE herder_argumentRemoveShow(Argument*, PropertyFile*, Property*, Property*);
 
 local ERROR_CODE herder_walkDirectory(LinkedList*, const char*);
 
@@ -101,6 +103,7 @@ local ERROR_CODE herder_import(Property*, Property*, Property*, const char*);
 	ARGUMENT_PARSER_ADD_ARGUMENT(Help, 3, "-?", "-h", "--help");
     ARGUMENT_PARSER_ADD_ARGUMENT(Add, 2, "-a", "--add");
     ARGUMENT_PARSER_ADD_ARGUMENT(AddShow, 1, "--addShow");
+    ARGUMENT_PARSER_ADD_ARGUMENT(RemoveShow, 1, "--removeShow");
     ARGUMENT_PARSER_ADD_ARGUMENT(SetImportDirectory, 1, "--setImportDirectory");
     ARGUMENT_PARSER_ADD_ARGUMENT(SetLibraryDirectory, 1, "--setLibraryDirectory");
     ARGUMENT_PARSER_ADD_ARGUMENT(SetRemoteHost, 1, "--setRemoteHost");
@@ -279,8 +282,18 @@ local ERROR_CODE herder_import(Property*, Property*, Property*, const char*);
     if(argumentParser_contains(&parser, &argumentAddShow)){
         noValidArgument = false;
 
-        if((error = herder_argumentAdd(&argumentAddShow, &properties, remoteHost, remotePort)) == ERROR_NO_ERROR){
+        if((error = herder_argumentAddShow(&argumentAddShow, &properties, remoteHost, remotePort)) == ERROR_NO_ERROR){
             UTIL_LOG_CONSOLE_(LOG_INFO, "Added '%s' to the library.", argumentAddShow.value);
+        }
+
+        goto label_freeProperties;
+    }
+
+    if(argumentParser_contains(&parser, &argumentRemoveShow)){
+        noValidArgument = false;
+
+        if((error = herder_argumentRemoveShow(&argumentRemoveShow, &properties, remoteHost, remotePort)) == ERROR_NO_ERROR){
+            UTIL_LOG_CONSOLE_(LOG_INFO, "Removed '%s' from the library.", argumentRemoveShow.value);
         }
 
         goto label_freeProperties;
@@ -352,6 +365,7 @@ inline void herder_printHelp(void){
     UTIL_LOG_CONSOLE_(LOG_INFO, "\t%s\t\t\t%s", "--info <name>", "Prints all Episodes of the given show.");
     UTIL_LOG_CONSOLE_(LOG_INFO, "\t%s\t\t%s", "-a, --add <file>", "Adds the given file to the library.");
     UTIL_LOG_CONSOLE_(LOG_INFO, "\t%s\t\t%s", "--addShow <name>", "Adds the given show to the library.");
+    UTIL_LOG_CONSOLE_(LOG_INFO, "\t%s\t\t%s", "--removeShow <name>", "Removes the given show and all its seasons/episodes from the library.");
     UTIL_LOG_CONSOLE_(LOG_INFO, "\t%s\t%s", "-i, --import optional:<path>", "Imports all files from the specified import path to the library (See '--setImportDirectory').");
     UTIL_LOG_CONSOLE_(LOG_INFO, "\t%s\t%s", "--setImportDirectory <path>", "Sets the 'import directory' to the given path.");
     UTIL_LOG_CONSOLE_(LOG_INFO, "\t%s\t%s", "--setLibraryDirectory <path>", "Sets the 'library directory' to the given path.");
@@ -542,6 +556,79 @@ ERROR_CODE herder_addShow(Property* remoteHost, Property* remotePort, char* show
     }
 
     const char url[] = "/addShow";
+
+    HTTP_Request request;
+    if((error = http_initRequest(&request, url, strlen(url), httpProcessingBuffer, HTTP_PROCESSING_BUFFER_SIZE, HTTP_VERSION_1_1, REQUEST_TYPE_POST)) != ERROR_NO_ERROR){
+        goto label_freeRequest;
+    }
+
+    HTTP_ADD_HEADER_FIELD(request, Host, host);
+
+    util_uint64ToByteArray(request.data + request.dataLength, showNameLength);
+    request.dataLength += sizeof(uint64_t);   
+
+    memcpy(request.data + request.dataLength, showName, showNameLength);
+    request.dataLength += showNameLength;
+
+    HTTP_Response response;
+    http_initResponse(&response, httpProcessingBuffer, HTTP_PROCESSING_BUFFER_SIZE);
+    if((error = http_sendRequest(&request, &response, socketFD)) != ERROR_NO_ERROR){
+        goto label_freeResponse;
+    }
+    
+    http_closeConnection(socketFD);
+
+    // TODO:(jan) Decide if this is too clever, since 'data' equals 'httpProcessingBuffer' (alocated via mmap), we can always get the return code, it might just have garbage in it.
+    const uint_fast64_t returnCode = util_byteArrayTo_uint64(response.data);
+    if(response.statusCode != _200_OK){
+        error = ERROR_INVALID_STATUS_CODE;
+
+        UTIL_LOG_CONSOLE_(LOG_ERR, "Server_status:'%s'.", http_getStatusMsg(response.statusCode));
+    }else{
+        if(response.dataLength != sizeof(uint64_t)){
+            error = ERROR_INVALID_CONTENT_LENGTH;
+        }else{
+            if(returnCode != ERROR_NO_ERROR){
+                if(returnCode == ERROR_DUPLICATE_ENTRY){
+                    error = ERROR_DUPLICATE_ENTRY;
+                }else{
+                    error = ERROR_INVALID_RETURN_CODE;
+                }
+            }
+        }
+    }
+    
+label_freeRequest:
+    http_freeHTTP_Request(&request);
+
+label_freeResponse:
+    http_freeHTTP_Response(&response);
+
+label_unMap:
+    if(util_unMap(httpProcessingBuffer, HTTP_PROCESSING_BUFFER_SIZE) != ERROR_NO_ERROR){
+        UTIL_LOG_ERROR(util_toErrorString(ERROR_FAILED_TO_UNMAP_MEMORY));
+    }
+
+    return ERROR(error);
+}
+
+ERROR_CODE herder_removeShow(Property* remoteHost, Property* remotePort, char* showName, const uint_fast64_t showNameLength){
+    ERROR_CODE error = ERROR_NO_ERROR;
+
+    char* host = (char*) remoteHost->buffer;
+    uint_fast16_t port = util_byteArrayTo_uint64(remotePort->buffer);
+
+    void* httpProcessingBuffer;
+    if((error = util_blockAlloc(&httpProcessingBuffer, HTTP_PROCESSING_BUFFER_SIZE)) != ERROR_NO_ERROR){
+        goto label_unMap;
+    }
+
+    int_fast32_t socketFD;
+    if((error = http_openConnection(&socketFD, host, port)) != ERROR_NO_ERROR){
+        goto label_unMap;
+    }
+
+    const char url[] = "/removeShow";
 
     HTTP_Request request;
     if((error = http_initRequest(&request, url, strlen(url), httpProcessingBuffer, HTTP_PROCESSING_BUFFER_SIZE, HTTP_VERSION_1_1, REQUEST_TYPE_POST)) != ERROR_NO_ERROR){
@@ -1355,7 +1442,7 @@ inline ERROR_CODE herder_argumentListAll(Argument* argumentListShows, PropertyFi
         }
 }
 
-inline ERROR_CODE herder_argumentAdd(Argument* argumentAddShow, PropertyFile* propertyFile, Property* remoteHost, Property* remotePort){
+inline ERROR_CODE herder_argumentAddShow(Argument* argumentAddShow, PropertyFile* propertyFile, Property* remoteHost, Property* remotePort){
     if(!ARGUMENT_PARSER_ARGUMENT_HAS_VALUE((*argumentAddShow))){
         UTIL_LOG_CONSOLE(LOG_INFO, "Invalid command. Usage -a, --add <file>.");
 
@@ -1368,6 +1455,21 @@ inline ERROR_CODE herder_argumentAdd(Argument* argumentAddShow, PropertyFile* pr
         }
     }
 }
+
+inline ERROR_CODE herder_argumentRemoveShow(Argument* argumentRemoveShow, PropertyFile* propertyFile, Property* remoteHost, Property* remotePort){
+    if(!ARGUMENT_PARSER_ARGUMENT_HAS_VALUE((*argumentRemoveShow))){
+        UTIL_LOG_CONSOLE(LOG_INFO, "Invalid command. Usage -a, --add <file>.");
+
+        return ERROR(ERROR_INVALID_COMMAND_USAGE);
+    }else{
+        if(REMOTE_HOST_PROPERTIES_SET()){
+            return ERROR(herder_removeShow(remoteHost, remotePort, argumentRemoveShow->value,argumentRemoveShow->valueLength));
+        }else{
+            return ERROR(ERROR_PROPERTY_NOT_SET);
+        }
+    }
+}
+
 
 ERROR_CODE herder_import(Property* remoteHost, Property* remotePort, Property* libraryDirectory, const char* directory){
     ERROR_CODE error;

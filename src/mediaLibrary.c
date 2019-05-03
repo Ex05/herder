@@ -659,7 +659,61 @@ inline ERROR_CODE mediaLibrary_addShow(MediaLibrary* library, Show** show, const
     UTIL_LOG_DEBUG_("Added Show:'%s'.", (*show)->name);
 
     return ERROR(ERROR_NO_ERROR);
-}  
+}
+
+inline ERROR_CODE mediaLibrary_removeShow(MediaLibrary* library, const char* name, const uint_fast64_t nameLength){
+    Show* show = NULL;
+
+    char* noneWhiteSpaceName = alloca(sizeof(*noneWhiteSpaceName) * (nameLength + 1));
+    memcpy(noneWhiteSpaceName, name, nameLength);
+    noneWhiteSpaceName[nameLength] = '\0';
+
+    uint64_t noneWhiteSpaceNameLength = nameLength;
+    do{
+        ERROR_CODE error;
+        if((error = util_replace(noneWhiteSpaceName, nameLength + 1, &noneWhiteSpaceNameLength, "  ", 2, " ", 1)) != ERROR_NO_ERROR){
+           return ERROR(error);
+        }
+    }
+    while(noneWhiteSpaceNameLength < nameLength);
+
+    ERROR_CODE error;
+    __UTIL_SUPPRESS_NEXT_ERROR_OF_TYPE__(ERROR_ENTRY_NOT_FOUND);
+    if((error = mediaLibrary_containsShow(&library->shows, &show, noneWhiteSpaceName, noneWhiteSpaceNameLength)) == ERROR_ENTRY_NOT_FOUND){
+        // NOTE: One could make a strong argument here to return "ERROR_ENTRY_NOT_FOUND' but the current eco-system does not support nested suppresion of error. But because the caller can not distinguish from the outside, we are for now just gona pretend everything is 'OK' and return 'ERROR_NO_ERROR'. (jan - 2019.09.04)*/
+        return ERROR(ERROR_NO_ERROR);
+    }
+
+    linkedList_remove(&library->shows, show);
+    
+    LinkedListIterator seasonIterator;
+    linkedList_initIterator(&seasonIterator, &show->seasons);
+
+    while(LINKED_LIST_ITERATOR_HAS_NEXT(&seasonIterator)){
+        Season* season = LINKED_LIST_ITERATOR_NEXT(&seasonIterator);
+
+        LinkedListIterator episodeIterator;
+        linkedList_initIterator(&episodeIterator, &season->episodes);
+
+        while(LINKED_LIST_ITERATOR_HAS_NEXT(&episodeIterator)){
+            Episode* episode = LINKED_LIST_ITERATOR_NEXT(&episodeIterator);
+
+            mediaLibrary_freeEpisode(episode);
+
+            free(episode);
+        }
+
+        mediaLibrary_freeSeason(season);
+
+        free(season);
+    }
+
+    UTIL_LOG_DEBUG_("Removed Show:'%s'.", show->name);
+
+    mediaLibrary_freeShow(show);
+
+    return ERROR(ERROR_NO_ERROR);
+}
 
 inline ERROR_CODE medialibrary_getShow(MediaLibrary* library, Show** show,  const char* name, const uint_fast64_t nameLength){
     char* noneWhiteSpaceName = alloca(sizeof(*noneWhiteSpaceName) * (nameLength + 1));

@@ -55,6 +55,8 @@ ERROR_CODE mediaLibrary_import(MediaLibrary*, const char*);
 
 ERROR_CODE mediaLibrary_addShow(MediaLibrary*, Show**, const char*, const uint_fast64_t);
 
+ERROR_CODE mediaLibrary_removeShow(MediaLibrary*, const char*, const uint_fast64_t);
+
 ERROR_CODE medialibrary_getShow(MediaLibrary*, Show**, const char*, const uint_fast64_t);
 
 ERROR_CODE mediaLibrary_addSeason(MediaLibrary*, Season**, Show*, const uint_fast16_t);

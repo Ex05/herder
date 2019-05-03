@@ -287,6 +287,40 @@ local SERVER_CONTEXT_HANDLER(server_pageAddShow){
     return ERROR(ERROR_NO_ERROR);
 }
 
+local SERVER_CONTEXT_HANDLER(server_pageRemoveShow){
+    if(request->type != REQUEST_TYPE_POST){
+        server_constructErrorPage(server, request, response, _405_METHOD_NOT_ALLOWED);
+
+        return ERROR(ERROR_NO_ERROR);
+    }
+
+    uint_fast64_t readOffset = 0;
+
+    const uint_fast64_t showNameLength = util_byteArrayTo_uint64(request->data + readOffset);
+    readOffset += sizeof(uint64_t);
+
+    char* showName = (char*) request->data + readOffset;
+    readOffset += showNameLength;
+
+    ERROR_CODE error;
+    error = mediaLibrary_removeShow(&server->library, showName, showNameLength);
+    
+    if(error == ERROR_NO_ERROR || error == ERROR_ENTRY_NOT_FOUND){
+        util_uint64ToByteArray(response->data + response->dataLength, error);
+        response->dataLength += sizeof(uint64_t);
+    }else{
+        return ERROR(error);
+    }
+
+    http_setHTTP_Version(response, HTTP_VERSION_1_1);
+    response->statusCode = _200_OK;
+
+    const char connection[] = "close";
+    HTTP_ADD_HEADER_FIELD((*response), Connection, connection);
+
+    return ERROR(ERROR_NO_ERROR);
+}
+
 local SERVER_CONTEXT_HANDLER(server_pageShows){
      if(request->type != REQUEST_TYPE_GET){
         server_constructErrorPage(server, request, response, _405_METHOD_NOT_ALLOWED);
@@ -711,6 +745,7 @@ label_return:
 			// Herder media library rest api.
             server_addContext(&server, "/add", server_pageAdd);
             server_addContext(&server, "/addShow", server_pageAddShow);
+            server_addContext(&server, "/removeShow", server_pageRemoveShow);
 			server_addContext(&server, "/shows", server_pageShows);
 			server_addContext(&server, "/showInfo", server_pageShowInfo);
             server_addContext(&server, "/extractShowInfo", server_pageExtractShowInfo);
