@@ -29,7 +29,7 @@ typedef ERROR_CODE test_TestSuitDestructFunction(void*);
 #define TEST_TEST_FUNCTION_(functionName, type, varName) bool test_ ## functionName (type* varName)
 typedef TEST_TEST_FUNCTION(testFunction);
 
-#define TEST_END() return test_testEnd();
+#define TEST_END() return test_testEnd()
 
 #define TEST_BEGIN() test_testBegin()
 
@@ -139,7 +139,7 @@ TestSuit* test_testSuitBegin(const char* name){
     
     testSuit.name = malloc(sizeof(char*) * (strlen(name) + 1));
     if(testSuit.name == NULL){
-        UTIL_LOG_ERROR(util_toErrorString(ERROR_OUT_OF_MEMORY));
+        UTIL_LOG_CONSOLE(LOG_ERR, util_toErrorString(ERROR_OUT_OF_MEMORY));
     }
 
     strcpy(testSuit.name, name);
@@ -308,13 +308,13 @@ label_free:
 
 // linkedList.c
 TEST_TEST_SUIT_CONSTRUCT_FUNCTION(linkedList, list){
-    ERROR_CODE error;
-
     *list = malloc(sizeof(LinkedList));
-
-    error = linkedList_init(*list);
         
-    return ERROR(error);
+    if(*list == NULL){
+        return ERROR(ERROR_OUT_OF_MEMORY);
+    }
+
+    return ERROR(linkedList_init(*list));
 }
 
 TEST_TEST_SUIT_DESTRUCT_FUNCTION(linkedList, list){
@@ -385,8 +385,6 @@ TEST_TEST_FUNCTION_(linkedList_remove, LinkedList, list){
 
     if(list->length != 2){
         ret = false;
-
-        printf("Size:%" PRIdFAST64 ".\n", list->length);
     }
 
     return ret;
@@ -1230,7 +1228,7 @@ label_error:
 }
 
 TEST_TEST_SUIT_DESTRUCT_FUNCTION(mediaLibrary, library){
-    ERROR_CODE error = ERROR_NO_ERROR;
+    ERROR_CODE error;
 
     mediaLibrary_free(library);
 
