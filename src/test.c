@@ -29,7 +29,7 @@ typedef ERROR_CODE test_TestSuitDestructFunction(void*);
 #define TEST_TEST_FUNCTION_(functionName, type, varName) bool test_ ## functionName (type* varName)
 typedef TEST_TEST_FUNCTION(testFunction);
 
-#define TEST_END() return test_testEnd();
+#define TEST_END() return test_testEnd()
 
 #define TEST_BEGIN() test_testBegin()
 
@@ -139,7 +139,7 @@ TestSuit* test_testSuitBegin(const char* name){
     
     testSuit.name = malloc(sizeof(char*) * (strlen(name) + 1));
     if(testSuit.name == NULL){
-        UTIL_LOG_ERROR(util_toErrorString(ERROR_OUT_OF_MEMORY));
+        UTIL_LOG_CONSOLE(LOG_ERR, util_toErrorString(ERROR_OUT_OF_MEMORY));
     }
 
     strcpy(testSuit.name, name);
@@ -308,13 +308,13 @@ label_free:
 
 // linkedList.c
 TEST_TEST_SUIT_CONSTRUCT_FUNCTION(linkedList, list){
-    ERROR_CODE error;
-
     *list = malloc(sizeof(LinkedList));
-
-    error = linkedList_init(*list);
         
-    return ERROR(error);
+    if(*list == NULL){
+        return ERROR(ERROR_OUT_OF_MEMORY);
+    }
+
+    return ERROR(linkedList_init(*list));
 }
 
 TEST_TEST_SUIT_DESTRUCT_FUNCTION(linkedList, list){
@@ -385,8 +385,6 @@ TEST_TEST_FUNCTION_(linkedList_remove, LinkedList, list){
 
     if(list->length != 2){
         ret = false;
-
-        printf("Size:%" PRIdFAST64 ".\n", list->length);
     }
 
     return ret;
@@ -1023,6 +1021,66 @@ TEST_TEST_FUNCTION(cache_load){
 }
 
 // propertyFile.c
+TEST_TEST_SUIT_CONSTRUCT_FUNCTION(propertyFile, propertyFile){
+    ERROR_CODE error = ERROR_NO_ERROR;
+
+    char currentDir[PATH_MAX];
+    util_getCurrentWorkingDirectory(currentDir, PATH_MAX);
+
+    const uint_fast64_t currentDirLength = strlen(currentDir);
+    const uint_fast64_t propertyFilePathLength = currentDirLength + 31/*"/tmp/propertyFile_add_test_file"*/;
+
+    char* propertyFilePath = alloca(sizeof(*propertyFilePath) * (propertyFilePathLength + 1));
+    strncpy(propertyFilePath, currentDir, currentDirLength);
+    strncpy(propertyFilePath + currentDirLength, "/tmp/propertyFile_add_test_file", 32);
+
+    if(util_fileExists(propertyFilePath)){
+        if((error = util_deleteFile(propertyFilePath)) != ERROR_NO_ERROR){
+            goto label_return;
+        }
+    }
+
+    if((error = propertyFile_create(propertyFilePath, propertyFilePathLength)) != ERROR_NO_ERROR){
+        goto label_return;
+    }
+
+    *propertyFile = malloc(sizeof(PropertyFile));
+
+    if(*propertyFile == NULL){
+        error = ERROR_OUT_OF_MEMORY;
+
+        goto label_return;
+    }
+
+    if((error = propertyFile_init(*propertyFile, propertyFilePath)) != ERROR_NO_ERROR){
+        goto label_return;
+    }
+
+label_return:
+    return ERROR(error);
+}
+
+TEST_TEST_SUIT_DESTRUCT_FUNCTION(propertyFile, propertyFile){
+    char currentDir[PATH_MAX];
+    util_getCurrentWorkingDirectory(currentDir, PATH_MAX);
+
+    const uint_fast64_t currentDirLength = strlen(currentDir);
+    const uint_fast64_t propertyFilePathLength = currentDirLength + 31/*"/tmp/propertyFile_add_test_file"*/;
+
+    char* propertyFilePath = alloca(sizeof(*propertyFilePath) * (propertyFilePathLength + 1));
+    strncpy(propertyFilePath, currentDir, currentDirLength);
+    strncpy(propertyFilePath + currentDirLength, "/tmp/propertyFile_add_test_file", 32);
+
+    propertyFile_free(propertyFile);
+
+    ERROR_CODE error;
+    error = util_deleteFile(propertyFilePath);
+
+    free(propertyFile);
+
+    return ERROR(error);
+}
+
 TEST_TEST_FUNCTION(propertyFile_create){
     char currentDir[PATH_MAX];
     util_getCurrentWorkingDirectory(currentDir, PATH_MAX);
@@ -1053,40 +1111,13 @@ TEST_TEST_FUNCTION(propertyFile_create){
     return true;
 }
 
-TEST_TEST_FUNCTION(propertyFile_add){
-    char currentDir[PATH_MAX];
-    util_getCurrentWorkingDirectory(currentDir, PATH_MAX);
-
-    const uint_fast64_t currentDirLength = strlen(currentDir);
-    const uint_fast64_t propertyFilePathLength = currentDirLength + 31/*"/tmp/propertyFile_add_test_file"*/;
-
-    char* propertyFilePath = alloca(sizeof(*propertyFilePath) * (propertyFilePathLength + 1));
-    strncpy(propertyFilePath, currentDir, currentDirLength);
-    strncpy(propertyFilePath + currentDirLength, "/tmp/propertyFile_add_test_file", 32);
-
-    if(util_fileExists(propertyFilePath)){
-        if(!util_deleteFile(propertyFilePath)){
-            UTIL_LOG_ERROR_("Failed to delete old file '%s'.\n", propertyFilePath);       
-
-            return false;
-        }
-    }
-
-    if(propertyFile_create(propertyFilePath, propertyFilePathLength) != ERROR_NO_ERROR){
-        UTIL_LOG_ERROR_("Failed to create property file '%s'.\n", propertyFilePath);                
-
-        return false;
-    }
-
-    PropertyFile propertyFile;
-    propertyFile_init(&propertyFile, propertyFilePath);
-
+TEST_TEST_FUNCTION_(propertyFile_add, PropertyFile, propertyFile){
     bool ret = true;
     Property* testProperty;
-    if(propertyFile_addProperty(&propertyFile, &testProperty, "testProperty", sizeof(uint64_t)) != ERROR_NO_ERROR){
+    if(propertyFile_addProperty(propertyFile, &testProperty, "testProperty", sizeof(uint64_t)) != ERROR_NO_ERROR){
         ret =  false;
 
-        goto label_free;
+        goto label_return;
     }
 
     int8_t* buffer = alloca(sizeof(uint16_t));
@@ -1098,7 +1129,7 @@ TEST_TEST_FUNCTION(propertyFile_add){
     free(testProperty);
 
     Property* retrievedProperty;
-    if(propertyFile_getProperty(&propertyFile, &retrievedProperty, "testProperty") != ERROR_NO_ERROR){
+    if(propertyFile_getProperty(propertyFile, &retrievedProperty, "testProperty") != ERROR_NO_ERROR){
         UTIL_LOG_ERROR("Failed to retrieve property: 'testProperty'.");
 
         ret =  false;
@@ -1107,44 +1138,13 @@ TEST_TEST_FUNCTION(propertyFile_add){
         free(retrievedProperty);
     }
 
-label_free:
-    propertyFile_free(&propertyFile);
-
-    util_deleteFile(propertyFilePath);
-
+label_return:
     return ret;
 }    
 
-TEST_TEST_FUNCTION(propertyFile_remove){
-    char currentDir[PATH_MAX];
-    util_getCurrentWorkingDirectory(currentDir, PATH_MAX);
-
-    const uint_fast64_t currentDirLength = strlen(currentDir);
-    const uint_fast64_t propertyFilePathLength = currentDirLength + 34/*"/tmp/propertyFile_remove_test_file"*/;
-
-    char* propertyFilePath = alloca(sizeof(*propertyFilePath) * (propertyFilePathLength + 1));
-    strncpy(propertyFilePath, currentDir, currentDirLength);
-    strncpy(propertyFilePath + currentDirLength, "/tmp/propertyFile_remove_test_file", 35);
-
-    if(util_fileExists(propertyFilePath)){
-        if(!util_deleteFile(propertyFilePath)){
-            UTIL_LOG_ERROR_("Failed to delete old file '%s'.\n", propertyFilePath);       
-
-            return false;
-        }
-    }
-
-    if(propertyFile_create(propertyFilePath, propertyFilePathLength) != ERROR_NO_ERROR){
-        UTIL_LOG_ERROR_("Failed to create property file '%s'.\n", propertyFilePath);                
-
-        return false;
-    }
-
-    PropertyFile propertyFile;
-    propertyFile_init(&propertyFile, propertyFilePath);
-
+TEST_TEST_FUNCTION_(propertyFile_remove, PropertyFile, propertyFile){
     Property* testProperty;
-    propertyFile_addProperty(&propertyFile, &testProperty, "testProperty", sizeof(uint64_t));
+    propertyFile_addProperty(propertyFile, &testProperty, "testProperty", sizeof(uint64_t));
 
     int8_t* buffer = alloca(sizeof(uint16_t));
     util_uint64ToByteArray(buffer, 222333444555);
@@ -1161,7 +1161,7 @@ TEST_TEST_FUNCTION(propertyFile_remove){
 
     Property* retrievedProperty;
     __UTIL_SUPPRESS_NEXT_ERROR_OF_TYPE__(ERROR_ENTRY_NOT_FOUND);
-    if(propertyFile_getProperty(&propertyFile, &retrievedProperty, "testProperty") != ERROR_ENTRY_NOT_FOUND){
+    if(propertyFile_getProperty(propertyFile, &retrievedProperty, "testProperty") != ERROR_ENTRY_NOT_FOUND){
         UTIL_LOG_ERROR("Failed to remove property: 'testProperty'.");
 
         propertyFile_freeProperty(retrievedProperty);
@@ -1169,10 +1169,6 @@ TEST_TEST_FUNCTION(propertyFile_remove){
 
         ret =  false;
     }
-
-    propertyFile_free(&propertyFile);
-
-    util_deleteFile(propertyFilePath);
 
     return ret;
 }    
@@ -1232,7 +1228,7 @@ label_error:
 }
 
 TEST_TEST_SUIT_DESTRUCT_FUNCTION(mediaLibrary, library){
-    ERROR_CODE error = ERROR_NO_ERROR;
+    ERROR_CODE error;
 
     mediaLibrary_free(library);
 
@@ -1759,8 +1755,8 @@ int main(void){
         TEST(cache_load);
     TEST_SUIT_END();
     
-    TEST_SUIT_BEGIN("propertyFile");
-        TEST(propertyFile_create);
+    TEST_SUIT_BEGIN_(propertyFile);
+        __TEST_NO_SETUP__(); TEST(propertyFile_create);
         TEST(propertyFile_add);
         TEST(propertyFile_remove);
     TEST_SUIT_END();   
