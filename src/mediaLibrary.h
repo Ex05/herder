@@ -73,6 +73,8 @@ ERROR_CODE mediaLibrary_initEpisodeInfo(EpisodeInfo*);
 
 ERROR_CODE mediaLibrary_extractPrefixedNumber(char*, uint_fast64_t, int_fast16_t*, const char);
 
+ERROR_CODE medialibrary_removeShowFrromLibraryFile(MediaLibrary*, const char*);
+
 void mediaLibrary_freeEpisodeInfo(EpisodeInfo*);
 
 #endif
@@ -81,7 +83,8 @@ void mediaLibrary_freeEpisodeInfo(EpisodeInfo*);
 Show_Name,
 Season_Number,
 Episode_Number,
-Episode_Name
+Episode_Name,
+File_Extension
 */
 
 /*

@@ -231,7 +231,7 @@ local SERVER_CONTEXT_HANDLER(server_pageAdd){
 
     Episode* episode;
     if(mediaLibrary_getEpisode(season, &episode, episodeNumber) == ERROR_NO_ERROR){
-        error = strncmp(episode->name,  episodeName, episode->nameLength + 1) ? ERROR_NAME_MISSMATCH : ERROR_DUPLICATE_ENTRY;
+         error = strncmp(episode->name,  episodeName, episode->nameLength + 1) ? ERROR_NAME_MISSMATCH : ERROR_DUPLICATE_ENTRY;
             goto label_return;
     }
 
