@@ -777,18 +777,38 @@ ERROR_CODE medialibrary_removeShowFrromLibraryFile(MediaLibrary* library, const 
         bool fillZero;
         if((fillZero = strncmp(show, showName, showLength) == 0)){
             // Refill showName.
-            fseek(file, showNameOffset, SEEK_SET);
+            if(fseek(file, showNameOffset, SEEK_SET) != 0){
+                error = ERROR_DISK_ERROR;
 
-            fwrite(writeBuffer, 1, showNameLength + 1, file);
+                goto label_return;
+            }
+
+            if(fwrite(writeBuffer, 1, showNameLength + 1, file) != 0){
+                error = ERROR_WRITE_ERROR;
+
+                goto label_return;
+            }
 
             // Season_Number.
-            fwrite(writeBuffer, 1, sizeof(uint16_t), file);
+            if(fwrite(writeBuffer, 1, sizeof(uint16_t), file) != 0){
+                error = ERROR_WRITE_ERROR;
+
+                goto label_return;
+            }
 
             // Episode_Number.
-            fwrite(writeBuffer, 1, sizeof(uint16_t), file);
+            if(fwrite(writeBuffer, 1, sizeof(uint16_t), file) != 0){
+                error = ERROR_WRITE_ERROR;
+
+                goto label_return;
+            }
         }else{
             // Skip Season_Number & Episode_Number.
-            fseek(file, sizeof(uint16_t) * 2, SEEK_CUR);
+            if(fseek(file, sizeof(uint16_t) * 2, SEEK_CUR) != 0){
+                error = ERROR_DISK_ERROR;
+
+                goto label_return;
+            }
         }
 
         // Episode_Name.
@@ -807,9 +827,17 @@ ERROR_CODE medialibrary_removeShowFrromLibraryFile(MediaLibrary* library, const 
         uint_fast64_t episodeNameLength = util_byteArrayTo_uint64(readBuffer);
 
         if(fillZero){
-            fwrite(writeBuffer, 1, episodeNameLength + 1, file);
+            if(fwrite(writeBuffer, 1, episodeNameLength + 1, file) != 0){
+                error = ERROR_WRITE_ERROR;
+
+                goto label_return;
+            }
         }else{
-            fseek(file, episodeNameLength + 1, SEEK_CUR);
+            if(fseek(file, episodeNameLength + 1, SEEK_CUR) != 0){
+                error = ERROR_DISK_ERROR;
+
+                goto label_return;
+            }
         }        
 
         // File_Extension.
@@ -828,9 +856,17 @@ ERROR_CODE medialibrary_removeShowFrromLibraryFile(MediaLibrary* library, const 
         uint_fast64_t fileExtensionLength = util_byteArrayTo_uint16(readBuffer);
 
          if(fillZero){
-            fwrite(writeBuffer, 1, fileExtensionLength + 1, file);
+            if(fwrite(writeBuffer, 1, fileExtensionLength + 1, file) != 0){
+                error = ERROR_WRITE_ERROR;
+
+                goto label_return;
+            }
         }else{
-            fseek(file, fileExtensionLength + 1, SEEK_CUR);
+            if(fseek(file, fileExtensionLength + 1, SEEK_CUR) != 0){
+                error = ERROR_DISK_ERROR;
+
+                goto label_return;
+            }
         }
 
     label_return:
