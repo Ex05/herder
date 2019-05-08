@@ -566,67 +566,7 @@ label_continue:
 inline bool mediaLibrary_isCharcterWordDelimiter(char c){
      return c == '.' || c == ' ' || c == '_';
 }
-
-ERROR_CODE mediaLibrary_import(MediaLibrary* library, const char* importDirectory){
-    UTIL_LOG_CONSOLE(LOG_CRIT, "Function not implemented!~!");
-
-    // const char* importDir = importDirectory != NULL ? importDirectory : (char*) library->importDirectory->buffer;
-
-    // UTIL_LOG_CONSOLE_(LOG_INFO, "Import directory: '%s'.", importDir);
-
-    // ArrayList importList;
-    // arrayList_init(&importList, mediaLibrary_expandImportList);
-
-    // medialibrary_walkDirectory(&importList, importDir);
-    
-    // ArrayListIterator it;
-    // arrayList_initIterator(&it, &importList);
-
-    // while(ARRAY_LIST_ITERATOR_HAS_NEXT(&it)){
-    //     DirectoryEntry* directoryEntry = ARRAY_LIST_ITERATOR_NEXT(&it);
-
-    //     char* file = directoryEntry->path;
-
-    //     const uint_fast64_t filePathLength = directoryEntry->pathLength;
-
-    //     EpisodeInfo info = {0, 0, -1, -1};
-    //     mediaLibrary_extractEpisodeInfo(&info, library, directoryEntry->fileName, filePathLength);
-
-    //     UTIL_LOG_CONSOLE_(LOG_INFO, "Show:%s\nSeason:%" PRIuFAST16 "\nEpisode:%" PRIuFAST16 "\nEpisode name:%s", info.showName == NULL ? "'NULL''" : info.showName, info.season, info.episode, info.name == NULL ? "'NULL'" : info.name);
-
-    //     mediaLibrary_fillEpisodeInfo(&info); 
-
-    //     Show* show = mediaLibrary_addShow(library, info.showName, strlen(info.showName));
-
-    //     Season* season = mediaLibrary_addSeason(library, show, info.season);
-
-    //     Episode* episode = mediaLibrary_addEpisode(library, show, season, file, filePathLength, info.episode, info.name , strlen(info.name), true);
-
-    //     const uint_fast64_t seasonNumberLength = snprintf(NULL, 0, "%02" PRIuFAST16 "", season->number);
-    //     const uint_fast64_t episodeNumberLength = snprintf(NULL, 0, "%02" PRIuFAST16 "", episode->number);
-
-    //     episode->pathLength = season->pathLength + show->nameLength + episode->nameLength + directoryEntry->fileExtensionLength + seasonNumberLength + episodeNumberLength + 2 /*2x '_'*/+ 2/*'s', 'e'*/;
-    //     episode->path = malloc(*episode->path * (episode->pathLength + 1/*'\0'*/));
-
-    //     snprintf(episode->path, episode->pathLength + 1, "%s%s_s%02" PRIuFAST16 "e%02" PRIuFAST16 "_%s%s", season->path, show->name, season->number, episode->number, episode->name, directoryEntry->fileExtension);
-
-    //     if(util_fileCopy(file, episode->path)){
-    //         if(!util_deleteFile(file)){
-    //             UTIL_LOG_ERR_("Failed to delete file '%s'.\n", file);
-    //         }
-    //     }
-
-    //     free(directoryEntry->path);
-    //     free(directoryEntry->fileName);
-    //     free(directoryEntry);
-
-    //     mediaLibrary_freeEpisodeInfo(&info);
-    // }
-
-    // arrayList_free(&importList);   
-
-    return ERROR(ERROR_NO_ERROR);
-}   
+ 
 
 inline ERROR_CODE mediaLibrary_addShow(MediaLibrary* library, Show** show, const char* name, const uint_fast64_t nameLength){
     *show = NULL;
