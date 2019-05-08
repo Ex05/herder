@@ -46,6 +46,9 @@ typedef TEST_TEST_FUNCTION(testFunction);
     testSuit->noSetup = TEST_NO_SETUP_FLAG; \
 }while(0)
 
+#define TEST_NO_SETUP(name) __TEST_NO_SETUP__(); \
+    TEST(name)
+
 static ArrayList testSuits;
 
 typedef struct testSuit{
@@ -1765,9 +1768,9 @@ int main(void){
         TEST(mediaLibrary_getShow);
         TEST(mediaLibrary_getSeason);
         TEST(mediaLibrary_addEpisode);
-        __TEST_NO_SETUP__(); TEST(mediaLibrary_extractShowName);
-        __TEST_NO_SETUP__(); TEST(mediaLibrary_extractPrefixedNumber);
-        __TEST_NO_SETUP__(); TEST(mediaLibrary_extractEpisodeInfo);
+        TEST_NO_SETUP(mediaLibrary_extractShowName);
+        TEST_NO_SETUP(mediaLibrary_extractPrefixedNumber);
+        TEST_NO_SETUP(mediaLibrary_extractEpisodeInfo);
     TEST_SUIT_END();
 
     TEST_SUIT_BEGIN("herder");
