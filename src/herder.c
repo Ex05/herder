@@ -294,6 +294,8 @@ local ERROR_CODE herder_import(Property*, Property*, Property*, const char*);
 
         if((error = herder_argumentRemoveShow(&argumentRemoveShow, &properties, remoteHost, remotePort)) == ERROR_NO_ERROR){
             UTIL_LOG_CONSOLE_(LOG_INFO, "Removed '%s' from the library.", argumentRemoveShow.value);
+        }else{
+            UTIL_LOG_CONSOLE_(LOG_INFO, "Failed to remove '%s' from the library. [%s]", argumentRemoveShow.value, util_toErrorString(error));
         }
 
         goto label_freeProperties;
@@ -660,14 +662,8 @@ ERROR_CODE herder_removeShow(Property* remoteHost, Property* remotePort, char* s
     }else{
         if(response.dataLength != sizeof(uint64_t)){
             error = ERROR_INVALID_CONTENT_LENGTH;
-        }else{
-            if(returnCode != ERROR_NO_ERROR){
-                if(returnCode == ERROR_DUPLICATE_ENTRY){
-                    error = ERROR_DUPLICATE_ENTRY;
-                }else{
-                    error = ERROR_INVALID_RETURN_CODE;
-                }
-            }
+        }else{            
+            error = returnCode;
         }
     }
     
@@ -1469,7 +1465,6 @@ inline ERROR_CODE herder_argumentRemoveShow(Argument* argumentRemoveShow, Proper
         }
     }
 }
-
 
 ERROR_CODE herder_import(Property* remoteHost, Property* remotePort, Property* libraryDirectory, const char* directory){
     ERROR_CODE error;

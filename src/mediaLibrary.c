@@ -683,9 +683,8 @@ inline ERROR_CODE mediaLibrary_removeShow(MediaLibrary* library, const char* nam
 
     ERROR_CODE error;
     __UTIL_SUPPRESS_NEXT_ERROR_OF_TYPE__(ERROR_ENTRY_NOT_FOUND);
-    if((error = mediaLibrary_containsShow(&library->shows, &show, noneWhiteSpaceName, noneWhiteSpaceNameLength)) == ERROR_ENTRY_NOT_FOUND){
-        // NOTE: One could make a strong argument here to return "ERROR_ENTRY_NOT_FOUND' but the current eco-system does not support nested suppresion of error. But because the caller can not distinguish from the outside, we are for now just gona pretend everything is 'OK' and return 'ERROR_NO_ERROR'. (jan - 2019.09.04)*/
-        return ERROR(ERROR_NO_ERROR);
+    if((error = mediaLibrary_containsShow(&library->shows, &show, noneWhiteSpaceName, noneWhiteSpaceNameLength)) == ERROR_ENTRY_NOT_FOUND){        
+        return ERROR(error);
     }
 
     linkedList_remove(&library->shows, show);

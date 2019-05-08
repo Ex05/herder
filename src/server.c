@@ -305,12 +305,8 @@ local SERVER_CONTEXT_HANDLER(server_pageRemoveShow){
     ERROR_CODE error;
     error = mediaLibrary_removeShow(&server->library, showName, showNameLength);
     
-    if(error == ERROR_NO_ERROR || error == ERROR_ENTRY_NOT_FOUND){
-        util_uint64ToByteArray(response->data + response->dataLength, error);
-        response->dataLength += sizeof(uint64_t);
-    }else{
-        return ERROR(error);
-    }
+    util_uint64ToByteArray(response->data + response->dataLength, error);
+    response->dataLength += sizeof(uint64_t);
 
     http_setHTTP_Version(response, HTTP_VERSION_1_1);
     response->statusCode = _200_OK;
