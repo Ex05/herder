@@ -1032,8 +1032,6 @@ inline ERROR_CODE mediaLibrary_readShowNameLength(FILE* file, uint_fast64_t* sho
     }
 
     return ERROR(ERROR_NO_ERROR);
-
-    return ERROR(ERROR_NO_ERROR);
 }
 
 inline ERROR_CODE mediaLibrary_readShowName(FILE* file, char** showName, uint_fast64_t showNameLength){
