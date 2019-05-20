@@ -655,7 +655,6 @@ ERROR_CODE medialibrary_removeShowFrromLibraryFile(MediaLibrary* library, const 
         goto label_return;
     }
 
-    int_fast8_t readBuffer[sizeof(uint64_t)];
     const int_fast8_t writeBuffer[1] = {0};
     for(;;){
         // Show_Name.
