@@ -221,7 +221,7 @@ local ERROR_CODE herder_import(Property*, Property*, Property*, const char*);
        noValidArgument = false;
 
         if((error = herder_argumentImport(&argumentImport, &properties, remoteHost, remotePort, libraryDirectory, importDirectory)) == ERROR_NO_ERROR){
-            // TODO: Add handling of error or success case. (Jan - 2018.12.18)
+            // TODO: Add handling of error or success case. (jan - 2018.12.18)
         }
 
         goto label_freeProperties;
@@ -231,7 +231,7 @@ local ERROR_CODE herder_import(Property*, Property*, Property*, const char*);
         noValidArgument = false;
    
         if((error = herder_argumentKillDaemon(&argumentKillDeamon, &properties)) == ERROR_NO_ERROR){
-            // TODO: Add handling of error or success case. (Jan - 2018.12.18)
+            // TODO: Add handling of error or success case. (jan - 2018.12.18)
         }
 
         goto label_freeProperties;
@@ -900,7 +900,7 @@ ERROR_CODE herder_addEpisode(Property* remoteHost, Property* remotePort, Propert
         goto label_freeRequest;
     }
 
-    // TODO: Inform server that something went wrong and stuff should be removed from the library in case of failed file copy. (Jan - 2018.11.28)
+    // TODO: Inform server that something went wrong and stuff should be removed from the library in case of failed file copy. (jan - 2018.11.28)
 
 label_freeRequest:
     http_freeHTTP_Request(&request);
@@ -1026,7 +1026,7 @@ label_extractShowInfo:
         UTIL_LOG_CONSOLE_(LOG_ERR, "Server_status:'%s'.", http_getStatusMsg(response.statusCode));
     }
 
-    // TODO: Extract this to its own function . (Jan - 2018.12.07)
+    // TODO: Extract this to its own function . (jan - 2018.12.07)
     if((*episodeInfo)->showName == NULL){
         UTIL_LOG_CONSOLE_(LOG_INFO, "Failed to extract show name from file: '%s'.", fileName);
 
@@ -1215,7 +1215,7 @@ label_unMap:
 }
 
 inline ERROR_CODE herder_argumentSetImportDirectory(Argument* argumentSetImportDirectory, PropertyFile* propertyFile, Property** importDirectory){
-    // Note: Make sure 'slashTerminated' is clamped to '0 - 1' so we can use it later to add/subtract depending on wether the string was slash termianted or not. (Jan - 2018.10.20)
+    // Note: Make sure 'slashTerminated' is clamped to '0 - 1' so we can use it later to add/subtract depending on wether the string was slash termianted or not. (jan - 2018.10.20)
     const bool slashTerminated = (argumentSetImportDirectory->value[argumentSetImportDirectory->valueLength - 1] == '/') & 0x01;
 
     const uint_fast64_t importDirectoryLength = argumentSetImportDirectory->valueLength + !slashTerminated;
@@ -1333,7 +1333,7 @@ inline ERROR_CODE herder_argumentSetRemoteHostPort(Argument* argumentSetRemoteHo
 }
 
 inline ERROR_CODE herder_argumentSetLibraryDirectory(Argument* argumentSetLibraryDirectory, PropertyFile* propertyFile, Property** libraryDirectory){
-    // Note: Make sure 'slashTerminated' is clamped to '0 - 1' so we can use it later to add/subtract depending on wether the string was slash termianted or not. (Jan - 2018.10.20)
+    // Note: Make sure 'slashTerminated' is clamped to '0 - 1' so we can use it later to add/subtract depending on wether the string was slash termianted or not. (jan - 2018.10.20)
     const bool slashTerminated = (argumentSetLibraryDirectory->value[argumentSetLibraryDirectory->valueLength - 1] == '/') & 0x01;
 
     const uint_fast64_t libraryDirectoryLength = argumentSetLibraryDirectory->valueLength + !slashTerminated;

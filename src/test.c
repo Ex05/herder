@@ -4,6 +4,7 @@
 // For mmap flags that are not in the POSIX-Standard.
 #define _GNU_SOURCE
 
+#include "mediaLibrary.c"
 #include "util.c"
 #include "arrayList.c"
 #include "linkedList.c"
@@ -13,7 +14,6 @@
 #include "threadPool.c"
 #include "cache.c"
 #include "propertyFile.c"
-#include "mediaLibrary.c"
 #include "server.c"
 #include "herder.c"
 
