@@ -51,8 +51,6 @@ ERROR_CODE mediaLibrary_init(MediaLibrary*, const char*, const uint_fast64_t);
 
 void mediaLibrary_free(MediaLibrary*);
 
-ERROR_CODE mediaLibrary_import(MediaLibrary*, const char*);
-
 ERROR_CODE mediaLibrary_addShow(MediaLibrary*, Show**, const char*, const uint_fast64_t);
 
 ERROR_CODE mediaLibrary_removeShow(MediaLibrary*, const char*, const uint_fast64_t);

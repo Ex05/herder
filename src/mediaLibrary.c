@@ -8,6 +8,18 @@
 
 #define LIBRARY_FILE_NAME "lib_data"
 
+// TODO: Decide if we want to use the '({ })' gcc extension here to be able to return an error code from here. (jan - 2019.05.17)
+#define MEDIA_LIBRARY_READ_FROM_LIBRARY_FILE(error, file, name, type) do { \
+    int8_t readBuffer[sizeof(type)]; \
+    if(fread(readBuffer, sizeof(type), 1, file) != 1){ \
+        error = ERROR_READ_ERROR; \
+    }else{ \
+        *name = util_byteArrayTo_ ## type(readBuffer); \
+        \
+        error = ERROR_NO_ERROR; \
+    } \
+}while(0)
+
 local const Version MEDIA_LIBRARY_FILE_VERSION = {0, 1, 0};
 
 local ERROR_CODE mediaLibrary_extractShowName(EpisodeInfo*, LinkedList*, char*, const uint_fast64_t);
@@ -33,6 +45,26 @@ local void mediaLibrary_freeShow(Show*);
 local void mediaLibrary_freeSeason(Season*);
 
 local void mediaLibrary_freeEpisode(Episode*);
+
+local ERROR_CODE mediaLibrary_readStringFromLibraryFile(FILE*, char**, uint_fast64_t);
+
+local ERROR_CODE mediaLibrary_readShowNameLength(FILE*, uint_fast64_t*);
+
+local ERROR_CODE mediaLibrary_readShowName(FILE*, char**, uint_fast64_t);
+
+local ERROR_CODE mediaLibrary_readSeasonNumber(FILE*, uint_fast16_t*);
+
+local ERROR_CODE mediaLibrary_readEpisodeNumber(FILE*, uint_fast16_t*);
+
+local ERROR_CODE mediaLibrary_readEpisodeNumber(FILE*, uint_fast16_t*);
+
+local ERROR_CODE mediaLibrary_readEpisodeNameLength(FILE*, uint_fast64_t*);
+
+local ERROR_CODE mediaLibrary_readEpisodeName(FILE*, char**, uint_fast64_t);
+
+local ERROR_CODE mediaLibrary_readFileExtensionLength(FILE*, uint_fast16_t*);
+
+local ERROR_CODE mediaLibrary_readFileExtension(FILE*, char**, uint_fast64_t);
 
 // TODO:(jan) Clean up this mess.
 ERROR_CODE mediaLibrary_init(MediaLibrary* library, const char* libraryLocation, const uint_fast64_t libraryLocationLength){
@@ -84,7 +116,7 @@ ERROR_CODE mediaLibrary_init(MediaLibrary* library, const char* libraryLocation,
             MEDIA_LIBRARY_FILE_VERSION.hotfix
             };
 
-        if(fwrite(buffer, 1, sizeof(MEDIA_LIBRARY_FILE_VERSION), file) != sizeof(Version)){
+        if(fwrite(buffer, sizeof(MEDIA_LIBRARY_FILE_VERSION), 1, file) != 1){
             UTIL_LOG_ERROR("Failed to write media library file version.");
 
             return ERROR(ERROR_WRITE_ERROR);
@@ -102,7 +134,7 @@ ERROR_CODE mediaLibrary_init(MediaLibrary* library, const char* libraryLocation,
 
         library->libraryFile = file;
 
-        if(fread(&library->version, 1, sizeof(library->version), file) != sizeof(library->version)){
+        if(fread(&library->version, sizeof(library->version), 1, file) != 1){
             UTIL_LOG_ERROR("Failed to read media library file version.");
 
             return ERROR(ERROR_READ_ERROR);
@@ -114,33 +146,23 @@ ERROR_CODE mediaLibrary_init(MediaLibrary* library, const char* libraryLocation,
             return ERROR(ERROR_VERSION_MISSMATCH);
         }
 
-        int_fast8_t readBuffer[sizeof(uint64_t)];
         for(;;){
-            // Show_Name.    
-            if(fread(readBuffer, 1, sizeof(uint64_t), file) != sizeof(uint64_t)){
-                  if(feof(file) != 0){
+            // Show_Name.
+            uint_fast64_t showNameLength;
+            __UTIL_SUPPRESS_NEXT_ERROR_OF_TYPE__(ERROR_END_OF_FILE);
+            if((error = mediaLibrary_readShowNameLength(file, &showNameLength)) != ERROR_NO_ERROR){
+                if(error == ERROR_END_OF_FILE){
                     break;
-                }else{
-                    UTIL_LOG_ERROR("Failed to read show nameLength.");
-
-                    return ERROR(ERROR_READ_ERROR);
                 }
+
+                goto label_return;
             }
 
-            const uint_fast64_t showNameLength = util_byteArrayTo_uint64(readBuffer);
-            
-            // TODO: Find out if there is a esay way to move the stack pointer back to free 'showName' at the end of the loop to not fill up the stack. (jan - 2019.05.05)
-            char* showName = alloca(sizeof(*showName) * (showNameLength + 1));
-            if(fread(showName, 1, showNameLength + 1, file) != showNameLength + 1){
-                if(feof(file) != 0){
-                    break;
-                }else{
-                    UTIL_LOG_ERROR("Failed to read show name.");
+            char* showName; 
+            showName = alloca(sizeof(*showName) * (showNameLength + 1));
 
-                    error = ERROR_READ_ERROR;
-
-                    goto label_return;
-                }
+            if((error = mediaLibrary_readShowName(file, &showName, showNameLength)) != ERROR_NO_ERROR){
+                goto label_return;
             }
 
             const bool entryWasRemoved = showNameLength != 0 && *showName == '\0';
@@ -153,19 +175,10 @@ ERROR_CODE mediaLibrary_init(MediaLibrary* library, const char* libraryLocation,
             }
 
             // Season_Number.
-            if(fread(readBuffer, 1, sizeof(uint16_t), file) != sizeof(uint16_t)){
-                if(feof(file) != 0){
-                    break;
-                }else{
-                    UTIL_LOG_ERROR("Failed to read season number.");
-
-                    error = ERROR_READ_ERROR;
-
-                    goto label_return;
-                }
+            uint_fast16_t seasonNumber;
+            if((error = mediaLibrary_readSeasonNumber(file, &seasonNumber)) != ERROR_NO_ERROR){
+                goto label_return;
             }
-
-            const uint_fast16_t seasonNumber = util_byteArrayTo_uint16(readBuffer);
 
             Season* season;
             if(!entryWasRemoved && (error = medialibrary_getSeason(show, &season, seasonNumber)) != ERROR_NO_ERROR){
@@ -179,74 +192,35 @@ ERROR_CODE mediaLibrary_init(MediaLibrary* library, const char* libraryLocation,
             }
 
             // Episode_Number.
-            if(fread(readBuffer, 1, sizeof(uint16_t), file) != sizeof(uint16_t)){
-                if(feof(file) != 0){
-                    break;
-                }else{
-                    UTIL_LOG_ERROR("Failed to read episode number.");
-
-                    error = ERROR_READ_ERROR;
-
-                    goto label_return;
-                }
+            uint_fast16_t episodeNumber;
+            if((error = mediaLibrary_readEpisodeNumber(file, &episodeNumber)) != ERROR_NO_ERROR){
+                goto label_return;
             }
-
-            const uint_fast16_t episodeNumber = util_byteArrayTo_uint16(readBuffer);
 
             // Episode_Name.
-            if(fread(readBuffer, 1, sizeof(uint64_t), file) != sizeof(uint64_t)){
-                if(feof(file) != 0){
-                    break;
-                }else{
-                    UTIL_LOG_ERROR("Failed to read episode nameLength.");
-
-                    error = ERROR_READ_ERROR;
-
-                    goto label_return;
-                }
+            uint_fast64_t episodeNameLength;
+            if((error = mediaLibrary_readEpisodeNameLength(file, &episodeNameLength)) != ERROR_NO_ERROR){
+                goto label_return;
             }
 
-            uint_fast64_t episodeNameLength = util_byteArrayTo_uint64(readBuffer);
+            char* episodeName; 
+            episodeName = alloca(sizeof(*episodeName) * (episodeNameLength + 1));
 
-            char* episodeName = alloca(sizeof(*episodeName) * (episodeNameLength + 1));
-            if(fread(episodeName, 1, episodeNameLength + 1, file) != episodeNameLength + 1){
-                if(feof(file) != 0){
-                    break;
-                }else{
-                    UTIL_LOG_ERROR("Failed to read epsiode name.");
-
-                    error = ERROR_READ_ERROR;
-
-                    goto label_return;
-                }
+            if((error = mediaLibrary_readEpisodeName(file, &episodeName, episodeNameLength)) != ERROR_NO_ERROR){
+                goto label_return;
             }
 
             // File_Extension.
-             if(fread(readBuffer, 1, sizeof(uint16_t), file) != sizeof(uint16_t)){
-                if(feof(file) != 0){
-                    break;
-                }else{
-                    UTIL_LOG_ERROR("Failed to read file extension length.");
-
-                    error = ERROR_READ_ERROR;
-
-                    goto label_return;
-                }
+            uint_fast16_t fileExtensionLength;
+            if((error = mediaLibrary_readFileExtensionLength(file, &fileExtensionLength)) != ERROR_NO_ERROR){
+                goto label_return;
             }
 
-            uint_fast64_t fileExtensionLength = util_byteArrayTo_uint16(readBuffer);
+            char* fileExtension; 
+            fileExtension = alloca(sizeof(*fileExtension) * (fileExtensionLength + 1));
 
-            char* fileExtension = alloca(sizeof(*fileExtension) * (fileExtensionLength + 1));
-            if(fread(fileExtension, 1, fileExtensionLength + 1, file) != fileExtensionLength + 1){
-                if(feof(file) != 0){
-                    break;
-                }else{
-                    UTIL_LOG_ERROR("Failed to read file extension.");
-
-                    error = ERROR_READ_ERROR;
-
-                    goto label_return;
-                }
+            if((error = mediaLibrary_readFileExtension(file, &fileExtension, fileExtensionLength)) != ERROR_NO_ERROR){
+                goto label_return;
             }
             
             Episode* episode;
@@ -567,67 +541,6 @@ inline bool mediaLibrary_isCharcterWordDelimiter(char c){
      return c == '.' || c == ' ' || c == '_';
 }
 
-ERROR_CODE mediaLibrary_import(MediaLibrary* library, const char* importDirectory){
-    UTIL_LOG_CONSOLE(LOG_CRIT, "Function not implemented!~!");
-
-    // const char* importDir = importDirectory != NULL ? importDirectory : (char*) library->importDirectory->buffer;
-
-    // UTIL_LOG_CONSOLE_(LOG_INFO, "Import directory: '%s'.", importDir);
-
-    // ArrayList importList;
-    // arrayList_init(&importList, mediaLibrary_expandImportList);
-
-    // medialibrary_walkDirectory(&importList, importDir);
-    
-    // ArrayListIterator it;
-    // arrayList_initIterator(&it, &importList);
-
-    // while(ARRAY_LIST_ITERATOR_HAS_NEXT(&it)){
-    //     DirectoryEntry* directoryEntry = ARRAY_LIST_ITERATOR_NEXT(&it);
-
-    //     char* file = directoryEntry->path;
-
-    //     const uint_fast64_t filePathLength = directoryEntry->pathLength;
-
-    //     EpisodeInfo info = {0, 0, -1, -1};
-    //     mediaLibrary_extractEpisodeInfo(&info, library, directoryEntry->fileName, filePathLength);
-
-    //     UTIL_LOG_CONSOLE_(LOG_INFO, "Show:%s\nSeason:%" PRIuFAST16 "\nEpisode:%" PRIuFAST16 "\nEpisode name:%s", info.showName == NULL ? "'NULL''" : info.showName, info.season, info.episode, info.name == NULL ? "'NULL'" : info.name);
-
-    //     mediaLibrary_fillEpisodeInfo(&info); 
-
-    //     Show* show = mediaLibrary_addShow(library, info.showName, strlen(info.showName));
-
-    //     Season* season = mediaLibrary_addSeason(library, show, info.season);
-
-    //     Episode* episode = mediaLibrary_addEpisode(library, show, season, file, filePathLength, info.episode, info.name , strlen(info.name), true);
-
-    //     const uint_fast64_t seasonNumberLength = snprintf(NULL, 0, "%02" PRIuFAST16 "", season->number);
-    //     const uint_fast64_t episodeNumberLength = snprintf(NULL, 0, "%02" PRIuFAST16 "", episode->number);
-
-    //     episode->pathLength = season->pathLength + show->nameLength + episode->nameLength + directoryEntry->fileExtensionLength + seasonNumberLength + episodeNumberLength + 2 /*2x '_'*/+ 2/*'s', 'e'*/;
-    //     episode->path = malloc(*episode->path * (episode->pathLength + 1/*'\0'*/));
-
-    //     snprintf(episode->path, episode->pathLength + 1, "%s%s_s%02" PRIuFAST16 "e%02" PRIuFAST16 "_%s%s", season->path, show->name, season->number, episode->number, episode->name, directoryEntry->fileExtension);
-
-    //     if(util_fileCopy(file, episode->path)){
-    //         if(!util_deleteFile(file)){
-    //             UTIL_LOG_ERR_("Failed to delete file '%s'.\n", file);
-    //         }
-    //     }
-
-    //     free(directoryEntry->path);
-    //     free(directoryEntry->fileName);
-    //     free(directoryEntry);
-
-    //     mediaLibrary_freeEpisodeInfo(&info);
-    // }
-
-    // arrayList_free(&importList);   
-
-    return ERROR(ERROR_NO_ERROR);
-}   
-
 inline ERROR_CODE mediaLibrary_addShow(MediaLibrary* library, Show** show, const char* name, const uint_fast64_t nameLength){
     *show = NULL;
 
@@ -745,58 +658,45 @@ ERROR_CODE medialibrary_removeShowFrromLibraryFile(MediaLibrary* library, const 
     int_fast8_t readBuffer[sizeof(uint64_t)];
     const int_fast8_t writeBuffer[1] = {0};
     for(;;){
-        // Show_Name.    
-        if(fread(readBuffer, 1, sizeof(uint64_t), file) != sizeof(uint64_t)){
-                if(feof(file) != 0){
-                break;
-            }else{
-                UTIL_LOG_ERROR("Failed to read show nameLength.");
-
-                return ERROR(ERROR_READ_ERROR);
-            }
+        // Show_Name.
+        uint_fast64_t showNameLength;
+        if((error = mediaLibrary_readShowNameLength(file, &showNameLength)) != ERROR_NO_ERROR){
+            goto label_return;
         }
 
-        const uint_fast64_t showNameLength = util_byteArrayTo_uint64(readBuffer);      
+        char* showName; 
+        showName = alloca(sizeof(*showName) * (showNameLength + 1));
 
-        const long showNameOffset = ftell(file);
-
-        char* showName = alloca(sizeof(*showName) * (showNameLength + 1));
-        if(fread(showName, 1, showNameLength + 1, file) != showNameLength + 1){
-            if(feof(file) != 0){
-                break;
-            }else{
-                UTIL_LOG_ERROR("Failed to read show name.");
-
-                error = ERROR_READ_ERROR;
-
-                goto label_return;
-            }
+        if((error = mediaLibrary_readShowName(file, &showName, showNameLength)) != ERROR_NO_ERROR){
+            goto label_return;
         }
+
+        const long showNameOffset = ftell(file) - showNameLength;
 
         bool fillZero;
         if((fillZero = strncmp(show, showName, showLength) == 0)){
-            // Refill showName.
+            // Overwrite  showName.
             if(fseek(file, showNameOffset, SEEK_SET) != 0){
                 error = ERROR_DISK_ERROR;
 
                 goto label_return;
             }
 
-            if(fwrite(writeBuffer, 1, showNameLength + 1, file) != 0){
+            if(fwrite(writeBuffer, showNameLength + 1, 1, file) != 1){
                 error = ERROR_WRITE_ERROR;
 
                 goto label_return;
             }
 
             // Season_Number.
-            if(fwrite(writeBuffer, 1, sizeof(uint16_t), file) != 0){
+            if(fwrite(writeBuffer, sizeof(uint16_t), 1, file) != 1){
                 error = ERROR_WRITE_ERROR;
 
                 goto label_return;
             }
 
             // Episode_Number.
-            if(fwrite(writeBuffer, 1, sizeof(uint16_t), file) != 0){
+            if(fwrite(writeBuffer, sizeof(uint16_t), 1, file) != 1){
                 error = ERROR_WRITE_ERROR;
 
                 goto label_return;
@@ -811,19 +711,10 @@ ERROR_CODE medialibrary_removeShowFrromLibraryFile(MediaLibrary* library, const 
         }
 
         // Episode_Name.
-        if(fread(readBuffer, 1, sizeof(uint64_t), file) != sizeof(uint64_t)){
-            if(feof(file) != 0){
-                break;
-            }else{
-                UTIL_LOG_ERROR("Failed to read episode nameLength.");
-
-                error = ERROR_READ_ERROR;
-
-                goto label_return;
-            }
-        } 
-
-        uint_fast64_t episodeNameLength = util_byteArrayTo_uint64(readBuffer);
+        uint_fast64_t episodeNameLength;
+        if((error = mediaLibrary_readEpisodeNameLength(file, &episodeNameLength)) != ERROR_NO_ERROR){
+            goto label_return;
+        }
 
         if(fillZero){
             if(fwrite(writeBuffer, 1, episodeNameLength + 1, file) != 0){
@@ -840,22 +731,13 @@ ERROR_CODE medialibrary_removeShowFrromLibraryFile(MediaLibrary* library, const 
         }        
 
         // File_Extension.
-        if(fread(readBuffer, 1, sizeof(uint16_t), file) != sizeof(uint16_t)){
-            if(feof(file) != 0){
-                break;
-            }else{
-                UTIL_LOG_ERROR("Failed to read file extension length.");
-
-                error = ERROR_READ_ERROR;
-
-                goto label_return;
-            }
+        uint_fast16_t fileExtensionLength;
+        if((error = mediaLibrary_readFileExtensionLength(file, &fileExtensionLength)) != ERROR_NO_ERROR){
+            goto label_return;
         }
 
-        uint_fast64_t fileExtensionLength = util_byteArrayTo_uint16(readBuffer);
-
-         if(fillZero){
-            if(fwrite(writeBuffer, 1, fileExtensionLength + 1, file) != 0){
+        if(fillZero){
+            if(fwrite(writeBuffer, fileExtensionLength + 1, 1, file) != 1){
                 error = ERROR_WRITE_ERROR;
 
                 goto label_return;
@@ -951,7 +833,7 @@ inline ERROR_CODE medialibrary_getSeason(Show* show, Season** season, const uint
             *season = season_;
 
             return ERROR(ERROR_NO_ERROR);
-        }
+        } 
     }	    
 
     *season = NULL;
@@ -988,9 +870,10 @@ ERROR_CODE mediaLibrary_addEpisode(MediaLibrary* library, Episode** episode, Sho
         goto label_return;
     }
 
-    UTIL_LOG_DEBUG_("Added Episode:%02" PRIuFAST16 " '%s' of Season:%02" PRIuFAST16 " to '%s'.", (*episode)->number, (*episode)->name, season->number, show->name);
-
     if(saveToDisk){
+        UTIL_LOG_DEBUG_("Added Episode:%02" PRIuFAST16 " '%s' of Season:%02" PRIuFAST16 " to '%s'.", (*episode)->number, (*episode)->name, season->number, show->name);
+
+
         FILE* file = library->libraryFile;
 
         if(fseek(file, 0, SEEK_END) != 0){
@@ -1002,47 +885,47 @@ ERROR_CODE mediaLibrary_addEpisode(MediaLibrary* library, Episode** episode, Sho
         // Show_Name.
         util_uint64ToByteArray(writeBuffer, show->nameLength);
 
-        if(fwrite(writeBuffer, 1, sizeof(uint64_t), file) != sizeof(uint64_t)){
+        if(fwrite(writeBuffer, sizeof(uint64_t), 1, file) != 1){
             return ERROR_(ERROR_WRITE_ERROR, "Failed to write show name length to library file. '%s'.", strerror(errno));
         }
 
-        if(fwrite(show->name, 1, show->nameLength + 1, file) != show->nameLength + 1){
+        if(fwrite(show->name, show->nameLength + 1, 1, file) != 1){
             return ERROR_(ERROR_WRITE_ERROR, "Failed to write show name length to library file. '%s'.", strerror(errno));
         }
 
         // Season_Number.
         util_uint16ToByteArray(writeBuffer, season->number);
 
-        if(fwrite(writeBuffer, 1, sizeof(uint16_t), file) != sizeof(uint16_t)){            
+        if(fwrite(writeBuffer, sizeof(uint16_t), 1, file) != 1){            
             return ERROR_(ERROR_WRITE_ERROR, "Failed to write season number to library file. '%s'.", strerror(errno));
         }
 
         // Episode_Number.
         util_uint16ToByteArray(writeBuffer, (*episode)->number);
         
-        if(fwrite(writeBuffer, 1, sizeof(uint16_t), file) != sizeof(uint16_t)){            
+        if(fwrite(writeBuffer, sizeof(uint16_t), 1, file) != 1){            
             return ERROR_(ERROR_WRITE_ERROR, "Failed to write episode number to library file. '%s'.", strerror(errno));
         }
 
         // Episode_Name.
         util_uint64ToByteArray(writeBuffer, (*episode)->nameLength);
 
-        if(fwrite(writeBuffer, 1, sizeof(uint64_t), file) != sizeof(uint64_t)){            
+        if(fwrite(writeBuffer, sizeof(uint64_t), 1, file) != 1){            
             return ERROR_(ERROR_WRITE_ERROR, "Failed to write episode name length to library file. '%s'.", strerror(errno));
         }
 
-        if(fwrite((*episode)->name, 1, (*episode)->nameLength + 1, file) != (*episode)->nameLength + 1){            
+        if(fwrite((*episode)->name, (*episode)->nameLength + 1, 1, file) != 1){            
             return ERROR_(ERROR_WRITE_ERROR, "Failed to write episode name to library file. '%s'.", strerror(errno));
         }
 
         // FileExtension
         util_uint16ToByteArray(writeBuffer, (*episode)->fileExtensionLength);
 
-        if(fwrite(writeBuffer, 1, sizeof(uint16_t), file) != sizeof(uint16_t)){            
+        if(fwrite(writeBuffer, sizeof(uint16_t), 1, file) != 1){            
             return ERROR_(ERROR_WRITE_ERROR, "Failed to write file extension length to library file. '%s'.", strerror(errno));
         }
 
-        if(fwrite((*episode)->fileExtension, 1, (*episode)->fileExtensionLength + 1, file) != (*episode)->fileExtensionLength + 1){            
+        if(fwrite((*episode)->fileExtension, (*episode)->fileExtensionLength + 1, 1, file) != 1){            
             return ERROR_(ERROR_WRITE_ERROR, "Failed to write file extension to library file. '%s'.", strerror(errno));
         }
 
@@ -1109,6 +992,100 @@ inline void mediaLibrary_freeEpisodeInfo(EpisodeInfo* info){
     free(info->showName);
     free(info->name);
     // free(info->fileExtension);
+}
+
+inline ERROR_CODE mediaLibrary_readStringFromLibraryFile(FILE* file, char** s, uint_fast64_t length){
+    if(fread(*s, length + 1, 1, file) != 1){
+        return ERROR(ERROR_READ_ERROR);
+    }
+
+    return ERROR(ERROR_NO_ERROR);
+}
+
+inline ERROR_CODE mediaLibrary_readShowNameLength(FILE* file, uint_fast64_t* showNameLength){
+    ERROR_CODE error;
+    MEDIA_LIBRARY_READ_FROM_LIBRARY_FILE(error, file, showNameLength, uint64_t);
+
+    if(error != ERROR_NO_ERROR){
+        if(feof(file) != 0){
+            return ERROR(ERROR_END_OF_FILE);
+        }else{
+            return ERROR_(error, "Failed to read show name length. [%s]", util_toErrorString(error));
+        }
+    }
+
+    return ERROR(ERROR_NO_ERROR);
+}
+
+inline ERROR_CODE mediaLibrary_readShowName(FILE* file, char** showName, uint_fast64_t showNameLength){
+    ERROR_CODE error;
+    if((error = mediaLibrary_readStringFromLibraryFile(file, showName, showNameLength)) != ERROR_NO_ERROR){
+        return ERROR_(error, "Failed to read show name. [%s]", util_toErrorString(error));
+    }
+
+    return ERROR(ERROR_NO_ERROR);
+}
+
+inline ERROR_CODE mediaLibrary_readSeasonNumber(FILE* file, uint_fast16_t* showNameLength){
+    ERROR_CODE error;
+    MEDIA_LIBRARY_READ_FROM_LIBRARY_FILE(error, file, showNameLength, uint16_t);
+
+    if(error != ERROR_NO_ERROR){
+        return ERROR_(error, "Failed to read season number. [%s]", util_toErrorString(error));
+    }
+
+    return ERROR(ERROR_NO_ERROR);
+}
+
+inline ERROR_CODE mediaLibrary_readEpisodeNumber(FILE* file, uint_fast16_t* episodeNumber){
+    ERROR_CODE error;
+    MEDIA_LIBRARY_READ_FROM_LIBRARY_FILE(error, file, episodeNumber, uint16_t);
+
+    if(error != ERROR_NO_ERROR){
+        return ERROR_(error, "Failed to read episode number. [%s]", util_toErrorString(error));
+    }
+
+    return ERROR(ERROR_NO_ERROR);
+}
+
+inline ERROR_CODE mediaLibrary_readEpisodeNameLength(FILE* file, uint_fast64_t* episodeNameLength){
+    ERROR_CODE error;
+    MEDIA_LIBRARY_READ_FROM_LIBRARY_FILE(error, file, episodeNameLength, uint64_t);
+
+    if(error != ERROR_NO_ERROR){
+        return ERROR_(error, "Failed to read episode name length. [%s]", util_toErrorString(error));
+    }
+
+    return ERROR(ERROR_NO_ERROR);
+}
+
+inline ERROR_CODE mediaLibrary_readEpisodeName(FILE* file, char** episodeName, uint_fast64_t episodeNameLength){
+    ERROR_CODE error;
+    if((error = mediaLibrary_readStringFromLibraryFile(file, episodeName, episodeNameLength)) != ERROR_NO_ERROR){
+        return ERROR_(error, "Failed to read episode name. [%s]", util_toErrorString(error));
+    }
+
+    return ERROR(ERROR_NO_ERROR);
+}
+
+inline ERROR_CODE mediaLibrary_readFileExtensionLength(FILE* file, uint_fast16_t* fileExtensionLength){
+    ERROR_CODE error;
+    MEDIA_LIBRARY_READ_FROM_LIBRARY_FILE(error, file, fileExtensionLength, uint16_t);
+
+    if(error != ERROR_NO_ERROR){
+        return ERROR_(error, "Failed to read file extension length. [%s]", util_toErrorString(error));
+    }
+
+    return ERROR(ERROR_NO_ERROR);
+}
+
+inline ERROR_CODE mediaLibrary_readFileExtension(FILE* file, char** fileExtension, uint_fast64_t fileExtensionLength){
+    ERROR_CODE error;
+    if((error = mediaLibrary_readStringFromLibraryFile(file, fileExtension, fileExtensionLength)) != ERROR_NO_ERROR){
+        return ERROR_(error, "Failed to read file extension. [%s]", util_toErrorString(error));
+    }
+
+    return ERROR(ERROR_NO_ERROR);
 }
 
 #undef PROPERTY_LIBRARY_DIRECTORY_NAME

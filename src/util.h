@@ -41,6 +41,13 @@
 
 #define UTIL_FLAG(name, size) uint8_t name : size
 
+// Note: These redefenition are needed for the 'read from library file' macros in medialibnrary.c. And are an exception to the rule off the all caps macro style. (jan - 2019.05.17)
+#define util_byteArrayTo_uint16_t util_byteArrayTo_uint16
+
+#define util_byteArrayTo_uint32_t util_byteArrayTo_uint32
+
+#define util_byteArrayTo_uint64_t util_byteArrayTo_uint64
+
 typedef enum{
     ERROR_NO_ERROR = 0,
     ERROR_ERROR,
@@ -108,7 +115,8 @@ typedef enum{
     ERROR_INVALID_VALUE,
     ERROR_FUNCTION_NOT_IMPLEMENTED,
     ERROR_FAILED_TO_OPEN_DIRECTORY,
-    ERROR_NAME_MISSMATCH
+    ERROR_NAME_MISSMATCH,
+    ERROR_END_OF_FILE
 }ERROR_CODE;
 
 ERROR_CODE util_formatNumber(char*, uint_fast64_t*, const int_fast64_t);

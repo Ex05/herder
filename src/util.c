@@ -120,7 +120,8 @@ local const char* UTIL_ERROR_CODE_MESSAGE_MAPPING_ARRAY[] = {
     "ERROR_INVALID_VALUE",
     "ERROR_FUNCTION_NOT_IMPLEMENTED",
     "ERROR_FAILED_TO_OPEN_DIRECTORY",
-    "ERROR_NAME_MISSMATCH"
+    "ERROR_NAME_MISSMATCH",
+    "ERROR_END_OF_FILE"
 };
 
 inline const char* util_toErrorString(const ERROR_CODE errorCode){
