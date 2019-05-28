@@ -13,6 +13,7 @@
 #include <ctype.h>
 #include <string.h>
 #include <syslog.h>
+#include <dirent.h>
 #include <errno.h>
 #include <sys/types.h>
 #include <unistd.h>

@@ -4,8 +4,8 @@
 // For mmap flags that are not in the POSIX-Standard.
 #define _GNU_SOURCE
 
-#include "mediaLibrary.c"
 #include "util.c"
+#include "mediaLibrary.c"
 #include "arrayList.c"
 #include "linkedList.c"
 #include "argumentParser.c"
@@ -607,9 +607,14 @@ TEST_TEST_FUNCTION(util_findFirst_s){
 }
 
 TEST_TEST_FUNCTION(util_findLast){
-    const char s[] = "01234...567";
+    const char a[] = "01234...567";
+    const char b[] = "01234567";
 
-    if(util_findLast(s, strlen(s), '.') != 7){
+    if(util_findLast(a, strlen(a), '.') != 7){
+        return false;
+    }
+
+    if(util_findLast(b, strlen(b), '.') != -1){
         return false;
     }
 

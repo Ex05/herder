@@ -6,7 +6,6 @@
 
 #include <fcntl.h>
 #include <signal.h>
-#include <dirent.h>
 #include <signal.h>
 
 #include "util.c"
@@ -1492,11 +1491,10 @@ ERROR_CODE herder_import(Property* remoteHost, Property* remotePort, Property* l
     while(LINKED_LIST_ITERATOR_HAS_NEXT(&it)){
         DirectoryEntry* entry = LINKED_LIST_ITERATOR_NEXT(&it);
 
-        UTIL_LOG_CONSOLE_(LOG_INFO, "Adding '%s'...", entry->path);
+        UTIL_LOG_CONSOLE_(LOG_INFO, "Adding '%s'.", entry->path);
 
-        if(error == ERROR_NO_ERROR && (error = herder_addEpisode(remoteHost, remotePort, libraryDirectory, entry->path, entry->pathLength)) != ERROR_NO_ERROR){
+        if((error = herder_addEpisode(remoteHost, remotePort, libraryDirectory, entry->path, entry->pathLength)) != ERROR_NO_ERROR){
             free(entry->path);
-            free(entry->fileName);
             free(entry);
 
             goto label_freeFiles;
@@ -1505,7 +1503,6 @@ ERROR_CODE herder_import(Property* remoteHost, Property* remotePort, Property* l
         }
 
         free(entry->path);
-        free(entry->fileName);
         free(entry);
     }
 
@@ -1554,63 +1551,47 @@ ERROR_CODE herder_walkDirectory(LinkedList* list, const char* directory){
 
     const uint_fast64_t directoryLength = strlen(directory);
 
-    char* directoryPath = NULL;
     while((directoryEntry = readdir(currentDirectory)) != NULL){
         // Avoid reentering current and parent directory.
         const uint_fast64_t currentEntryLength = strlen(directoryEntry->d_name);
         if(strncmp(directoryEntry->d_name, ".", currentEntryLength) == 0 || strncmp(directoryEntry->d_name, "..", currentEntryLength) == 0){
             continue;
         }
-    
-        const uint_fast64_t directoryPathLength = directoryLength + currentEntryLength;            
 
-        directoryPath = malloc(sizeof(*directoryPath) * (directoryPathLength + 1));
-        if(directoryPath ==  NULL){
-            error = ERROR_OUT_OF_MEMORY;
+        if(directoryEntry->d_type == DT_DIR){                      
+            const uint_fast64_t directoryPathLength = directoryLength + currentEntryLength + 1;  
 
-            goto label_closeDir;
-        }
-            
-        strncpy(directoryPath, directory, directoryLength);
-        directoryPath[directoryLength] = '\0';
-        
-        util_append(directoryPath + directoryLength, directoryPathLength - directoryLength, directoryEntry->d_name, currentEntryLength);
+            char* directoryPath;
+            directoryPath = alloca(sizeof(*directoryPath) * (directoryPathLength + 1));
+            strncpy(directoryPath, directory, directoryLength + 1);     
 
-        if(util_isDirectory(directoryPath)){
-            UTIL_LOG_CONSOLE_(LOG_DEBUG, "Directory: %s.\n", directoryPath);
-
-            // TODO: Decide if spinning up another thread and doing this in parallel is a good idea.(Requires locking of the import list). (jan - 2019.03.18)
+            util_append(directoryPath + directoryLength, directoryPathLength - 1 - directoryLength, directoryEntry->d_name, currentEntryLength);        
+            directoryPath[directoryPathLength - 1] = '/';
+            directoryPath[directoryPathLength] = '\0';
+          
             if((error = herder_walkDirectory(list, directoryPath)) != ERROR_NO_ERROR){
                 goto label_closeDir;
             }
+        }else{                                
+            const uint_fast64_t pathLength = directoryLength + currentEntryLength; 
 
-            free(directoryPath);
-        }else{
-            const uint_fast64_t fileNameLength = strlen(directoryEntry->d_name);
-            const uint_fast64_t fileExtensionOffset = util_findLast(directoryEntry->d_name, fileNameLength, '.');
+            char* path;
+            path = malloc(sizeof(*path) * (pathLength + 1));
+            strncpy(path, directory, directoryLength + 1);     
 
-            if(herder_walkDirectoryAcceptFunction(directoryEntry->d_name + fileExtensionOffset, fileNameLength - fileExtensionOffset)){
-                char* file = malloc(sizeof(*file) * (fileNameLength + 1));
-                if(directoryPath ==  NULL){
-                    error = ERROR_OUT_OF_MEMORY;
+            util_append(path + directoryLength, pathLength - directoryLength, directoryEntry->d_name, currentEntryLength);        
+            path[pathLength] = '\0';
 
-                    goto label_closeDir;
-                }
-                            
-                strncpy(file, directoryEntry->d_name, fileNameLength);
-                file[fileNameLength] = '\0';
+            DirectoryEntry* dirEnt = malloc(sizeof(*dirEnt));
+            dirEnt->path = path;                  
+            dirEnt->pathLength = pathLength;
+            dirEnt->fileName = path + (pathLength - currentEntryLength);
+            dirEnt->fileNameLength = currentEntryLength;
 
-                DirectoryEntry* dirEnt = malloc(sizeof(*dirEnt));
-                dirEnt->path = directoryPath;
-                dirEnt->fileName = file;                    
-                dirEnt->pathLength = directoryPathLength;
-                dirEnt->fileNameLength = fileNameLength;
-
-                if((error = linkedList_add(list, dirEnt)) !=ERROR_NO_ERROR){
-                    goto label_closeDir;
-                }
+            if((error = linkedList_add(list, dirEnt)) !=ERROR_NO_ERROR){
+                goto label_closeDir;
             }
-        }   
+        }
     }
 
 label_closeDir:

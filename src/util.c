@@ -343,7 +343,7 @@ inline ERROR_CODE util_deleteFile(const char* file){
 
 // Note: 'directory' has to be slash terminated. (jan - 2019.05.20)
 ERROR_CODE util_deleteDirectory(const char* directory){
-     ERROR_CODE error = ERROR_NO_ERROR;
+    ERROR_CODE error = ERROR_NO_ERROR;
 
     DIR* currentDirectory = opendir(directory);
     if(currentDirectory == NULL){
@@ -371,8 +371,7 @@ ERROR_CODE util_deleteDirectory(const char* directory){
             strncpy(directoryPath, directory, directoryLength);     
             directoryPath[directoryLength] = '\0';
 
-            util_append(directoryPath + directoryLength, directoryPathLength - 1 - directoryLength, directoryEntry->d_name, currentEntryLength);
-        
+            util_append(directoryPath + directoryLength, directoryPathLength - 1 - directoryLength, directoryEntry->d_name, currentEntryLength);        
             directoryPath[directoryPathLength - 1] = '/';
             directoryPath[directoryPathLength] = '\0';
           
