@@ -788,7 +788,7 @@ ERROR_CODE medialibrary_removeShowFrromLibraryFile(MediaLibrary* library, const 
 
     UTIL_LOG_CONSOLE_(LOG_DEBUG, "Show:'%s'.", showPath);
 
-    return ERROR(util_deleteDirectory(showPath));
+    return ERROR(util_deleteDirectory(showPath, false, false));
 }
 
 inline ERROR_CODE medialibrary_getShow(MediaLibrary* library, Show** show,  const char* name, const uint_fast64_t nameLength){

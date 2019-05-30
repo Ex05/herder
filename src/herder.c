@@ -1507,15 +1507,10 @@ ERROR_CODE herder_import(Property* remoteHost, Property* remotePort, Property* l
     }
 
     // TODO: Only delete directories inside import the import directory. (jan - 2019.05.28)
-    
-    if((error = util_deleteDirectory(directory)) != ERROR_NO_ERROR){
+    if((error = util_deleteDirectory(directory, true, true)) != ERROR_NO_ERROR){
         goto label_freeFiles;
     }
     
-    if((error = util_createDirectory(directory)) != ERROR_NO_ERROR){
-        goto label_freeFiles;
-    }
-
 label_freeFiles:
     linkedList_free(&files);
 

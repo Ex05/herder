@@ -1512,7 +1512,7 @@ TEST_TEST_FUNCTION(server_addContext){
     if(util_blockAlloc(&buffer, BUFFER_SIZE) != ERROR_NO_ERROR){
         goto label_free;
     }
-
+  
     const char requestURL[] = "/img/img_001.png";
 
     HTTP_Request request;

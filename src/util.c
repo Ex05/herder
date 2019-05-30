@@ -342,7 +342,7 @@ inline ERROR_CODE util_deleteFile(const char* file){
 }
 
 // Note: 'directory' has to be slash terminated. (jan - 2019.05.20)
-ERROR_CODE util_deleteDirectory(const char* directory){
+ERROR_CODE util_deleteDirectory(const char* directory, const bool preserveRoot, const bool emptyDirectoriesOnly){
     ERROR_CODE error = ERROR_NO_ERROR;
 
     DIR* currentDirectory = opendir(directory);
@@ -356,14 +356,19 @@ ERROR_CODE util_deleteDirectory(const char* directory){
 
     const uint_fast64_t directoryLength = strlen(directory);
 
+    int_fast8_t isDirectoryEmpty = 2;
     while((directoryEntry = readdir(currentDirectory)) != NULL){
         // Avoid reentering current and parent directory.
         const uint_fast64_t currentEntryLength = strlen(directoryEntry->d_name);
         if(strncmp(directoryEntry->d_name, ".", currentEntryLength) == 0 || strncmp(directoryEntry->d_name, "..", currentEntryLength) == 0){
+            isDirectoryEmpty -= 1;
+
             continue;
         }
 
-        if(directoryEntry->d_type == DT_DIR){                      
+        if(directoryEntry->d_type == DT_DIR){
+            isDirectoryEmpty += 1;
+
             const uint_fast64_t directoryPathLength = directoryLength + currentEntryLength + 1;  
 
             char* directoryPath;
@@ -375,7 +380,7 @@ ERROR_CODE util_deleteDirectory(const char* directory){
             directoryPath[directoryPathLength - 1] = '/';
             directoryPath[directoryPathLength] = '\0';
           
-            if((error = util_deleteDirectory(directoryPath)) != ERROR_NO_ERROR){
+            if((error = util_deleteDirectory(directoryPath, false, emptyDirectoriesOnly)) != ERROR_NO_ERROR){
                 goto label_closeDir;
             }
 
@@ -393,8 +398,10 @@ ERROR_CODE util_deleteDirectory(const char* directory){
             util_append(filePath + directoryLength, filePathLength - directoryLength, directoryEntry->d_name, currentEntryLength);   
             filePath[filePathLength] = '\0';
 
-            if((error = util_deleteFile(filePath)) != ERROR_NO_ERROR){
-                goto label_closeDir;
+            if(!preserveRoot && (emptyDirectoriesOnly && isDirectoryEmpty != 0)){
+                if((error = util_deleteFile(filePath)) != ERROR_NO_ERROR){
+                    goto label_closeDir;
+                }
             }
         }
     }

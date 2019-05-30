@@ -270,6 +270,8 @@ uint_fast32_t util_getFileSystemBlockSize(const char*);
 
 ERROR_CODE util_deleteFile(const char*);
 
+ERROR_CODE util_deleteDirectory(const char*, const bool, const bool);
+
 void util_replaceAllChars(char*, const char, const char);
 
 void util_append(char*, const uint_fast64_t, char*, const uint_fast64_t);
