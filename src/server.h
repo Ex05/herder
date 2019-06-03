@@ -11,7 +11,7 @@
 #include <sys/un.h>
 #include <netinet/in.h>
 
-typedef struct{
+typedef struct {
     int sockFD;
     struct sockaddr_in sockAddr;
     uint_fast16_t port;

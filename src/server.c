@@ -1116,7 +1116,7 @@ inline void server_daemonize(const char* workingDirectory){
 }
 
 inline ERROR_CODE server_setRootDirectory(Argument* argumentSetServerRootDirectory, PropertyFile* propertyFile, Property** serverRootDirectory){
-    // Note: Make sure 'slashTerminated' is clamped to '0 - 1' so we can use it later to add/subtract depending on wether the string was slash termianted or not. (Jan - 2018.10.20)
+    // Note: Make sure 'slashTerminated' is clamped to '0 - 1' so we can use it later to add/subtract depending on wether the string was slash termianted or not. (jan - 2018.10.20)
     const bool slashTerminated = (argumentSetServerRootDirectory->value[argumentSetServerRootDirectory->valueLength - 1] == '/') & 0x01;
 
     const uint_fast64_t serverRootDirectoryLength = argumentSetServerRootDirectory->valueLength + !slashTerminated;

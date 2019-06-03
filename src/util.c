@@ -17,9 +17,7 @@ inline ERROR_CODE util_formatNumber(char* s, uint_fast64_t* bufferSize, const in
 	int_fast64_t length = snprintf(s, *bufferSize, value > 999 ? "%" PRIdFAST64 : "%03" PRIdFAST64, value);
 
     if(length >= (int_fast64_t) *bufferSize){
-        UTIL_LOG_CONSOLE(LOG_ERR, "Buffer Overflow.");
-
-        return ERROR(ERROR_BUFFER_OVERFLOW);
+        return ERROR_(ERROR_BUFFER_OVERFLOW, "%s", util_toErrorString(ERROR_BUFFER_OVERFLOW));
     }
 
 #define SKIP_VALUE 3
@@ -32,10 +30,6 @@ inline ERROR_CODE util_formatNumber(char* s, uint_fast64_t* bufferSize, const in
     uint_fast8_t skip = SKIP_VALUE;
     int_fast64_t i;
     for(i = length; i >= 0; i--){
-        if(length + 1 < (int_fast64_t) *bufferSize){
-            return ERROR(ERROR_BUFFER_OVERFLOW);
-        }
-
         if(--skip == 0 && i > 0){
             int_fast64_t j;
             for(j = length; j >= i - 1; j--){
@@ -121,7 +115,8 @@ local const char* UTIL_ERROR_CODE_MESSAGE_MAPPING_ARRAY[] = {
     "ERROR_FUNCTION_NOT_IMPLEMENTED",
     "ERROR_FAILED_TO_OPEN_DIRECTORY",
     "ERROR_NAME_MISSMATCH",
-    "ERROR_END_OF_FILE"
+    "ERROR_END_OF_FILE",
+    "ERROR_FAILED_TO_DELETE_DIRECTORY"
 };
 
 inline const char* util_toErrorString(const ERROR_CODE errorCode){
@@ -159,8 +154,9 @@ inline ERROR_CODE util_unMap(void* buffer, const uint_fast64_t length){
 inline void util_concatenate(char* dst, const uint_fast64_t lengthDst, const char* a, const uint_fast64_t lengthA, const char* b, const uint_fast64_t lengthB) {
 	strncpy(dst, a, lengthA);
 
-	if(lengthDst - lengthA > 0)
+	if(lengthDst - lengthA > 0){
 		strncpy(dst + lengthA, b, lengthB);
+    }
 }
 
 inline uint_fast16_t util_byteArrayTo_uint16(const int8_t* buffer){
@@ -264,7 +260,7 @@ inline int_fast64_t util_findLast(const char* s, const uint_fast64_t length, con
     return -1;
 }
 
-// TODO: Do some testing, what is actually the fastest way to copy a file on each platform. See: https://stackoverflow.com/questions/10195343/copy-a-file-in-a-sane-safe-and-efficient-way for some example implementations. (Jan - 2018.11.20)
+// TODO: Do some testing, what is actually the fastest way to copy a file on each platform. See: https://stackoverflow.com/questions/10195343/copy-a-file-in-a-sane-safe-and-efficient-way for some example implementations. (jan - 2018.11.20)
 inline ERROR_CODE util_fileCopy(const char* src, const char* dst){
     ERROR_CODE error = ERROR_NO_ERROR;
 
@@ -288,7 +284,7 @@ inline ERROR_CODE util_fileCopy(const char* src, const char* dst){
 
     const uint_fast32_t bufferSize = util_getFileSystemBlockSize(src);
 
-    // TODO: Decide if putting the buffer on the stack is a good idea. (Jan - 2018.11.17)
+    // TODO: Decide if putting the buffer on the stack is a good idea. (jan - 2018.11.17)
     int8_t* buffer = alloca(bufferSize);
 
     uint_fast64_t numBytesToWrite;
@@ -338,11 +334,82 @@ inline uint_fast32_t util_getFileSystemBlockSize(const char* path){
 }
 
 inline ERROR_CODE util_deleteFile(const char* file){
-    if(unlink(file) == 0){
-        return ERROR(ERROR_NO_ERROR);
-    }else{
+    if(unlink(file) != 0){
         return ERROR_(ERROR_FAILED_TO_DELETEFILE, "'%s' %s", file, strerror(errno));
     }
+
+    return ERROR(ERROR_NO_ERROR);
+}
+
+// Note: 'directory' has to be slash terminated. (jan - 2019.05.20)
+ERROR_CODE util_deleteDirectory(const char* directory, const bool preserveRoot, const bool emptyDirectoriesOnly){
+    ERROR_CODE error = ERROR_NO_ERROR;
+
+    DIR* currentDirectory = opendir(directory);
+    if(currentDirectory == NULL){
+        error = ERROR_FAILED_TO_OPEN_DIRECTORY;
+
+        goto label_closeDir;
+    }
+
+    struct dirent* directoryEntry;
+
+    const uint_fast64_t directoryLength = strlen(directory);
+
+    int_fast8_t isDirectoryEmpty = 2;
+    while((directoryEntry = readdir(currentDirectory)) != NULL){
+        // Avoid reentering current and parent directory.
+        const uint_fast64_t currentEntryLength = strlen(directoryEntry->d_name);
+        if(strncmp(directoryEntry->d_name, ".", currentEntryLength) == 0 || strncmp(directoryEntry->d_name, "..", currentEntryLength) == 0){
+            isDirectoryEmpty -= 1;
+
+            continue;
+        }
+
+        if(directoryEntry->d_type == DT_DIR){
+            isDirectoryEmpty += 1;
+
+            const uint_fast64_t directoryPathLength = directoryLength + currentEntryLength + 1;  
+
+            char* directoryPath;
+            directoryPath = alloca(sizeof(*directoryPath) * (directoryPathLength + 1));
+            strncpy(directoryPath, directory, directoryLength);     
+            directoryPath[directoryLength] = '\0';
+
+            util_append(directoryPath + directoryLength, directoryPathLength - 1 - directoryLength, directoryEntry->d_name, currentEntryLength);        
+            directoryPath[directoryPathLength - 1] = '/';
+            directoryPath[directoryPathLength] = '\0';
+          
+            if((error = util_deleteDirectory(directoryPath, false, emptyDirectoriesOnly)) != ERROR_NO_ERROR){
+                goto label_closeDir;
+            }
+
+            if(rmdir(directoryPath) != 0){
+                return ERROR_(ERROR_FAILED_TO_DELETE_DIRECTORY, "%s", strerror(errno));
+            }
+        }else{                                
+            const uint_fast64_t filePathLength = directoryLength + currentEntryLength;  
+
+            char* filePath;
+            filePath = alloca(sizeof(*filePath) * (filePathLength + 1));
+            strncpy(filePath, directory, directoryLength);     
+            filePath[directoryLength] = '\0';
+
+            util_append(filePath + directoryLength, filePathLength - directoryLength, directoryEntry->d_name, currentEntryLength);   
+            filePath[filePathLength] = '\0';
+
+            if(!preserveRoot && (emptyDirectoriesOnly && isDirectoryEmpty != 0)){
+                if((error = util_deleteFile(filePath)) != ERROR_NO_ERROR){
+                    goto label_closeDir;
+                }
+            }
+        }
+    }
+
+label_closeDir:
+    closedir(currentDirectory);
+        
+    return ERROR(error);
 }
 
 // http://www.stroustrup.com/new_learning.pdf
@@ -470,7 +537,7 @@ inline ERROR_CODE util_createAllDirectories(const char* path, const uint_fast64_
 }
 
 inline bool util_isDirectory(const char* file_path){
-	struct stat fileInfo = {0};
+	struct stat fileInfo;
 	lstat(file_path, &fileInfo);
 
 	return S_ISDIR(fileInfo.st_mode);
@@ -489,8 +556,8 @@ inline ERROR_CODE util_getBaseDirectory(char** baseDirectory, uint_fast64_t* bas
 
     if(firstSeperator == -1){
         return ERROR(ERROR_INVALID_REQUEST_URL);
-    // URL: /
     }else{
+         // URL: /
         const int_fast64_t secondSeperator = util_findFirst(url + firstSeperator + 1, urlLength - (firstSeperator + 1), '/');
 
         if(secondSeperator == -1){
@@ -614,7 +681,7 @@ inline ERROR_CODE util_stringToInt(const char* s, int64_t* value){
     return ERROR(ERROR_NO_ERROR);
 }
 
-// Note: Use PATH_MAX, for the size of 'dir'. (Jan- 2019.01.23)
+// Note: Use PATH_MAX, for the size of 'dir'. (jan - 2019.01.23)
 inline ERROR_CODE util_getCurrentWorkingDirectory(char* dir, const uint_fast64_t dirLength){
     if(getcwd(dir, dirLength) == NULL){
         return ERROR_(ERROR_ERROR, "%s", strerror(errno));
@@ -627,7 +694,7 @@ ERROR_CODE util_getFileExtension(char** extension, char* fileName, const uint_fa
     const int_fast64_t fileExtensionOffset = util_findLast(fileName, fileNameLength, '.');
 
     if(fileExtensionOffset == -1){
-        extension = NULL;
+        *extension = NULL;
 
         return ERROR_(ERROR_INVALID_STRING, "%s does not contain the token '.'", fileName);
     }

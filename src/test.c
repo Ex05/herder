@@ -5,6 +5,7 @@
 #define _GNU_SOURCE
 
 #include "util.c"
+#include "mediaLibrary.c"
 #include "arrayList.c"
 #include "linkedList.c"
 #include "argumentParser.c"
@@ -13,7 +14,6 @@
 #include "threadPool.c"
 #include "cache.c"
 #include "propertyFile.c"
-#include "mediaLibrary.c"
 #include "server.c"
 #include "herder.c"
 
@@ -607,9 +607,14 @@ TEST_TEST_FUNCTION(util_findFirst_s){
 }
 
 TEST_TEST_FUNCTION(util_findLast){
-    const char s[] = "01234...567";
+    const char a[] = "01234...567";
+    const char b[] = "01234567";
 
-    if(util_findLast(s, strlen(s), '.') != 7){
+    if(util_findLast(a, strlen(a), '.') != 7){
+        return false;
+    }
+
+    if(util_findLast(b, strlen(b), '.') != -1){
         return false;
     }
 
@@ -1481,7 +1486,6 @@ label_free:
     return ret;
 }
 
-
 // server.c
 TEST_TEST_FUNCTION(server_addContext){
     bool ret = true;
@@ -1508,7 +1512,7 @@ TEST_TEST_FUNCTION(server_addContext){
     if(util_blockAlloc(&buffer, BUFFER_SIZE) != ERROR_NO_ERROR){
         goto label_free;
     }
-
+  
     const char requestURL[] = "/img/img_001.png";
 
     HTTP_Request request;

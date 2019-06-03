@@ -6,7 +6,6 @@
 
 #include <fcntl.h>
 #include <signal.h>
-#include <dirent.h>
 #include <signal.h>
 
 #include "util.c"
@@ -221,7 +220,7 @@ local ERROR_CODE herder_import(Property*, Property*, Property*, const char*);
        noValidArgument = false;
 
         if((error = herder_argumentImport(&argumentImport, &properties, remoteHost, remotePort, libraryDirectory, importDirectory)) == ERROR_NO_ERROR){
-            // TODO: Add handling of error or success case. (Jan - 2018.12.18)
+            // TODO: Add handling of error or success case. (jan - 2018.12.18)
         }
 
         goto label_freeProperties;
@@ -231,7 +230,7 @@ local ERROR_CODE herder_import(Property*, Property*, Property*, const char*);
         noValidArgument = false;
    
         if((error = herder_argumentKillDaemon(&argumentKillDeamon, &properties)) == ERROR_NO_ERROR){
-            // TODO: Add handling of error or success case. (Jan - 2018.12.18)
+            // TODO: Add handling of error or success case. (jan - 2018.12.18)
         }
 
         goto label_freeProperties;
@@ -900,7 +899,7 @@ ERROR_CODE herder_addEpisode(Property* remoteHost, Property* remotePort, Propert
         goto label_freeRequest;
     }
 
-    // TODO: Inform server that something went wrong and stuff should be removed from the library in case of failed file copy. (Jan - 2018.11.28)
+    // TODO: Inform server that something went wrong and stuff should be removed from the library in case of failed file copy. (jan - 2018.11.28)
 
 label_freeRequest:
     http_freeHTTP_Request(&request);
@@ -1026,7 +1025,7 @@ label_extractShowInfo:
         UTIL_LOG_CONSOLE_(LOG_ERR, "Server_status:'%s'.", http_getStatusMsg(response.statusCode));
     }
 
-    // TODO: Extract this to its own function . (Jan - 2018.12.07)
+    // TODO: Extract this to its own function . (jan - 2018.12.07)
     if((*episodeInfo)->showName == NULL){
         UTIL_LOG_CONSOLE_(LOG_INFO, "Failed to extract show name from file: '%s'.", fileName);
 
@@ -1215,7 +1214,7 @@ label_unMap:
 }
 
 inline ERROR_CODE herder_argumentSetImportDirectory(Argument* argumentSetImportDirectory, PropertyFile* propertyFile, Property** importDirectory){
-    // Note: Make sure 'slashTerminated' is clamped to '0 - 1' so we can use it later to add/subtract depending on wether the string was slash termianted or not. (Jan - 2018.10.20)
+    // Note: Make sure 'slashTerminated' is clamped to '0 - 1' so we can use it later to add/subtract depending on wether the string was slash termianted or not. (jan - 2018.10.20)
     const bool slashTerminated = (argumentSetImportDirectory->value[argumentSetImportDirectory->valueLength - 1] == '/') & 0x01;
 
     const uint_fast64_t importDirectoryLength = argumentSetImportDirectory->valueLength + !slashTerminated;
@@ -1333,7 +1332,7 @@ inline ERROR_CODE herder_argumentSetRemoteHostPort(Argument* argumentSetRemoteHo
 }
 
 inline ERROR_CODE herder_argumentSetLibraryDirectory(Argument* argumentSetLibraryDirectory, PropertyFile* propertyFile, Property** libraryDirectory){
-    // Note: Make sure 'slashTerminated' is clamped to '0 - 1' so we can use it later to add/subtract depending on wether the string was slash termianted or not. (Jan - 2018.10.20)
+    // Note: Make sure 'slashTerminated' is clamped to '0 - 1' so we can use it later to add/subtract depending on wether the string was slash termianted or not. (jan - 2018.10.20)
     const bool slashTerminated = (argumentSetLibraryDirectory->value[argumentSetLibraryDirectory->valueLength - 1] == '/') & 0x01;
 
     const uint_fast64_t libraryDirectoryLength = argumentSetLibraryDirectory->valueLength + !slashTerminated;
@@ -1492,11 +1491,10 @@ ERROR_CODE herder_import(Property* remoteHost, Property* remotePort, Property* l
     while(LINKED_LIST_ITERATOR_HAS_NEXT(&it)){
         DirectoryEntry* entry = LINKED_LIST_ITERATOR_NEXT(&it);
 
-        UTIL_LOG_CONSOLE_(LOG_INFO, "Adding '%s'...", entry->path);
+        UTIL_LOG_CONSOLE_(LOG_INFO, "Adding '%s'.", entry->path);
 
-        if(error == ERROR_NO_ERROR && (error = herder_addEpisode(remoteHost, remotePort, libraryDirectory, entry->path, entry->pathLength)) != ERROR_NO_ERROR){
+        if((error = herder_addEpisode(remoteHost, remotePort, libraryDirectory, entry->path, entry->pathLength)) != ERROR_NO_ERROR){
             free(entry->path);
-            free(entry->fileName);
             free(entry);
 
             goto label_freeFiles;
@@ -1505,10 +1503,14 @@ ERROR_CODE herder_import(Property* remoteHost, Property* remotePort, Property* l
         }
 
         free(entry->path);
-        free(entry->fileName);
         free(entry);
     }
 
+    // TODO: Only delete directories inside import the import directory. (jan - 2019.05.28)
+    if((error = util_deleteDirectory(directory, true, true)) != ERROR_NO_ERROR){
+        goto label_freeFiles;
+    }
+    
 label_freeFiles:
     linkedList_free(&files);
 
@@ -1554,63 +1556,47 @@ ERROR_CODE herder_walkDirectory(LinkedList* list, const char* directory){
 
     const uint_fast64_t directoryLength = strlen(directory);
 
-    char* directoryPath = NULL;
     while((directoryEntry = readdir(currentDirectory)) != NULL){
         // Avoid reentering current and parent directory.
         const uint_fast64_t currentEntryLength = strlen(directoryEntry->d_name);
         if(strncmp(directoryEntry->d_name, ".", currentEntryLength) == 0 || strncmp(directoryEntry->d_name, "..", currentEntryLength) == 0){
             continue;
         }
-    
-        const uint_fast64_t directoryPathLength = directoryLength + currentEntryLength;            
 
-        directoryPath = malloc(sizeof(*directoryPath) * (directoryPathLength + 1));
-        if(directoryPath ==  NULL){
-            error = ERROR_OUT_OF_MEMORY;
+        if(directoryEntry->d_type == DT_DIR){                      
+            const uint_fast64_t directoryPathLength = directoryLength + currentEntryLength + 1;  
 
-            goto label_closeDir;
-        }
-            
-        strncpy(directoryPath, directory, directoryLength);
-        directoryPath[directoryLength] = '\0';
-        
-        util_append(directoryPath + directoryLength, directoryPathLength - directoryLength, directoryEntry->d_name, currentEntryLength);
+            char* directoryPath;
+            directoryPath = alloca(sizeof(*directoryPath) * (directoryPathLength + 1));
+            strncpy(directoryPath, directory, directoryLength + 1);     
 
-        if(util_isDirectory(directoryPath)){
-            UTIL_LOG_CONSOLE_(LOG_DEBUG, "Directory: %s.\n", directoryPath);
-
-            // TODO: Decide if spinning up another thread and doing this in parallel is a good idea.(Requires locking of the import list). (jan - 2019.03.18)
+            util_append(directoryPath + directoryLength, directoryPathLength - 1 - directoryLength, directoryEntry->d_name, currentEntryLength);        
+            directoryPath[directoryPathLength - 1] = '/';
+            directoryPath[directoryPathLength] = '\0';
+          
             if((error = herder_walkDirectory(list, directoryPath)) != ERROR_NO_ERROR){
                 goto label_closeDir;
             }
+        }else{                                
+            const uint_fast64_t pathLength = directoryLength + currentEntryLength; 
 
-            free(directoryPath);
-        }else{
-            const uint_fast64_t fileNameLength = strlen(directoryEntry->d_name);
-            const uint_fast64_t fileExtensionOffset = util_findLast(directoryEntry->d_name, fileNameLength, '.');
+            char* path;
+            path = malloc(sizeof(*path) * (pathLength + 1));
+            strncpy(path, directory, directoryLength + 1);     
 
-            if(herder_walkDirectoryAcceptFunction(directoryEntry->d_name + fileExtensionOffset, fileNameLength - fileExtensionOffset)){
-                char* file = malloc(sizeof(*file) * (fileNameLength + 1));
-                if(directoryPath ==  NULL){
-                    error = ERROR_OUT_OF_MEMORY;
+            util_append(path + directoryLength, pathLength - directoryLength, directoryEntry->d_name, currentEntryLength);        
+            path[pathLength] = '\0';
 
-                    goto label_closeDir;
-                }
-                            
-                strncpy(file, directoryEntry->d_name, fileNameLength);
-                file[fileNameLength] = '\0';
+            DirectoryEntry* dirEnt = malloc(sizeof(*dirEnt));
+            dirEnt->path = path;                  
+            dirEnt->pathLength = pathLength;
+            dirEnt->fileName = path + (pathLength - currentEntryLength);
+            dirEnt->fileNameLength = currentEntryLength;
 
-                DirectoryEntry* dirEnt = malloc(sizeof(*dirEnt));
-                dirEnt->path = directoryPath;
-                dirEnt->fileName = file;                    
-                dirEnt->pathLength = directoryPathLength;
-                dirEnt->fileNameLength = fileNameLength;
-
-                if((error = linkedList_add(list, dirEnt)) !=ERROR_NO_ERROR){
-                    goto label_closeDir;
-                }
+            if((error = linkedList_add(list, dirEnt)) !=ERROR_NO_ERROR){
+                goto label_closeDir;
             }
-        }   
+        }
     }
 
 label_closeDir:

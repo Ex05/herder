@@ -13,6 +13,7 @@
 #include <ctype.h>
 #include <string.h>
 #include <syslog.h>
+#include <dirent.h>
 #include <errno.h>
 #include <sys/types.h>
 #include <unistd.h>
@@ -116,7 +117,8 @@ typedef enum{
     ERROR_FUNCTION_NOT_IMPLEMENTED,
     ERROR_FAILED_TO_OPEN_DIRECTORY,
     ERROR_NAME_MISSMATCH,
-    ERROR_END_OF_FILE
+    ERROR_END_OF_FILE,
+    ERROR_FAILED_TO_DELETE_DIRECTORY
 }ERROR_CODE;
 
 ERROR_CODE util_formatNumber(char*, uint_fast64_t*, const int_fast64_t);
@@ -267,6 +269,8 @@ ERROR_CODE util_fileCopy(const char*, const char*);
 uint_fast32_t util_getFileSystemBlockSize(const char*);
 
 ERROR_CODE util_deleteFile(const char*);
+
+ERROR_CODE util_deleteDirectory(const char*, const bool, const bool);
 
 void util_replaceAllChars(char*, const char, const char);
 
