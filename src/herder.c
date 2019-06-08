@@ -719,7 +719,7 @@ local ERROR_CODE herder_pullShowInfo(Property* remoteHost, Property* remotePort,
 
     http_closeConnection(socketFD);
 
-   UTIL_LOG_CONSOLE_(LOG_INFO, "%s:", showName);
+    UTIL_LOG_CONSOLE_(LOG_INFO, "%s:", showName);
 
     if(response.statusCode == _200_OK){
         uint_fast64_t readOffset = 0;
@@ -925,6 +925,8 @@ ERROR_CODE herder_extractShowInfo(Property* remoteHost, Property* remotePort, Ep
     uint_fast16_t port = util_byteArrayTo_uint64(remotePort->buffer);
 
     void* httpProcessingBuffer;
+    char* showName = NULL;
+    uint_fast64_t showNameLength = 0;
 label_extractShowInfo:
     if((error = util_blockAlloc(&httpProcessingBuffer, HTTP_PROCESSING_BUFFER_SIZE)) != ERROR_NO_ERROR){
         goto label_unMap;
@@ -949,8 +951,6 @@ label_extractShowInfo:
     (*episodeInfo)->fileExtensionLength = strlen((*episodeInfo)->fileExtension);
 
     HTTP_Request request;
-
-
     if((error = http_initRequest(&request, url, strlen(url), httpProcessingBuffer, HTTP_PROCESSING_BUFFER_SIZE, HTTP_VERSION_1_1, REQUEST_TYPE_POST)) != ERROR_NO_ERROR){
         goto label_freeRequest;
     }
@@ -1025,6 +1025,11 @@ label_extractShowInfo:
         UTIL_LOG_CONSOLE_(LOG_ERR, "Server_status:'%s'.", http_getStatusMsg(response.statusCode));
     }
 
+    if(showName != NULL && showNameLength != 0){
+        (*episodeInfo)->showName  = showName;
+        (*episodeInfo)->showNameLength = showNameLength;
+    }
+
     // TODO: Extract this to its own function . (jan - 2018.12.07)
     if((*episodeInfo)->showName == NULL){
         UTIL_LOG_CONSOLE_(LOG_INFO, "Failed to extract show name from file: '%s'.", fileName);
@@ -1032,11 +1037,11 @@ label_extractShowInfo:
         UTIL_LOG_CONSOLE(LOG_INFO, "Please enter the show name...");
 
         int_fast64_t userInputLength;
-        if((error = util_readUserInput(&(*episodeInfo)->showName, &userInputLength)) != ERROR_NO_ERROR){
+        if((error = util_readUserInput(&showName, &userInputLength)) != ERROR_NO_ERROR){
             goto label_freeRequest;
         }
 
-        (*episodeInfo)->showNameLength = userInputLength;
+        showNameLength = userInputLength;
 
         if((error = herder_addShow(remoteHost, remotePort, (*episodeInfo)->showName, (*episodeInfo)->showNameLength)) != ERROR_NO_ERROR){
             goto label_freeRequest;
@@ -1411,7 +1416,7 @@ inline ERROR_CODE herder_argumentShowInfo(Argument* argumentShowInfo, PropertyFi
   
 inline ERROR_CODE herder_argumentListShows(Argument* argumentListShows, PropertyFile* propertyFile, Property* remoteHost, Property* remotePort){
      if(ARGUMENT_PARSER_ARGUMENT_HAS_VALUE((*argumentListShows))){
-            UTIL_LOG_CONSOLE(LOG_INFO, "Invalid command. Usage -l, --list <show>.");
+            UTIL_LOG_CONSOLE(LOG_INFO, "Invalid command. Usage -l, --list");
 
             return ERROR(ERROR_INVALID_COMMAND_USAGE);
         }else{

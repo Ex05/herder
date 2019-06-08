@@ -375,39 +375,41 @@ local SERVER_CONTEXT_HANDLER(server_pageShowInfo){
         util_uint64ToByteArray(response->data + response->dataLength, show->seasons.length);
         response->dataLength += sizeof(uint64_t);
 
-            Season** sortedSeasons = alloca(sizeof(Season*) * show->seasons.length);
-            server_sortSeasons(&sortedSeasons, &show->seasons);
+            if(show->seasons.length > 0){
+                Season** sortedSeasons = alloca(sizeof(Season*) * show->seasons.length);
+                server_sortSeasons(&sortedSeasons, &show->seasons);
 
-            uint_fast64_t j;
-            for(j = 0; j < show->seasons.length; j++){
-            Season* season = sortedSeasons[j];
+                uint_fast64_t j;
+                for(j = 0; j < show->seasons.length; j++){
+                Season* season = sortedSeasons[j];
 
-            // Season_Number.
-            util_uint16ToByteArray(response->data + response->dataLength, season->number);
-            response->dataLength += sizeof(uint16_t);
-
-            // Num_Episodes.
-            util_uint64ToByteArray(response->data + response->dataLength, season->episodes.length);
-            response->dataLength += sizeof(uint64_t);
-
-            Episode** sortedEpisodes = alloca(sizeof(Episode*) * season->episodes.length);
-            server_sortEpisodes(&sortedEpisodes, &season->episodes);
-
-            uint_fast64_t j;
-            for(j = 0; j < season->episodes.length; j++){
-                Episode* episode = sortedEpisodes[j];
-            
-                // Episode_Number.
-                util_uint16ToByteArray(response->data + response->dataLength, episode->number);
+                // Season_Number.
+                util_uint16ToByteArray(response->data + response->dataLength, season->number);
                 response->dataLength += sizeof(uint16_t);
 
-                // Episode_NameLength.
-                util_uint64ToByteArray(response->data + response->dataLength, episode->nameLength);
+                // Num_Episodes.
+                util_uint64ToByteArray(response->data + response->dataLength, season->episodes.length);
                 response->dataLength += sizeof(uint64_t);
 
-                // Episode_Name.
-                memcpy(response->data + response->dataLength, episode->name, episode->nameLength + 1);
-                response->dataLength += episode->nameLength + 1;
+                Episode** sortedEpisodes = alloca(sizeof(Episode*) * season->episodes.length);
+                server_sortEpisodes(&sortedEpisodes, &season->episodes);
+
+                uint_fast64_t j;
+                for(j = 0; j < season->episodes.length; j++){
+                    Episode* episode = sortedEpisodes[j];
+                
+                    // Episode_Number.
+                    util_uint16ToByteArray(response->data + response->dataLength, episode->number);
+                    response->dataLength += sizeof(uint16_t);
+
+                    // Episode_NameLength.
+                    util_uint64ToByteArray(response->data + response->dataLength, episode->nameLength);
+                    response->dataLength += sizeof(uint64_t);
+
+                    // Episode_Name.
+                    memcpy(response->data + response->dataLength, episode->name, episode->nameLength + 1);
+                    response->dataLength += episode->nameLength + 1;
+                }
             }
         }
     }

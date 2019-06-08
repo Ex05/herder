@@ -1372,22 +1372,48 @@ TEST_TEST_FUNCTION(mediaLibrary_extractShowName){
 
     EpisodeInfo info = {0};
 
-    char fileName[] = "American_Dad_Rogers_Spot";
-
-    if(mediaLibrary_extractShowName(&info, &shows, fileName, strlen(fileName)) != ERROR_NO_ERROR){
+    char fileName_0[] = "American_Dad_Rogers_Spot";
+    if(mediaLibrary_extractShowName(&info, &shows, fileName_0, strlen(fileName_0)) != ERROR_NO_ERROR){
         ret =  false;
 
         goto label_freeShows;
     }
 
-    if(strncmp(info.showName, americanDad.name, americanDad.nameLength) != 0){
+    if(strncmp(info.showName, americanDad.name, americanDad.nameLength + 1) != 0){
         ret = false;
 
         goto label_freeShows;
     }
 
-    if(strncmp(fileName, "Rogers_Spot", strlen("Rogers_Spot")) != 0){
+    if(strncmp(fileName_0, "Rogers_Spot", strlen("Rogers_Spot") + 1) != 0){
         ret = false;
+    }
+
+    char fileName_1[] = "Family_Guy_s01e01_Death_Has_a_Shadow.avi";
+    if(mediaLibrary_extractShowName(&info, &shows, fileName_1, strlen(fileName_1)) != ERROR_NO_ERROR){
+        ret =  false;
+
+        goto label_freeShows;
+    }
+
+    if(strncmp(info.showName, familyGuy.name, familyGuy.nameLength + 1) != 0){
+        ret = false;
+
+        goto label_freeShows;
+    }
+
+    if(strncmp(fileName_1, "s01e01_Death_Has_a_Shadow.avi", strlen("s01e01_Death_Has_a_Shadow.avi") + 1) != 0){
+        ret = false;
+    }
+
+    memset(&info, 0, sizeof(info));
+
+    char fileName_2[] = "s01e01_Death_Has_a_Shadow.avi";
+    __UTIL_SUPPRESS_NEXT_ERROR_OF_TYPE__(ERROR_INCOMPLETE);
+    if(mediaLibrary_extractShowName(&info, &shows, fileName_2, strlen(fileName_2)) != ERROR_INCOMPLETE){
+        ret =  false;
+
+        goto label_freeShows;
     }
 
 label_freeShows:
