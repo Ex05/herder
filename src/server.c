@@ -745,8 +745,8 @@ label_return:
             server_addContext(&server, "/addShow", server_pageAddShow);
             server_addContext(&server, "/removeShow", server_pageRemoveShow);
 			server_addContext(&server, "/shows", server_pageShows);
-			server_addContext(&server, "/showInfo", server_pageShowInfo);
             server_addContext(&server, "/extractShowInfo", server_pageExtractShowInfo);
+            server_addContext(&server, "/showInfo", server_pageShowInfo);
 
 			UTIL_LOG_INFO_("Starting server on port '%" PRIuFAST16 "'.", port);
 
@@ -968,6 +968,8 @@ inline ERROR_CODE server_getContext(HerderServer* server, ContextHandler** conte
 
     while(LINKED_LIST_ITERATOR_HAS_NEXT(&it)){
         Context* context = LINKED_LIST_ITERATOR_NEXT(&it);
+
+        // UTIL_LOG_CONSOLE_(LOG_DEBUG, "'%s' - [%" PRIuFAST64 "] :'%s' + '%c'", baseDirectory, baseDirectoryLength, context->location, context->location[context->locationLength]);
 
         if(strncmp(baseDirectory, context->location, context->locationLength + 1) == 0){
             *contextHandler = context->contextHandler;

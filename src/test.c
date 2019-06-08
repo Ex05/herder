@@ -660,7 +660,7 @@ TEST_TEST_FUNCTION(util_getBaseDirectory){
 
     // Test_2.
     {
-        char url[] = "/add";
+        char url[] = "/extractShowInfo";
         
         char* baseDirectory;
         uint_fast64_t baseDirectoryLength;
@@ -668,7 +668,7 @@ TEST_TEST_FUNCTION(util_getBaseDirectory){
             return false;
         }
 
-        if(baseDirectoryLength != 4){
+        if(baseDirectoryLength != 16){
             return false;
         }
 

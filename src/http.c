@@ -767,16 +767,13 @@ ERROR_CODE http_receiveRequest(HTTP_Request* request, const int_fast32_t connect
                 return ERROR_(ERROR_INVALID_REQUEST_URL, "URL length can't be '%" PRIuFAST16 "'.", request->urlLength);
             }
 
-            request->requestURL = malloc(sizeof(*request->requestURL) * request->urlLength);
+            request->requestURL = malloc(sizeof(*request->requestURL) * request->urlLength + 1);
             if(request->requestURL == NULL){
                return  ERROR(ERROR_OUT_OF_MEMORY);
             }
 
-            if(request->requestURL == NULL){
-                return ERROR(ERROR_OUT_OF_MEMORY);
-            }
-
             memcpy(request->requestURL, buffer + posSplitBegin, request->urlLength);
+            request->requestURL[request->urlLength] = '\0';
         
             posSplitBegin += posSplitEnd + 1;
 
