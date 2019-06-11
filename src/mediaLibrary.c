@@ -454,11 +454,13 @@ ERROR_CODE mediaLibrary_extractShowName(EpisodeInfo* info, LinkedList* shows, ch
             goto label_continue; 
         }
 
-        char* chunk = alloca(sizeof(*chunk) * endIndex);
-        memcpy(chunk, s, endIndex - 1);
-        chunk[endIndex - 1] = '\0';
+        if(endIndex > 2){
+            char* chunk = alloca(sizeof(*chunk) * endIndex);
+            memcpy(chunk, s, endIndex - 1);
+            chunk[endIndex - 1] = '\0';
 
-        linkedList_add(&wordList, chunk);
+            linkedList_add(&wordList, chunk);
+        }
 
 label_continue:
         s += endIndex;
