@@ -1025,7 +1025,7 @@ inline ERROR_CODE mediaLibrary_initEpisodeInfo(EpisodeInfo* info){
 inline void mediaLibrary_freeEpisodeInfo(EpisodeInfo* info){
     free(info->showName);
     free(info->name);
-    // free(info->fileExtension);
+    free(info->fileExtension);
 }
 
 inline ERROR_CODE mediaLibrary_readStringFromLibraryFile(FILE* file, char** s, uint_fast64_t length){

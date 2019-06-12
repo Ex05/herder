@@ -535,6 +535,8 @@ local SERVER_CONTEXT_HANDLER(server_pageExtractShowInfo){
         error = mediaLibrary_extractEpisodeInfo(&info, &server->library.shows, fileName, fileNameLength);
 
         if(error != ERROR_NO_ERROR && error != ERROR_INCOMPLETE){
+            mediaLibrary_freeEpisodeInfo(&info);
+            
             goto label_onError;
         }else{
             util_uint64ToByteArray(response->data + response->dataLength, error);
@@ -567,6 +569,8 @@ label_onError:
     response->dataLength += sizeof(uint64_t);
 
 label_return:
+    mediaLibrary_freeEpisodeInfo(&info);
+
     http_setHTTP_Version(response, HTTP_VERSION_1_1);
     response->statusCode = _200_OK;
     response->contentType = HTTP_CONTENT_TYPE_TEXT_HTML;
