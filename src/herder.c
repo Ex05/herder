@@ -984,7 +984,7 @@ label_extractShowInfo:
             readOffset += sizeof(uint64_t);
 
             if((*episodeInfo)->showNameLength != 0){
-                (*episodeInfo)->showName = malloc(sizeof(*(*episodeInfo)->showName) * ((*episodeInfo)->showNameLength) + 1);
+                 (*episodeInfo)->showName = malloc(sizeof(*(*episodeInfo)->showName) * ((*episodeInfo)->showNameLength) + 1);
                 if((*episodeInfo)->showName == NULL){
                     return  ERROR(ERROR_OUT_OF_MEMORY);
                 }
@@ -1026,7 +1026,9 @@ label_extractShowInfo:
     }
 
     if(showName != NULL && showNameLength != 0){
-        (*episodeInfo)->showName  = showName;
+        free((*episodeInfo)->showName);
+
+        (*episodeInfo)->showName = showName;
         (*episodeInfo)->showNameLength = showNameLength;
     }
 
@@ -1043,7 +1045,7 @@ label_extractShowInfo:
 
         showNameLength = userInputLength;
 
-        if((error = herder_addShow(remoteHost, remotePort, (*episodeInfo)->showName, (*episodeInfo)->showNameLength)) != ERROR_NO_ERROR){
+        if((error = herder_addShow(remoteHost, remotePort, showName, userInputLength)) != ERROR_NO_ERROR){
             goto label_freeRequest;
         }
         
@@ -1053,6 +1055,8 @@ label_extractShowInfo:
         if(util_unMap(httpProcessingBuffer, HTTP_PROCESSING_BUFFER_SIZE) != ERROR_NO_ERROR){
             UTIL_LOG_ERROR(util_toErrorString(ERROR_FAILED_TO_UNMAP_MEMORY));
         }
+
+        mediaLibrary_freeEpisodeInfo(*episodeInfo);
 
         goto label_extractShowInfo;
     }
