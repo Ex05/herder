@@ -796,6 +796,31 @@ TEST_TEST_FUNCTION(util_append){
     return true;
 }
 
+TEST_TEST_FUNCTION(util_stringToInt){
+    const char a[] = "27";
+    const char b[] = "a88b";
+
+    int_fast64_t value;
+    if(util_stringToInt(a, &value) != ERROR_NO_ERROR){
+        return false;
+    }
+
+    if(value != 27){
+        return false;
+    }
+
+    __UTIL_SUPPRESS_NEXT_ERROR_OF_TYPE__(ERROR_INVALID_STRING);
+    if(util_stringToInt(b, &value) != ERROR_INVALID_STRING){
+        return false;
+    }
+
+    if(value != 0){
+        return false;
+    }
+
+    return true;
+}
+
 // http.c
 TEST_TEST_FUNCTION(http_addHeaderField){
     #define BUFFER_SIZE 8192
@@ -1484,7 +1509,7 @@ label_return:
 TEST_TEST_FUNCTION(mediaLibrary_extractEpisodeInfo){
     bool ret = true;
 
-    char a[] = "American_Dad_s01e01_Threat_Levels.mkv";
+    char a[] = "American_Dad_s01e01_Threat_Levels.mkv"; 
 
     LinkedList shows;
     linkedList_init(&shows);
@@ -1519,6 +1544,56 @@ label_free:
     free(americanDad.name);
 
     linkedList_free(&shows);
+
+    return ret;
+}
+
+TEST_TEST_FUNCTION(mediaLibrary_sortEpisodes){
+    bool ret = true;
+
+    LinkedList unsortedEpisdoes;
+    linkedList_init(&unsortedEpisdoes);
+
+    Episode s01e04;
+    medialibrary_initEpisode(&s01e04, 4, "Francine's Flashback", strlen("Francine's Flashback"), "mkv", 3);
+    linkedList_add(&unsortedEpisdoes, &s01e04);
+
+    Episode s01e05;
+    medialibrary_initEpisode(&s01e05, 5, "Roger Codger", strlen("Roger Codger"), "mkv", 3);
+    linkedList_add(&unsortedEpisdoes, &s01e05);
+
+    Episode s01e01;
+    medialibrary_initEpisode(&s01e01, 1, "Pilot", strlen("Pilot"), "mkv", 3);
+    linkedList_add(&unsortedEpisdoes, &s01e01);
+
+    Episode s01e03;
+    medialibrary_initEpisode(&s01e03, 3, "Stan Knows Best", strlen("Stan Knows Best"), "mkv", 3);
+    linkedList_add(&unsortedEpisdoes, &s01e03);
+
+    Episode s01e02;
+    medialibrary_initEpisode(&s01e02, 2, "Threat Levels", strlen("Threat Levels"), "mkv", 3);
+    linkedList_add(&unsortedEpisdoes, &s01e02);
+
+    Episode** episodes = alloca(sizeof(Episode) * 5);
+
+    mediaLibrary_sortEpisodes(&episodes, &unsortedEpisdoes);
+
+    uint_fast64_t i;
+    for(i = 0; i < 5; i++){
+        if(episodes[i]->number != i + 1){
+            ret = false;
+
+            break;
+        }
+    }
+
+    mediaLibrary_freeEpisode(&s01e04);
+    mediaLibrary_freeEpisode(&s01e05);
+    mediaLibrary_freeEpisode(&s01e01);
+    mediaLibrary_freeEpisode(&s01e03);
+    mediaLibrary_freeEpisode(&s01e02);
+
+    linkedList_free(&unsortedEpisdoes);
 
     return ret;
 }
@@ -1689,56 +1764,6 @@ label_free:
     return ret;
 }
 
-TEST_TEST_FUNCTION(server_sortEpisodes){
-    bool ret = true;
-
-    LinkedList unsortedEpisdoes;
-    linkedList_init(&unsortedEpisdoes);
-
-    Episode s01e04;
-    medialibrary_initEpisode(&s01e04, 4, "Francine's Flashback", strlen("Francine's Flashback"), "mkv", 3);
-    linkedList_add(&unsortedEpisdoes, &s01e04);
-
-    Episode s01e05;
-    medialibrary_initEpisode(&s01e05, 5, "Roger Codger", strlen("Roger Codger"), "mkv", 3);
-    linkedList_add(&unsortedEpisdoes, &s01e05);
-
-    Episode s01e01;
-    medialibrary_initEpisode(&s01e01, 1, "Pilot", strlen("Pilot"), "mkv", 3);
-    linkedList_add(&unsortedEpisdoes, &s01e01);
-
-    Episode s01e03;
-    medialibrary_initEpisode(&s01e03, 3, "Stan Knows Best", strlen("Stan Knows Best"), "mkv", 3);
-    linkedList_add(&unsortedEpisdoes, &s01e03);
-
-    Episode s01e02;
-    medialibrary_initEpisode(&s01e02, 2, "Threat Levels", strlen("Threat Levels"), "mkv", 3);
-    linkedList_add(&unsortedEpisdoes, &s01e02);
-
-    Episode** episodes = alloca(sizeof(Episode) * 5);
-
-    server_sortEpisodes(&episodes, &unsortedEpisdoes);
-
-    uint_fast64_t i;
-    for(i = 0; i < 5; i++){
-        if(episodes[i]->number != i + 1){
-            ret = false;
-
-            break;
-        }
-    }
-
-    mediaLibrary_freeEpisode(&s01e04);
-    mediaLibrary_freeEpisode(&s01e05);
-    mediaLibrary_freeEpisode(&s01e01);
-    mediaLibrary_freeEpisode(&s01e03);
-    mediaLibrary_freeEpisode(&s01e02);
-
-    linkedList_free(&unsortedEpisdoes);
-
-    return ret;
-}
-
 // main
 int main(void){
     TEST_BEGIN();
@@ -1773,6 +1798,7 @@ int main(void){
         TEST(util_toLowerChase);
         TEST(util_replaceAllChars);
         TEST(util_append);
+        TEST(util_stringToInt);
                 
         TEST(util_getBaseDirectory);
         TEST(util_getFileName);
@@ -1812,20 +1838,19 @@ int main(void){
         TEST_NO_SETUP(mediaLibrary_extractShowName);
         TEST_NO_SETUP(mediaLibrary_extractPrefixedNumber);
         TEST_NO_SETUP(mediaLibrary_extractEpisodeInfo);
+        TEST_NO_SETUP(mediaLibrary_sortEpisodes);
     TEST_SUIT_END();
 
     TEST_SUIT_BEGIN("herder");
         TEST(herder_constructFilePath);
     TEST_SUIT_END();
 
-    TEST_SUIT_BEGIN("server");
-        TEST(server_sortEpisodes);
-
+    // TEST_SUIT_BEGIN("server");
         // Note:(jan) Running the server in valgrind takes to long, probably due to the 'accept' call having to be interrupted in the server loop.
         // TEST(server_addContext);
         // Note:(jan) No need to run this, as this was not meant to be an automated test, and needed console output in 'http.c' that is no longer present to be useful.
         //TEST(server_send);
-    TEST_SUIT_END();
+    // TEST_SUIT_END();
 
     TEST_END();
 }

@@ -242,7 +242,6 @@ inline void mediaLibrary_freeShow(Show* show){
     linkedList_free(&show->seasons);
 
     free(show->name);
-    free(show);
 }
 
 inline void mediaLibrary_freeSeason(Season* season){
@@ -284,6 +283,8 @@ inline void mediaLibrary_free(MediaLibrary* library){
         }
 
         mediaLibrary_freeShow(show);
+
+        free(show);
     }
 
     linkedList_free(&library->shows);
@@ -634,6 +635,8 @@ inline ERROR_CODE mediaLibrary_removeShow(MediaLibrary* library, const char* nam
 
 label_freeShow:
     mediaLibrary_freeShow(show);
+
+    free(show);
 
     return ERROR(error);
 }
@@ -1121,6 +1124,94 @@ inline ERROR_CODE mediaLibrary_readFileExtension(FILE* file, char** fileExtensio
 
     return ERROR(ERROR_NO_ERROR);
 }
+
+// TODO: Implement better/faster sorting algorithm. (jan - 2019.04.24)
+ERROR_CODE mediaLibrary_sortSeasons(Season** sortedSeasons[], LinkedList* seasons){
+    Season** toBeSorted = *sortedSeasons;
+
+    LinkedListIterator it;
+    linkedList_initIterator(&it, seasons);
+
+    toBeSorted[0] = LINKED_LIST_ITERATOR_NEXT(&it);
+
+    register uint_fast64_t endIndex = 0;
+    while(LINKED_LIST_ITERATOR_HAS_NEXT(&it)){
+        Season* current = LINKED_LIST_ITERATOR_NEXT(&it);
+
+        if(current->number >= toBeSorted[endIndex]->number){
+            // Add new largest element to end of list.
+            toBeSorted[endIndex + 1] = current;
+        }else{
+            // Search for place to insert new element.
+            register uint_fast64_t insertionIndex = 0;
+            while(current->number > toBeSorted[insertionIndex]->number){
+                insertionIndex++;
+            }
+        
+            // Insert new element and move the rest up one place in the list.
+            Season* tmp = toBeSorted[insertionIndex];
+
+            toBeSorted[insertionIndex] = current;
+
+            for(insertionIndex += 1; insertionIndex <= endIndex; insertionIndex++){
+                Season* swap = toBeSorted[insertionIndex];
+                toBeSorted[insertionIndex] = tmp;
+
+                tmp = swap;
+            }
+
+            toBeSorted[insertionIndex] = tmp;
+        }
+
+        endIndex++;
+    }
+
+    return ERROR(ERROR_NO_ERROR);
+}
+
+ERROR_CODE mediaLibrary_sortEpisodes(Episode** sortedEpisodes[], LinkedList* episodes){
+    Episode** toBeSorted = *sortedEpisodes;
+
+    LinkedListIterator it;
+    linkedList_initIterator(&it, episodes);
+
+    toBeSorted[0] = LINKED_LIST_ITERATOR_NEXT(&it);
+
+    register uint_fast64_t endIndex = 0;
+    while(LINKED_LIST_ITERATOR_HAS_NEXT(&it)){
+        Episode* current = LINKED_LIST_ITERATOR_NEXT(&it);
+
+        if(current->number >= toBeSorted[endIndex]->number){
+            // Add new largest element to end of list.
+            toBeSorted[endIndex + 1] = current;
+        }else{
+            // Search for place to insert new element.
+            register uint_fast64_t insertionIndex = 0;
+            while(current->number > toBeSorted[insertionIndex]->number){
+                insertionIndex++;
+            }
+        
+            // Insert new element and move the rest up one place in the list.
+            Episode* tmp = toBeSorted[insertionIndex];
+
+            toBeSorted[insertionIndex] = current;
+
+            for(insertionIndex += 1; insertionIndex <= endIndex; insertionIndex++){
+                Episode* swap = toBeSorted[insertionIndex];
+                toBeSorted[insertionIndex] = tmp;
+
+                tmp = swap;
+            }
+
+            toBeSorted[insertionIndex] = tmp;
+        }
+
+        endIndex++;
+    }
+
+    return ERROR(ERROR_NO_ERROR);
+}
+
 
 #undef PROPERTY_LIBRARY_DIRECTORY_NAME
 #undef PROPERTY_IMPORT_DIRECTORY_NAME    
