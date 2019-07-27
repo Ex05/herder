@@ -72,21 +72,21 @@ local ERROR_CODE herder_argumentSetRemoteHostPort(Argument*, PropertyFile*, Prop
 
 local ERROR_CODE herder_argumentSetLibraryDirectory(Argument*, PropertyFile*, Property**);
 
-local ERROR_CODE herder_argumentImport(Argument*, PropertyFile*, Property*, Property*, Property*, Property*);
+local ERROR_CODE herder_argumentImport(Argument*, Property*, Property*, Property*, Property*);
 
-local ERROR_CODE herder_argumentKillDaemon(Argument*, PropertyFile*);
+local ERROR_CODE herder_argumentKillDaemon(Argument*);
 
-local ERROR_CODE herder_argumentShowInfo(Argument*, PropertyFile*, Property*, Property*);
+local ERROR_CODE herder_argumentShowInfo(Argument*, Property*, Property*);
 
-local ERROR_CODE herder_argumentListShows(Argument*, PropertyFile*, Property*, Property*);
+local ERROR_CODE herder_argumentListShows(Argument*, Property*, Property*);
 
-local ERROR_CODE herder_argumentListAll(Argument*, PropertyFile*, Property*, Property*);
+local ERROR_CODE herder_argumentListAll(Argument*, Property*, Property*);
 
-local ERROR_CODE herder_argumentAddShow(Argument*, PropertyFile*, Property*, Property*);
+local ERROR_CODE herder_argumentAddShow(Argument*, Property*, Property*);
 
-local ERROR_CODE herder_argumentRemoveShow(Argument*, PropertyFile*, Property*, Property*);
+local ERROR_CODE herder_argumentRemoveShow(Argument*, Property*, Property*);
 
-local ERROR_CODE herder_arguemntRenameEpisode(Argument*, PropertyFile*, Property*, Property*);
+local ERROR_CODE herder_arguemntRenameEpisode(Argument*, Property*, Property*);
 
 local ERROR_CODE herder_walkDirectory(LinkedList*, const char*);
 
@@ -228,7 +228,7 @@ local ERROR_CODE herder_pullShowInfo(Property*, Property*, Show*);
     if(argumentParser_contains(&parser, &argumentImport)){
        noValidArgument = false;
 
-        if((error = herder_argumentImport(&argumentImport, &properties, remoteHost, remotePort, libraryDirectory, importDirectory)) == ERROR_NO_ERROR){
+        if((error = herder_argumentImport(&argumentImport, remoteHost, remotePort, libraryDirectory, importDirectory)) == ERROR_NO_ERROR){
             // TODO: Add handling of error or success case. (jan - 2018.12.18)
         }
 
@@ -238,7 +238,7 @@ local ERROR_CODE herder_pullShowInfo(Property*, Property*, Show*);
     if(argumentParser_contains(&parser, &argumentKillDeamon)){
         noValidArgument = false;
    
-        if((error = herder_argumentKillDaemon(&argumentKillDeamon, &properties)) == ERROR_NO_ERROR){
+        if((error = herder_argumentKillDaemon(&argumentKillDeamon)) == ERROR_NO_ERROR){
             // TODO: Add handling of error or success case. (jan - 2018.12.18)
         }
 
@@ -248,7 +248,7 @@ local ERROR_CODE herder_pullShowInfo(Property*, Property*, Show*);
     if(argumentParser_contains(&parser, &argumentShowInfo)){
         noValidArgument = false;
 
-        if((error = herder_argumentShowInfo(&argumentShowInfo, &properties, remoteHost, remotePort)) != ERROR_NO_ERROR){
+        if((error = herder_argumentShowInfo(&argumentShowInfo, remoteHost, remotePort)) != ERROR_NO_ERROR){
             if(error == ERROR_UNKNOWN_SHOW){
                 UTIL_LOG_CONSOLE_(LOG_INFO, "Unknown show '%s'.", argumentShowInfo.value);
             }else{
@@ -266,7 +266,7 @@ local ERROR_CODE herder_pullShowInfo(Property*, Property*, Show*);
     if(argumentParser_contains(&parser, &argumentListShows)){
         noValidArgument = false;
 
-        if((error = herder_argumentListShows(&argumentListShows, &properties, remoteHost, remotePort)) != ERROR_NO_ERROR){       
+        if((error = herder_argumentListShows(&argumentListShows, remoteHost, remotePort)) != ERROR_NO_ERROR){       
             if(error == ERROR_FAILED_TO_CONNECT){
                 UTIL_LOG_CONSOLE_(LOG_INFO, "Failed to list shows. [%s] (%s:%" PRIdFAST16 ")", util_toErrorString(error) , (char*) remoteHost->buffer, util_byteArrayTo_uint64(remotePort->buffer));
             }else{
@@ -278,7 +278,7 @@ local ERROR_CODE herder_pullShowInfo(Property*, Property*, Show*);
     if(argumentParser_contains(&parser, &argumentListAll)){
         noValidArgument = false;
 
-        if((error = herder_argumentListAll(&argumentListAll, &properties, remoteHost, remotePort)) != ERROR_NO_ERROR){       
+        if((error = herder_argumentListAll(&argumentListAll, remoteHost, remotePort)) != ERROR_NO_ERROR){       
             if(error == ERROR_FAILED_TO_CONNECT){
                 UTIL_LOG_CONSOLE_(LOG_INFO, "Failed to list all shows. [%s] (%s:%" PRIdFAST16 ")", util_toErrorString(error) , (char*) remoteHost->buffer, util_byteArrayTo_uint64(remotePort->buffer));
             }else{
@@ -290,7 +290,7 @@ local ERROR_CODE herder_pullShowInfo(Property*, Property*, Show*);
     if(argumentParser_contains(&parser, &argumentAddShow)){
         noValidArgument = false;
 
-        if((error = herder_argumentAddShow(&argumentAddShow, &properties, remoteHost, remotePort)) == ERROR_NO_ERROR){
+        if((error = herder_argumentAddShow(&argumentAddShow, remoteHost, remotePort)) == ERROR_NO_ERROR){
             UTIL_LOG_CONSOLE_(LOG_INFO, "Added '%s' to the library.", argumentAddShow.value);
         }
 
@@ -300,7 +300,7 @@ local ERROR_CODE herder_pullShowInfo(Property*, Property*, Show*);
     if(argumentParser_contains(&parser, &argumentRemoveShow)){
         noValidArgument = false;
 
-        if((error = herder_argumentRemoveShow(&argumentRemoveShow, &properties, remoteHost, remotePort)) == ERROR_NO_ERROR){
+        if((error = herder_argumentRemoveShow(&argumentRemoveShow, remoteHost, remotePort)) == ERROR_NO_ERROR){
             UTIL_LOG_CONSOLE_(LOG_INFO, "Removed '%s' from the library.", argumentRemoveShow.value);
         }else{
             UTIL_LOG_CONSOLE_(LOG_INFO, "Failed to remove '%s' from the library. [%s]", argumentRemoveShow.value, util_toErrorString(error));
@@ -312,7 +312,7 @@ local ERROR_CODE herder_pullShowInfo(Property*, Property*, Show*);
     if(argumentParser_contains(&parser, &argumentRenameEpisode)){
         noValidArgument = false;
 
-        if((error = herder_arguemntRenameEpisode(&argumentRenameEpisode, &properties, remoteHost, remotePort)) == ERROR_NO_ERROR){
+        if((error = herder_arguemntRenameEpisode(&argumentRenameEpisode, remoteHost, remotePort)) == ERROR_NO_ERROR){
             UTIL_LOG_CONSOLE_(LOG_INFO, "Successfully renamed episode '%s'.", argumentRenameEpisode.value);
         }else{
             UTIL_LOG_CONSOLE_(LOG_INFO, "Failed to rename epsiode. [%s]", util_toErrorString(error));
@@ -1407,7 +1407,7 @@ inline ERROR_CODE herder_argumentSetLibraryDirectory(Argument* argumentSetLibrar
 }
 
 // -i, --import optional:<path>
-inline ERROR_CODE herder_argumentImport(Argument* argumentImport, PropertyFile* propertyFile, Property* remoteHost, Property* remotePort, Property* libraryDirectory, Property* importDirectory){
+inline ERROR_CODE herder_argumentImport(Argument* argumentImport, Property* remoteHost, Property* remotePort, Property* libraryDirectory, Property* importDirectory){
     if(ARGUMENT_PARSER_ARGUMENT_HAS_VALUE((*argumentImport))){
         // Import from path.
         return ERROR(herder_import(remoteHost, remotePort, libraryDirectory, argumentImport->value));
@@ -1423,11 +1423,11 @@ inline ERROR_CODE herder_argumentImport(Argument* argumentImport, PropertyFile* 
     }
 }
 
-inline ERROR_CODE herder_argumentKillDaemon(Argument* argumentImport, PropertyFile* propertyFile){
+inline ERROR_CODE herder_argumentKillDaemon(Argument* argumentImport){
     return ERROR(ERROR_FUNCTION_NOT_IMPLEMENTED);
 }
 
-inline ERROR_CODE herder_argumentShowInfo(Argument* argumentShowInfo, PropertyFile* propertyFile, Property* remoteHost, Property* remotePort){
+inline ERROR_CODE herder_argumentShowInfo(Argument* argumentShowInfo, Property* remoteHost, Property* remotePort){
     if(!ARGUMENT_PARSER_ARGUMENT_HAS_VALUE((*argumentShowInfo))){
         return ERROR(ERROR_INVALID_COMMAND_USAGE);
     }else{
@@ -1439,7 +1439,7 @@ inline ERROR_CODE herder_argumentShowInfo(Argument* argumentShowInfo, PropertyFi
     }
 }
   
-inline ERROR_CODE herder_argumentListShows(Argument* argumentListShows, PropertyFile* propertyFile, Property* remoteHost, Property* remotePort){
+inline ERROR_CODE herder_argumentListShows(Argument* argumentListShows, Property* remoteHost, Property* remotePort){
      if(ARGUMENT_PARSER_ARGUMENT_HAS_VALUE((*argumentListShows))){
             UTIL_LOG_CONSOLE(LOG_INFO, "Invalid command. Usage -l, --list");
 
@@ -1453,7 +1453,7 @@ inline ERROR_CODE herder_argumentListShows(Argument* argumentListShows, Property
         }
 }
 
-inline ERROR_CODE herder_argumentListAll(Argument* argumentListShows, PropertyFile* propertyFile, Property* remoteHost, Property* remotePort){
+inline ERROR_CODE herder_argumentListAll(Argument* argumentListShows, Property* remoteHost, Property* remotePort){
      if(ARGUMENT_PARSER_ARGUMENT_HAS_VALUE((*argumentListShows))){
             UTIL_LOG_CONSOLE(LOG_INFO, "Invalid command. Usage --listAll, --listShows.");
 
@@ -1467,7 +1467,7 @@ inline ERROR_CODE herder_argumentListAll(Argument* argumentListShows, PropertyFi
         }
 }
 
-inline ERROR_CODE herder_argumentAddShow(Argument* argumentAddShow, PropertyFile* propertyFile, Property* remoteHost, Property* remotePort){
+inline ERROR_CODE herder_argumentAddShow(Argument* argumentAddShow, Property* remoteHost, Property* remotePort){
     if(!ARGUMENT_PARSER_ARGUMENT_HAS_VALUE((*argumentAddShow))){
         UTIL_LOG_CONSOLE(LOG_INFO, "Invalid command. Usage -a, --add <file>.");
 
@@ -1481,7 +1481,7 @@ inline ERROR_CODE herder_argumentAddShow(Argument* argumentAddShow, PropertyFile
     }
 }
 
-inline ERROR_CODE herder_argumentRemoveShow(Argument* argumentRemoveShow, PropertyFile* propertyFile, Property* remoteHost, Property* remotePort){
+inline ERROR_CODE herder_argumentRemoveShow(Argument* argumentRemoveShow, Property* remoteHost, Property* remotePort){
     if(!ARGUMENT_PARSER_ARGUMENT_HAS_VALUE((*argumentRemoveShow))){
         UTIL_LOG_CONSOLE(LOG_INFO, "Invalid command. Usage --removeShow <show>.");
 
@@ -1495,7 +1495,7 @@ inline ERROR_CODE herder_argumentRemoveShow(Argument* argumentRemoveShow, Proper
     }
 }
 
-inline ERROR_CODE herder_arguemntRenameEpisode(Argument* argumentRenameEpisode, PropertyFile* propertyFile, Property* remoteHost, Property* remotePort){
+inline ERROR_CODE herder_arguemntRenameEpisode(Argument* argumentRenameEpisode, Property* remoteHost, Property* remotePort){
     if(ARGUMENT_PARSER_ARGUMENT_HAS_VALUE((*argumentRenameEpisode))){
         UTIL_LOG_CONSOLE(LOG_INFO, "Invalid command. Usage --renameEpisode.");
 
