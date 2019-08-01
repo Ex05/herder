@@ -59,7 +59,7 @@ inline void linkedList_free(LinkedList* list){
     }
 }
 
-inline bool linkedList_remove(LinkedList* list, void* data){
+inline ERROR_CODE linkedList_remove(LinkedList* list, void* data){
 /*  This is Linus Torvalds double Pointer based approach to removing nodes in LinkedLists, which compared to
     other approachs (like the one shown below) removes a branch from the code.
     */
@@ -74,13 +74,13 @@ inline bool linkedList_remove(LinkedList* list, void* data){
 
             free(current);
 
-            return true;
+            return ERROR(ERROR_NO_ERROR);
         }else{
             node = &current->next;
         }
     }
 
-    return false;
+    return ERROR(ERROR_FAILED_TO_REMOVE_NODE);
 
 /*
 LinkedListIterator it;
