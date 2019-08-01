@@ -61,6 +61,10 @@ ERROR_CODE mediaLibrary_addShow(MediaLibrary*, Show**, const char*, const uint_f
 
 ERROR_CODE mediaLibrary_removeShow(MediaLibrary*, const char*, const uint_fast64_t);
 
+ERROR_CODE medialibrary_removeShowFrromLibraryFile(MediaLibrary*, const char*);
+
+ERROR_CODE medialibrary_removeEpisode(MediaLibrary*, Season*, Episode*);
+
 ERROR_CODE medialibrary_getShow(MediaLibrary*, Show**, const char*, const uint_fast64_t);
 
 ERROR_CODE mediaLibrary_addSeason(MediaLibrary*, Season**, Show*, const uint_fast16_t);
@@ -76,8 +80,6 @@ ERROR_CODE mediaLibrary_extractEpisodeInfo(EpisodeInfo*, LinkedList*, char*, con
 ERROR_CODE mediaLibrary_initEpisodeInfo(EpisodeInfo*);
 
 ERROR_CODE mediaLibrary_extractPrefixedNumber(char*, uint_fast64_t, int_fast16_t*, const char);
-
-ERROR_CODE medialibrary_removeShowFrromLibraryFile(MediaLibrary*, const char*);
 
 void mediaLibrary_freeEpisodeInfo(EpisodeInfo*);
 

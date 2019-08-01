@@ -641,6 +641,20 @@ label_freeShow:
     return ERROR(error);
 }
 
+ERROR_CODE medialibrary_removeEpisode(MediaLibrary* library, Season* season, Episode* episode){
+    ERROR_CODE error;
+
+    if((error = linkedList_remove(&season->episodes, episode)) != ERROR_NO_ERROR){
+        UTIL_LOG_ERROR("Failed to remove episode from season.");
+    }
+
+    mediaLibrary_freeEpisode(episode);
+
+    free(episode);
+
+    return ERROR(error);
+}
+
 ERROR_CODE medialibrary_removeShowFrromLibraryFile(MediaLibrary* library, const char* show){
     ERROR_CODE error = ERROR_NO_ERROR;
 

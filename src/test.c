@@ -1371,6 +1371,46 @@ TEST_TEST_FUNCTION_(mediaLibrary_addEpisode, MediaLibrary, library){
     return true;
 }
 
+TEST_TEST_FUNCTION_(medialibrary_removeEpisode, MediaLibrary, library){
+    const char showName[] = "Enen no Shouboutai";
+    const uint_fast64_t showNameLength = strlen(showName);
+
+    Show* show;
+    if(mediaLibrary_addShow(library, &show, showName, showNameLength) != ERROR_NO_ERROR){
+        return false;
+    }
+
+    Season* season_01;
+    if(mediaLibrary_addSeason(library, &season_01, show, 1) != ERROR_NO_ERROR){
+        return false;
+    }
+
+    const char episodeName[] = "Shinra Kusakabe Enlists";
+    const uint_fast64_t episodeNameLength = strlen(episodeName);
+
+    Episode* episode_01;
+    if(mediaLibrary_addEpisode(library, &episode_01, show, season_01, 1, episodeName, episodeNameLength, ".mkv", 4, true) != ERROR_NO_ERROR){
+        return false;
+    }
+
+    if(medialibrary_removeEpisode(library, season_01, episode_01) != ERROR_NO_ERROR){
+        return false;
+    }
+
+    LinkedListIterator it;
+    linkedList_initIterator(&it, &season_01->episodes);
+
+    while(LINKED_LIST_ITERATOR_HAS_NEXT(&it)){
+        Episode* episode = LINKED_LIST_ITERATOR_NEXT(&it);
+
+        if(episode->number == 1 && strncmp(episode->name, episodeName, episodeNameLength + 1) == 0){
+            return false;
+        }
+    }
+
+    return true;
+}
+
 TEST_TEST_FUNCTION(mediaLibrary_extractShowName){
     bool ret = true;
 
@@ -1835,6 +1875,7 @@ int main(void){
         TEST(mediaLibrary_getShow);
         TEST(mediaLibrary_getSeason);
         TEST(mediaLibrary_addEpisode);
+        TEST(medialibrary_removeEpisode);
         TEST_NO_SETUP(mediaLibrary_extractShowName);
         TEST_NO_SETUP(mediaLibrary_extractPrefixedNumber);
         TEST_NO_SETUP(mediaLibrary_extractEpisodeInfo);
