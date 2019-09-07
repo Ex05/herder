@@ -47,6 +47,12 @@ typedef struct{
     int_fast16_t episode;
 }EpisodeInfo;
 
+typedef enum{
+    UPDATE_INFO_PACKET_TYPE_UPDATE_SHOW_NAME = 0,
+    UPDATE_INFO_PACKET_TYPE_UPDATE_SEASON_NUMBER = 1,
+    UPDATE_INFO_PACKET_TYPE_UPDATE_EPISODE_INFO
+}UPDATE_INFO_PACKET_TYPE;
+
 ERROR_CODE mediaLibrary_init(MediaLibrary*, const char*, const uint_fast64_t);
 
 void mediaLibrary_free(MediaLibrary*);
@@ -54,6 +60,8 @@ void mediaLibrary_free(MediaLibrary*);
 ERROR_CODE mediaLibrary_addShow(MediaLibrary*, Show**, const char*, const uint_fast64_t);
 
 ERROR_CODE mediaLibrary_removeShow(MediaLibrary*, const char*, const uint_fast64_t);
+
+ERROR_CODE medialibrary_removeEpisode(MediaLibrary*, Show* show, Season*, Episode*, const bool);
 
 ERROR_CODE medialibrary_getShow(MediaLibrary*, Show**, const char*, const uint_fast64_t);
 
@@ -71,18 +79,20 @@ ERROR_CODE mediaLibrary_initEpisodeInfo(EpisodeInfo*);
 
 ERROR_CODE mediaLibrary_extractPrefixedNumber(char*, uint_fast64_t, int_fast16_t*, const char);
 
-ERROR_CODE medialibrary_removeShowFrromLibraryFile(MediaLibrary*, const char*);
-
 void mediaLibrary_freeEpisodeInfo(EpisodeInfo*);
+
+ERROR_CODE mediaLibrary_sortSeasons(Season***, LinkedList*);
+
+ERROR_CODE mediaLibrary_sortEpisodes(Episode***, LinkedList*);
 
 #endif
 
 /*
-Show_Name,
-Season_Number,
-Episode_Number,
-Episode_Name,
-File_Extension
+Show_Name [uint64_t + ~ ],
+Season_Number [uint16_t],
+Episode_Number [uint16_t], 
+Episode_Name [uint64_t + ~ ],
+File_Extension [uint16_t + ~ ]
 */
 
 /*

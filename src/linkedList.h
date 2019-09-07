@@ -30,7 +30,7 @@ void linkedList_initIterator(LinkedListIterator*, LinkedList*);
 
 Node* linkedList_iteratorNextNode(LinkedListIterator*);
 
-bool linkedList_remove(LinkedList*, void*);
+ERROR_CODE linkedList_remove(LinkedList*, void*);
 
 void linkedList_free(LinkedList* list);
 

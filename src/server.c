@@ -46,10 +46,6 @@ local ERROR_CODE server_setRootDirectory(Argument*, PropertyFile*, Property**);
 
 local ERROR_CODE server_setServerExternalPort(Argument*, PropertyFile*, Property**);
 
-local ERROR_CODE server_sortEpisodes(Episode***, LinkedList*);
-
-local ERROR_CODE server_sortSeasons(Season***, LinkedList*);
-
 local HerderServer server;
  
 SERVER_CONTEXT_HANDLER(server_defaultContextHandler){
@@ -377,7 +373,7 @@ local SERVER_CONTEXT_HANDLER(server_pageShowInfo){
 
             if(show->seasons.length > 0){
                 Season** sortedSeasons = alloca(sizeof(Season*) * show->seasons.length);
-                server_sortSeasons(&sortedSeasons, &show->seasons);
+                mediaLibrary_sortSeasons(&sortedSeasons, &show->seasons);
 
                 uint_fast64_t j;
                 for(j = 0; j < show->seasons.length; j++){
@@ -392,7 +388,7 @@ local SERVER_CONTEXT_HANDLER(server_pageShowInfo){
                 response->dataLength += sizeof(uint64_t);
 
                 Episode** sortedEpisodes = alloca(sizeof(Episode*) * season->episodes.length);
-                server_sortEpisodes(&sortedEpisodes, &season->episodes);
+                mediaLibrary_sortEpisodes(&sortedEpisodes, &season->episodes);
 
                 uint_fast64_t j;
                 for(j = 0; j < season->episodes.length; j++){
@@ -424,90 +420,83 @@ local SERVER_CONTEXT_HANDLER(server_pageShowInfo){
     return ERROR(ERROR_NO_ERROR);
 }
 
-// TODO: Implement better/faster sorting algorithm. (jan - 2019.04.24)
-ERROR_CODE server_sortSeasons(Season** sortedSeasons[], LinkedList* seasons){
-    Season** toBeSorted = *sortedSeasons;
+local SERVER_CONTEXT_HANDLER(server_pageUpdateShowInfo){
+     if(request->type != REQUEST_TYPE_POST){
+        server_constructErrorPage(server, request, response, _405_METHOD_NOT_ALLOWED);
 
-    LinkedListIterator it;
-    linkedList_initIterator(&it, seasons);
-
-    toBeSorted[0] = LINKED_LIST_ITERATOR_NEXT(&it);
-
-    register uint_fast64_t endIndex = 0;
-    while(LINKED_LIST_ITERATOR_HAS_NEXT(&it)){
-        Season* current = LINKED_LIST_ITERATOR_NEXT(&it);
-
-        if(current->number >= toBeSorted[endIndex]->number){
-            // Add new largest element to end of list.
-            toBeSorted[endIndex + 1] = current;
-        }else{
-            // Search for place to insert new element.
-            register uint_fast64_t insertionIndex = 0;
-            while(current->number > toBeSorted[insertionIndex]->number){
-                insertionIndex++;
-            }
-        
-            // Insert new element and move the rest up one place in the list.
-            Season* tmp = toBeSorted[insertionIndex];
-
-            toBeSorted[insertionIndex] = current;
-
-            for(insertionIndex += 1; insertionIndex <= endIndex; insertionIndex++){
-                Season* swap = toBeSorted[insertionIndex];
-                toBeSorted[insertionIndex] = tmp;
-
-                tmp = swap;
-            }
-
-            toBeSorted[insertionIndex] = tmp;
-        }
-
-        endIndex++;
+        return ERROR(ERROR_NO_ERROR);
     }
 
-    return ERROR(ERROR_NO_ERROR);
-}
+    ERROR_CODE error;
+    
+    uint_fast64_t readOffset = 0;
 
-ERROR_CODE server_sortEpisodes(Episode** sortedEpisodes[], LinkedList* episodes){
-    Episode** toBeSorted = *sortedEpisodes;
+    // TODO: Handle different packet types. (jan - 31.07.2019)
 
-    LinkedListIterator it;
-    linkedList_initIterator(&it, episodes);
+    // Update packet type.
+    // const uint_fast64_t packetType = util_byteArrayTo_uint64(request->data + readOffset);
+    readOffset += sizeof(uint8_t);
+    
+    // Old values.
 
-    toBeSorted[0] = LINKED_LIST_ITERATOR_NEXT(&it);
+    // Show_name.
+    const uint_fast64_t showNameLength = util_byteArrayTo_uint64(request->data + readOffset);
+    readOffset += sizeof(uint64_t);
 
-    register uint_fast64_t endIndex = 0;
-    while(LINKED_LIST_ITERATOR_HAS_NEXT(&it)){
-        Episode* current = LINKED_LIST_ITERATOR_NEXT(&it);
+    const char* showName = (char*) (request->data + readOffset);
+    readOffset += showNameLength + 1;
 
-        if(current->number >= toBeSorted[endIndex]->number){
-            // Add new largest element to end of list.
-            toBeSorted[endIndex + 1] = current;
-        }else{
-            // Search for place to insert new element.
-            register uint_fast64_t insertionIndex = 0;
-            while(current->number > toBeSorted[insertionIndex]->number){
-                insertionIndex++;
-            }
-        
-            // Insert new element and move the rest up one place in the list.
-            Episode* tmp = toBeSorted[insertionIndex];
-
-            toBeSorted[insertionIndex] = current;
-
-            for(insertionIndex += 1; insertionIndex <= endIndex; insertionIndex++){
-                Episode* swap = toBeSorted[insertionIndex];
-                toBeSorted[insertionIndex] = tmp;
-
-                tmp = swap;
-            }
-
-            toBeSorted[insertionIndex] = tmp;
-        }
-
-        endIndex++;
+    Show* show;
+    if((error = medialibrary_getShow(&server->library, &show, showName, showNameLength)) != ERROR_NO_ERROR){
+        goto label_onError;
     }
 
+    // Season_Number.
+    uint16_t oldSeasonNumber = util_byteArrayTo_uint16(response->data + response->dataLength);
+    readOffset += sizeof(uint16_t);
+
+    Season* season;
+    if((error = medialibrary_getSeason(show, &season, oldSeasonNumber)) != ERROR_NO_ERROR){
+        goto label_onError;
+    }
+
+    // Episode_Number.
+    uint16_t oldEpisodeNumber = util_byteArrayTo_uint16(response->data + response->dataLength);
+    readOffset += sizeof(uint16_t);   
+
+    Episode* episode;
+    if((mediaLibrary_getEpisode(season, &episode, oldEpisodeNumber)) != ERROR_NO_ERROR){
+        goto label_onError;
+    }
+
+    // New values.
+
+    // Season_number
+    // uint16_t newSeasonNumber = util_byteArrayTo_uint16(response->data + response->dataLength);
+    readOffset += sizeof(uint16_t);
+
+    // Episode_Number.
+    // uint16_t newEpisodeNumber = util_byteArrayTo_uint16(response->data + response->dataLength);
+    readOffset += sizeof(uint16_t);   
+
+    // Episode_name.
+    const uint_fast64_t episodeNameLength = util_byteArrayTo_uint64(request->data + readOffset);
+    readOffset += sizeof(uint64_t);
+
+    // const char* episodeName = (char*) (request->data + readOffset);
+    readOffset += episodeNameLength + 1;
+
+ label_onError:
+    util_uint64ToByteArray(response->data + response->dataLength, error);
+    response->dataLength += sizeof(uint64_t);
+
+    http_setHTTP_Version(response, HTTP_VERSION_1_1);
+    response->statusCode = _200_OK;
+    response->contentType = HTTP_CONTENT_TYPE_TEXT_HTML;
+
+    const char connection[] = "close";
+    HTTP_ADD_HEADER_FIELD((*response), Connection, connection);
+   
     return ERROR(ERROR_NO_ERROR);
 }
 
@@ -751,6 +740,7 @@ label_return:
 			server_addContext(&server, "/shows", server_pageShows);
             server_addContext(&server, "/extractShowInfo", server_pageExtractShowInfo);
             server_addContext(&server, "/showInfo", server_pageShowInfo);
+            server_addContext(&server, "/updateInfo", server_pageUpdateShowInfo);
 
 			UTIL_LOG_INFO_("Starting server on port '%" PRIuFAST16 "'.", port);
 

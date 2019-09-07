@@ -48,13 +48,17 @@ local void herder_printHelp(void);
 
 local ERROR_CODE herder_listShows(Property*, Property*);
 
+local ERROR_CODE herder_removeShow(Property*, Property*, char*, const uint_fast64_t);
+
+local ERROR_CODE herder_renameEpisode(Property*, Property*);
+
 local ERROR_CODE herder_listAllShows(Property*, Property*);
 
 local ERROR_CODE herder_pullShowList(LinkedList*, const char*, const uint_fast16_t);
 
 local ERROR_CODE herder_addShow(Property*, Property*, char*, const uint_fast64_t);
 
-local ERROR_CODE herder_pullShowInfo(Property*, Property*, char*, const uint_fast64_t);
+local ERROR_CODE herder_printShowInfo(Property*, Property*, char*, const uint_fast64_t);
 
 local ERROR_CODE herder_extractShowInfo(Property*, Property*, EpisodeInfo**, char*, const uint_fast64_t);
 
@@ -68,23 +72,27 @@ local ERROR_CODE herder_argumentSetRemoteHostPort(Argument*, PropertyFile*, Prop
 
 local ERROR_CODE herder_argumentSetLibraryDirectory(Argument*, PropertyFile*, Property**);
 
-local ERROR_CODE herder_argumentImport(Argument*, PropertyFile*, Property*, Property*, Property*, Property*);
+local ERROR_CODE herder_argumentImport(Argument*, Property*, Property*, Property*, Property*);
 
-local ERROR_CODE herder_argumentKillDaemon(Argument*, PropertyFile*);
+local ERROR_CODE herder_argumentKillDaemon(Argument*);
 
-local ERROR_CODE herder_argumentShowInfo(Argument*, PropertyFile*, Property*, Property*);
+local ERROR_CODE herder_argumentShowInfo(Argument*, Property*, Property*);
 
-local ERROR_CODE herder_argumentListShows(Argument*, PropertyFile*, Property*, Property*);
+local ERROR_CODE herder_argumentListShows(Argument*, Property*, Property*);
 
-local ERROR_CODE herder_argumentListAll(Argument*, PropertyFile*, Property*, Property*);
+local ERROR_CODE herder_argumentListAll(Argument*, Property*, Property*);
 
-local ERROR_CODE herder_argumentAddShow(Argument*, PropertyFile*, Property*, Property*);
+local ERROR_CODE herder_argumentAddShow(Argument*, Property*, Property*);
 
-local ERROR_CODE herder_argumentRemoveShow(Argument*, PropertyFile*, Property*, Property*);
+local ERROR_CODE herder_argumentRemoveShow(Argument*, Property*, Property*);
+
+local ERROR_CODE herder_arguemntRenameEpisode(Argument*, Property*, Property*);
 
 local ERROR_CODE herder_walkDirectory(LinkedList*, const char*);
 
 local ERROR_CODE herder_import(Property*, Property*, Property*, const char*);
+
+local ERROR_CODE herder_pullShowInfo(Property*, Property*, Show*);
 
 // TODO:(jan) Make custom entry point for the client build, so we won't have to use 'main'.
 #ifndef TEST_BUILD
@@ -103,6 +111,7 @@ local ERROR_CODE herder_import(Property*, Property*, Property*, const char*);
     ARGUMENT_PARSER_ADD_ARGUMENT(Add, 2, "-a", "--add");
     ARGUMENT_PARSER_ADD_ARGUMENT(AddShow, 1, "--addShow");
     ARGUMENT_PARSER_ADD_ARGUMENT(RemoveShow, 1, "--removeShow");
+    ARGUMENT_PARSER_ADD_ARGUMENT(RenameEpisode, 1, "--renameEpisode");
     ARGUMENT_PARSER_ADD_ARGUMENT(SetImportDirectory, 1, "--setImportDirectory");
     ARGUMENT_PARSER_ADD_ARGUMENT(SetLibraryDirectory, 1, "--setLibraryDirectory");
     ARGUMENT_PARSER_ADD_ARGUMENT(SetRemoteHost, 1, "--setRemoteHost");
@@ -122,7 +131,7 @@ local ERROR_CODE herder_import(Property*, Property*, Property*, const char*);
 
     bool noValidArgument = true;
 
-   if(argc <= 1 || argumentParser_contains(&parser, &argumentHelp)){
+    if(argc <= 1 || argumentParser_contains(&parser, &argumentHelp)){
         herder_printHelp();
 
         goto label_free;
@@ -219,7 +228,7 @@ local ERROR_CODE herder_import(Property*, Property*, Property*, const char*);
     if(argumentParser_contains(&parser, &argumentImport)){
        noValidArgument = false;
 
-        if((error = herder_argumentImport(&argumentImport, &properties, remoteHost, remotePort, libraryDirectory, importDirectory)) == ERROR_NO_ERROR){
+        if((error = herder_argumentImport(&argumentImport, remoteHost, remotePort, libraryDirectory, importDirectory)) == ERROR_NO_ERROR){
             // TODO: Add handling of error or success case. (jan - 2018.12.18)
         }
 
@@ -229,7 +238,7 @@ local ERROR_CODE herder_import(Property*, Property*, Property*, const char*);
     if(argumentParser_contains(&parser, &argumentKillDeamon)){
         noValidArgument = false;
    
-        if((error = herder_argumentKillDaemon(&argumentKillDeamon, &properties)) == ERROR_NO_ERROR){
+        if((error = herder_argumentKillDaemon(&argumentKillDeamon)) == ERROR_NO_ERROR){
             // TODO: Add handling of error or success case. (jan - 2018.12.18)
         }
 
@@ -239,7 +248,7 @@ local ERROR_CODE herder_import(Property*, Property*, Property*, const char*);
     if(argumentParser_contains(&parser, &argumentShowInfo)){
         noValidArgument = false;
 
-        if((error = herder_argumentShowInfo(&argumentShowInfo, &properties, remoteHost, remotePort)) != ERROR_NO_ERROR){
+        if((error = herder_argumentShowInfo(&argumentShowInfo, remoteHost, remotePort)) != ERROR_NO_ERROR){
             if(error == ERROR_UNKNOWN_SHOW){
                 UTIL_LOG_CONSOLE_(LOG_INFO, "Unknown show '%s'.", argumentShowInfo.value);
             }else{
@@ -257,7 +266,7 @@ local ERROR_CODE herder_import(Property*, Property*, Property*, const char*);
     if(argumentParser_contains(&parser, &argumentListShows)){
         noValidArgument = false;
 
-        if((error = herder_argumentListShows(&argumentListShows, &properties, remoteHost, remotePort)) != ERROR_NO_ERROR){       
+        if((error = herder_argumentListShows(&argumentListShows, remoteHost, remotePort)) != ERROR_NO_ERROR){       
             if(error == ERROR_FAILED_TO_CONNECT){
                 UTIL_LOG_CONSOLE_(LOG_INFO, "Failed to list shows. [%s] (%s:%" PRIdFAST16 ")", util_toErrorString(error) , (char*) remoteHost->buffer, util_byteArrayTo_uint64(remotePort->buffer));
             }else{
@@ -269,7 +278,7 @@ local ERROR_CODE herder_import(Property*, Property*, Property*, const char*);
     if(argumentParser_contains(&parser, &argumentListAll)){
         noValidArgument = false;
 
-        if((error = herder_argumentListAll(&argumentListAll, &properties, remoteHost, remotePort)) != ERROR_NO_ERROR){       
+        if((error = herder_argumentListAll(&argumentListAll, remoteHost, remotePort)) != ERROR_NO_ERROR){       
             if(error == ERROR_FAILED_TO_CONNECT){
                 UTIL_LOG_CONSOLE_(LOG_INFO, "Failed to list all shows. [%s] (%s:%" PRIdFAST16 ")", util_toErrorString(error) , (char*) remoteHost->buffer, util_byteArrayTo_uint64(remotePort->buffer));
             }else{
@@ -281,7 +290,7 @@ local ERROR_CODE herder_import(Property*, Property*, Property*, const char*);
     if(argumentParser_contains(&parser, &argumentAddShow)){
         noValidArgument = false;
 
-        if((error = herder_argumentAddShow(&argumentAddShow, &properties, remoteHost, remotePort)) == ERROR_NO_ERROR){
+        if((error = herder_argumentAddShow(&argumentAddShow, remoteHost, remotePort)) == ERROR_NO_ERROR){
             UTIL_LOG_CONSOLE_(LOG_INFO, "Added '%s' to the library.", argumentAddShow.value);
         }
 
@@ -291,10 +300,22 @@ local ERROR_CODE herder_import(Property*, Property*, Property*, const char*);
     if(argumentParser_contains(&parser, &argumentRemoveShow)){
         noValidArgument = false;
 
-        if((error = herder_argumentRemoveShow(&argumentRemoveShow, &properties, remoteHost, remotePort)) == ERROR_NO_ERROR){
+        if((error = herder_argumentRemoveShow(&argumentRemoveShow, remoteHost, remotePort)) == ERROR_NO_ERROR){
             UTIL_LOG_CONSOLE_(LOG_INFO, "Removed '%s' from the library.", argumentRemoveShow.value);
         }else{
             UTIL_LOG_CONSOLE_(LOG_INFO, "Failed to remove '%s' from the library. [%s]", argumentRemoveShow.value, util_toErrorString(error));
+        }
+
+        goto label_freeProperties;
+    }
+
+    if(argumentParser_contains(&parser, &argumentRenameEpisode)){
+        noValidArgument = false;
+
+        if((error = herder_arguemntRenameEpisode(&argumentRenameEpisode, remoteHost, remotePort)) == ERROR_NO_ERROR){
+            UTIL_LOG_CONSOLE_(LOG_INFO, "Successfully renamed episode '%s'.", argumentRenameEpisode.value);
+        }else{
+            UTIL_LOG_CONSOLE_(LOG_INFO, "Failed to rename epsiode. [%s]", util_toErrorString(error));
         }
 
         goto label_freeProperties;
@@ -402,7 +423,7 @@ inline ERROR_CODE herder_listAllShows(Property* remoteHostProperty, Property* re
     while(LINKED_LIST_ITERATOR_HAS_NEXT(&it)){
         char* show = LINKED_LIST_ITERATOR_NEXT(&it);
         
-        if((error = herder_pullShowInfo(remoteHostProperty, remoteHostPortProperty, show, strlen(show))) != ERROR_NO_ERROR){
+        if((error = herder_printShowInfo(remoteHostProperty, remoteHostPortProperty, show, strlen(show))) != ERROR_NO_ERROR){
             UTIL_LOG_CONSOLE(LOG_ERR, util_toErrorString(error));
         }
 
@@ -680,7 +701,7 @@ label_unMap:
     return ERROR(error);
 }
 
-local ERROR_CODE herder_pullShowInfo(Property* remoteHost, Property* remotePort, char* showName, const uint_fast64_t showNameLength){
+local ERROR_CODE herder_printShowInfo(Property* remoteHost, Property* remotePort, char* showName, const uint_fast64_t showNameLength){
     ERROR_CODE error = ERROR_NO_ERROR;
 
     char* host = (char*) remoteHost->buffer;
@@ -734,7 +755,7 @@ local ERROR_CODE herder_pullShowInfo(Property* remoteHost, Property* remotePort,
                 const uint_fast16_t season = util_byteArrayTo_uint16(response.data + readOffset);
                 readOffset += sizeof(uint16_t);
 
-               UTIL_LOG_CONSOLE_(LOG_INFO, "\tSeason: %02" PRIuFAST16 ".", season);
+                UTIL_LOG_CONSOLE_(LOG_INFO, "\tSeason: %02" PRIuFAST16 ".", season);
 
                 // Num_Episodes.
                 uint_fast64_t numEpisodes = util_byteArrayTo_uint64(response.data + readOffset);
@@ -754,7 +775,7 @@ local ERROR_CODE herder_pullShowInfo(Property* remoteHost, Property* remotePort,
                     memcpy(name, response.data + readOffset, nameLength + 1);
                     readOffset += nameLength + 1;
 
-                   UTIL_LOG_CONSOLE_(LOG_INFO, "\t\t  -> %02" PRIuFAST16 ": '%s'.", episode, name);
+                    UTIL_LOG_CONSOLE_(LOG_INFO, "\t\t  -> %02" PRIuFAST16 ": '%s'.", episode, name);
                 }
             }
         }else{
@@ -1386,7 +1407,7 @@ inline ERROR_CODE herder_argumentSetLibraryDirectory(Argument* argumentSetLibrar
 }
 
 // -i, --import optional:<path>
-inline ERROR_CODE herder_argumentImport(Argument* argumentImport, PropertyFile* propertyFile, Property* remoteHost, Property* remotePort, Property* libraryDirectory, Property* importDirectory){
+inline ERROR_CODE herder_argumentImport(Argument* argumentImport, Property* remoteHost, Property* remotePort, Property* libraryDirectory, Property* importDirectory){
     if(ARGUMENT_PARSER_ARGUMENT_HAS_VALUE((*argumentImport))){
         // Import from path.
         return ERROR(herder_import(remoteHost, remotePort, libraryDirectory, argumentImport->value));
@@ -1402,23 +1423,23 @@ inline ERROR_CODE herder_argumentImport(Argument* argumentImport, PropertyFile* 
     }
 }
 
-inline ERROR_CODE herder_argumentKillDaemon(Argument* argumentImport, PropertyFile* propertyFile){
+inline ERROR_CODE herder_argumentKillDaemon(Argument* argumentImport){
     return ERROR(ERROR_FUNCTION_NOT_IMPLEMENTED);
 }
 
-inline ERROR_CODE herder_argumentShowInfo(Argument* argumentShowInfo, PropertyFile* propertyFile, Property* remoteHost, Property* remotePort){
+inline ERROR_CODE herder_argumentShowInfo(Argument* argumentShowInfo, Property* remoteHost, Property* remotePort){
     if(!ARGUMENT_PARSER_ARGUMENT_HAS_VALUE((*argumentShowInfo))){
         return ERROR(ERROR_INVALID_COMMAND_USAGE);
     }else{
         if(REMOTE_HOST_PROPERTIES_SET()){
-            return ERROR(herder_pullShowInfo(remoteHost, remotePort, argumentShowInfo->value, argumentShowInfo->valueLength));
+            return ERROR(herder_printShowInfo(remoteHost, remotePort, argumentShowInfo->value, argumentShowInfo->valueLength));
         }else{
             return ERROR(ERROR_PROPERTY_NOT_SET);
         }
     }
 }
   
-inline ERROR_CODE herder_argumentListShows(Argument* argumentListShows, PropertyFile* propertyFile, Property* remoteHost, Property* remotePort){
+inline ERROR_CODE herder_argumentListShows(Argument* argumentListShows, Property* remoteHost, Property* remotePort){
      if(ARGUMENT_PARSER_ARGUMENT_HAS_VALUE((*argumentListShows))){
             UTIL_LOG_CONSOLE(LOG_INFO, "Invalid command. Usage -l, --list");
 
@@ -1432,7 +1453,7 @@ inline ERROR_CODE herder_argumentListShows(Argument* argumentListShows, Property
         }
 }
 
-inline ERROR_CODE herder_argumentListAll(Argument* argumentListShows, PropertyFile* propertyFile, Property* remoteHost, Property* remotePort){
+inline ERROR_CODE herder_argumentListAll(Argument* argumentListShows, Property* remoteHost, Property* remotePort){
      if(ARGUMENT_PARSER_ARGUMENT_HAS_VALUE((*argumentListShows))){
             UTIL_LOG_CONSOLE(LOG_INFO, "Invalid command. Usage --listAll, --listShows.");
 
@@ -1446,32 +1467,411 @@ inline ERROR_CODE herder_argumentListAll(Argument* argumentListShows, PropertyFi
         }
 }
 
-inline ERROR_CODE herder_argumentAddShow(Argument* argumentAddShow, PropertyFile* propertyFile, Property* remoteHost, Property* remotePort){
+inline ERROR_CODE herder_argumentAddShow(Argument* argumentAddShow, Property* remoteHost, Property* remotePort){
     if(!ARGUMENT_PARSER_ARGUMENT_HAS_VALUE((*argumentAddShow))){
         UTIL_LOG_CONSOLE(LOG_INFO, "Invalid command. Usage -a, --add <file>.");
 
         return ERROR(ERROR_INVALID_COMMAND_USAGE);
     }else{
         if(REMOTE_HOST_PROPERTIES_SET()){
-            return ERROR(herder_addShow(remoteHost, remotePort, argumentAddShow->value,argumentAddShow->valueLength));
+            return ERROR(herder_addShow(remoteHost, remotePort, argumentAddShow->value, argumentAddShow->valueLength));
         }else{
             return ERROR(ERROR_PROPERTY_NOT_SET);
         }
     }
 }
 
-inline ERROR_CODE herder_argumentRemoveShow(Argument* argumentRemoveShow, PropertyFile* propertyFile, Property* remoteHost, Property* remotePort){
+inline ERROR_CODE herder_argumentRemoveShow(Argument* argumentRemoveShow, Property* remoteHost, Property* remotePort){
     if(!ARGUMENT_PARSER_ARGUMENT_HAS_VALUE((*argumentRemoveShow))){
-        UTIL_LOG_CONSOLE(LOG_INFO, "Invalid command. Usage -a, --add <file>.");
+        UTIL_LOG_CONSOLE(LOG_INFO, "Invalid command. Usage --removeShow <show>.");
 
         return ERROR(ERROR_INVALID_COMMAND_USAGE);
     }else{
         if(REMOTE_HOST_PROPERTIES_SET()){
-            return ERROR(herder_removeShow(remoteHost, remotePort, argumentRemoveShow->value,argumentRemoveShow->valueLength));
+            return ERROR(herder_removeShow(remoteHost, remotePort, argumentRemoveShow->value, argumentRemoveShow->valueLength));
         }else{
             return ERROR(ERROR_PROPERTY_NOT_SET);
         }
     }
+}
+
+inline ERROR_CODE herder_arguemntRenameEpisode(Argument* argumentRenameEpisode, Property* remoteHost, Property* remotePort){
+    if(ARGUMENT_PARSER_ARGUMENT_HAS_VALUE((*argumentRenameEpisode))){
+        UTIL_LOG_CONSOLE(LOG_INFO, "Invalid command. Usage --renameEpisode.");
+
+        return ERROR(ERROR_INVALID_COMMAND_USAGE);
+    }else{
+        if(REMOTE_HOST_PROPERTIES_SET()){
+            return ERROR(herder_renameEpisode(remoteHost, remotePort));
+        }else{
+            return ERROR(ERROR_PROPERTY_NOT_SET);
+        }
+    }
+}
+
+ERROR_CODE herder_renameEpisode(Property* remoteHost, Property* remotePort){
+    ERROR_CODE error = ERROR_NO_ERROR;
+
+    char* userInput;
+    int_fast64_t userInputLength;
+
+    char* host = (char*) remoteHost->buffer;
+    uint_fast16_t port = util_byteArrayTo_uint64(remotePort->buffer);
+
+    LinkedList shows;
+    if((error = herder_pullShowList(&shows, host, port)) != ERROR_NO_ERROR){
+        goto label_return;
+    }
+
+    if(shows.length == 0){
+        UTIL_LOG_CONSOLE(LOG_INFO, "Library is empty.");
+    }else{
+        LinkedListIterator it;
+        linkedList_initIterator(&it, &shows);
+
+        uint_fast64_t i = 0;
+        while(LINKED_LIST_ITERATOR_HAS_NEXT(&it)){
+            char* show = LINKED_LIST_ITERATOR_NEXT(&it);
+            
+            UTIL_LOG_CONSOLE_(LOG_INFO, "%02" PRIuFAST64 ":'%s'.", i, show);
+
+            i++;
+        }
+    }
+
+label_readUserInput:
+    UTIL_LOG_CONSOLE(LOG_INFO, "\nPlease select a show.");
+
+    if((error = util_readUserInput(&userInput, &userInputLength)) != ERROR_NO_ERROR){
+        goto label_return;
+    }
+
+    char* selectedShow = NULL;
+
+    int_fast64_t value;
+    if(util_stringToInt(userInput, &value) != ERROR_NO_ERROR){
+        selectedShow = userInput;
+    }
+
+    if(value + 1 > (int_fast64_t) shows.length || value < 0){
+        free(userInput);
+
+        UTIL_LOG_CONSOLE(LOG_ERR, "Invalid selection.");
+
+        goto label_readUserInput;
+    }
+
+    LinkedListIterator it;
+    linkedList_initIterator(&it, &shows);
+
+    int_fast64_t i = 0;
+    while(LINKED_LIST_ITERATOR_HAS_NEXT(&it)){
+        char* show = LINKED_LIST_ITERATOR_NEXT(&it);
+
+        if(value == i++ && selectedShow == NULL){
+            selectedShow = show;
+
+            break;
+        }
+
+        if(strncmp(userInput, show, userInputLength + 1) == 0){
+            selectedShow = show;
+
+            break;
+        }
+    }
+
+    if(selectedShow == NULL || selectedShow == userInput){
+        free(userInput);
+
+        UTIL_LOG_CONSOLE(LOG_ERR, "Invalid selection.");
+
+        goto label_readUserInput;
+    }
+
+    const uint_fast64_t showNameLength = strlen(selectedShow);
+    char* showName = alloca(sizeof(*showName) * (showNameLength + 1));
+    strncpy(showName, selectedShow, showNameLength + 1);
+
+    linkedList_initIterator(&it, &shows);
+    while(LINKED_LIST_ITERATOR_HAS_NEXT(&it)){
+        char* show = LINKED_LIST_ITERATOR_NEXT(&it);
+        
+        free(show);
+    }
+
+    free(userInput);
+
+    linkedList_free(&shows);
+
+    // Select season.
+    Show* show = alloca(sizeof(*show));
+    if((error = medialibrary_initShow(show, showName, showNameLength)) != ERROR_NO_ERROR){
+        goto label_return;
+    }
+
+    if((error = herder_pullShowInfo(remoteHost, remotePort, show)) != ERROR_NO_ERROR){
+        goto label_freeShow;
+    }
+
+    UTIL_LOG_CONSOLE(LOG_INFO, "Seasons:");
+
+    Season** seasons = alloca(sizeof(*seasons) * show->seasons.length);
+    mediaLibrary_sortSeasons(&seasons, &show->seasons);
+
+    uint_fast64_t j;
+    for(j = 0; j < show->seasons.length; j++){
+        UTIL_LOG_CONSOLE_(LOG_INFO, "\t%" PRIuFAST16 ".", seasons[j]->number);
+    }
+    
+    UTIL_LOG_CONSOLE(LOG_INFO, "\nPlease select a season.");
+
+label_selectSeason:
+    if((error = util_readUserInput(&userInput, &userInputLength)) != ERROR_NO_ERROR){
+        goto label_freeShow;
+    }
+
+    if(util_stringToInt(userInput, &value) != ERROR_NO_ERROR){
+        free(userInput);
+
+        goto label_selectSeason;
+    }
+
+    if(value < 1){
+        free(userInput);
+
+        UTIL_LOG_CONSOLE(LOG_INFO, "Invalid selection.");
+
+        goto label_selectSeason;
+    }
+
+    Season* selectedSeason = NULL;
+    for(j = 0; j < show->seasons.length; j++){
+       if((int_fast64_t) (seasons[j]->number) == value){
+           selectedSeason = seasons[j];
+
+           break;
+       }
+    }
+
+    free(userInput);
+
+    if(selectedSeason == NULL){
+        goto label_selectSeason;
+    }
+
+    UTIL_LOG_CONSOLE_(LOG_INFO, "Season:'%02" PRIuFAST16 "'.", selectedSeason->number);
+
+    // Select Episode.    
+    Episode** episodes = alloca(sizeof(*episodes) * selectedSeason->episodes.length);
+    mediaLibrary_sortEpisodes(&episodes, &selectedSeason->episodes);
+
+    for(j = 0; j < selectedSeason->episodes.length; j++){
+        UTIL_LOG_CONSOLE_(LOG_INFO, "\t%" PRIuFAST16 ": '%s'", episodes[j]->number, episodes[j]->name);
+    }
+
+    UTIL_LOG_CONSOLE(LOG_INFO, "\nPlease select an episode.");
+
+label_selectEpisode:
+    if((error = util_readUserInput(&userInput, &userInputLength)) != ERROR_NO_ERROR){
+        goto label_freeShow;
+    }
+
+    if(util_stringToInt(userInput, &value) != ERROR_NO_ERROR){
+        free(userInput);
+
+        goto label_selectEpisode;
+    }
+
+    if(value < 1){
+        free(userInput);
+
+        UTIL_LOG_CONSOLE(LOG_INFO, "Invalid selection.");
+
+        goto label_selectEpisode;
+    }
+
+    Episode* selectedEpisode = NULL;
+    for(j = 0; j < selectedSeason->episodes.length; j++){
+       if((int_fast64_t) (episodes[j]->number) == value){
+           selectedEpisode = episodes[j];
+
+           break;
+       }
+    }
+
+    free(userInput);
+
+    if(selectedEpisode == NULL){
+        goto label_selectSeason;
+    }
+
+label_enterNewName:
+    UTIL_LOG_CONSOLE(LOG_INFO, "\nPlease enter a new episode name.");
+
+    char* newEpisodeName;
+    int_fast64_t newEpisodeNameLength;
+
+    if((error = util_readUserInput(&newEpisodeName, &newEpisodeNameLength)) != ERROR_NO_ERROR){
+        goto label_freeShow;
+    }
+
+    UTIL_LOG_CONSOLE_(LOG_INFO, "\nShow:'%s', s%02" PRIuFAST16 "e%02" PRIuFAST16 " - '%s'", showName, selectedSeason->number, selectedEpisode->number, userInput);
+
+    UTIL_LOG_CONSOLE_(LOG_INFO, "\nRename episode to '%s'? Yes/No.", userInput);
+
+    util_toLowerChase(userInput);
+
+    if((error = util_readUserInput(&userInput, &userInputLength)) != ERROR_NO_ERROR){
+        free(userInput);
+
+        free(newEpisodeName);
+
+        goto label_freeShow;
+    }
+
+    UTIL_LOG_CONSOLE_(LOG_DEBUG, "Input:'%s' [%" PRIdFAST64 "]", userInput, userInputLength);
+
+    if(strncmp(userInput, "no", 3) == 0 || strncmp(userInput, "n", 2) == 0){
+        free(userInput);
+        free(newEpisodeName);
+
+        UTIL_LOG_CONSOLE(LOG_DEBUG, "NO");
+
+        goto label_enterNewName;
+    }else{
+        if(userInputLength != 0 && strncmp(userInput, "yes", 4) != 0 && strncmp(userInput, "y", 2) != 0){
+            UTIL_LOG_CONSOLE(LOG_DEBUG, "Invalid !!!");
+
+            goto label_enterNewName;
+        }else{
+            UTIL_LOG_CONSOLE(LOG_DEBUG, "yes");
+        }
+    }
+
+    // Send rename packet.
+    void* httpProcessingBuffer;
+    if((error = util_blockAlloc(&httpProcessingBuffer, HTTP_PROCESSING_BUFFER_SIZE)) != ERROR_NO_ERROR){
+        goto label_unMap;
+    }
+
+    int_fast32_t socketFD;
+    if((error = http_openConnection(&socketFD, host, port)) != ERROR_NO_ERROR){
+        goto label_unMap;
+    }
+
+    const char url[] = "/updateShowInfo";
+
+    HTTP_Request request;
+    if((error = http_initRequest(&request, url, strlen(url), httpProcessingBuffer, HTTP_PROCESSING_BUFFER_SIZE, HTTP_VERSION_1_1, REQUEST_TYPE_POST)) != ERROR_NO_ERROR){
+        goto label_freeRequest;
+    }
+
+    HTTP_ADD_HEADER_FIELD(request, Host, host);
+
+    // 1. Type:[ShowName, SeasonNumber, EpisodeInfo],
+    // 2. Old value/s.
+    // 3. New value/s.
+
+    request.data[request.dataLength] = UPDATE_INFO_PACKET_TYPE_UPDATE_EPISODE_INFO;
+    request.dataLength += sizeof(uint8_t);   
+
+    // Show_Name.
+    util_uint64ToByteArray(request.data + request.dataLength, show->nameLength);
+    request.dataLength += sizeof(uint64_t);   
+
+    memcpy(request.data + request.dataLength, show->name, show->nameLength + 1);
+    request.dataLength += show->nameLength + 1;
+
+    // Season_Number.
+    util_uint16ToByteArray(request.data + request.dataLength, selectedSeason->number);
+    request.dataLength += sizeof(uint16_t);   
+
+    // Episode_Number.
+    util_uint16ToByteArray(request.data + request.dataLength, selectedEpisode->number);
+    request.dataLength += sizeof(uint16_t);   
+
+    // New values
+
+    // Season_Number.
+    util_uint16ToByteArray(request.data + request.dataLength, selectedSeason->number);
+    request.dataLength += sizeof(uint16_t);   
+
+    // Episode_Number.
+    util_uint16ToByteArray(request.data + request.dataLength, selectedEpisode->number);
+    request.dataLength += sizeof(uint16_t);   
+
+    // Episode_Name.
+    util_uint64ToByteArray(request.data + request.dataLength, newEpisodeNameLength);
+    request.dataLength += sizeof(uint64_t);   
+
+    memcpy(request.data + request.dataLength, newEpisodeName, newEpisodeNameLength + 1);
+    request.dataLength += newEpisodeNameLength + 1;
+
+    HTTP_Response response;
+    http_initResponse(&response, httpProcessingBuffer, HTTP_PROCESSING_BUFFER_SIZE);
+    if((error = http_sendRequest(&request, &response, socketFD)) != ERROR_NO_ERROR){
+        goto label_freeResponse;
+    }
+
+    http_closeConnection(socketFD);
+
+    if(response.statusCode != _200_OK){
+        error = ERROR_INVALID_STATUS_CODE;
+
+        UTIL_LOG_CONSOLE_(LOG_ERR, "Server_status:'%s'.", http_getStatusMsg(response.statusCode));
+    }else{
+        if(response.dataLength != sizeof(uint64_t)){
+            error = ERROR_INVALID_CONTENT_LENGTH;
+        }else{
+            const uint_fast64_t returnCode = util_byteArrayTo_uint64(response.data);
+            if(returnCode != ERROR_NO_ERROR){
+               error = returnCode;
+            }
+        }
+    }
+
+label_freeRequest:
+    http_freeHTTP_Request(&request);
+
+label_freeResponse:
+    http_freeHTTP_Response(&response);
+
+label_unMap:
+    if(util_unMap(httpProcessingBuffer, HTTP_PROCESSING_BUFFER_SIZE) != ERROR_NO_ERROR){
+        UTIL_LOG_ERROR(util_toErrorString(ERROR_FAILED_TO_UNMAP_MEMORY));
+    }
+
+    free(userInput);
+
+    // Free show.1
+    LinkedListIterator seasonIterator;
+label_freeShow:
+    linkedList_initIterator(&seasonIterator, &show->seasons);
+
+    while(LINKED_LIST_ITERATOR_HAS_NEXT(&seasonIterator)){
+        Season* season = LINKED_LIST_ITERATOR_NEXT(&seasonIterator);
+
+        LinkedListIterator episodeIterator;
+        linkedList_initIterator(&episodeIterator, &season->episodes);
+
+        while(LINKED_LIST_ITERATOR_HAS_NEXT(&episodeIterator)){
+            Episode* episode = LINKED_LIST_ITERATOR_NEXT(&episodeIterator);
+
+            mediaLibrary_freeEpisode(episode);
+
+            free(episode);
+        }
+
+        mediaLibrary_freeSeason(season);
+    
+        free(season);
+    }
+
+    mediaLibrary_freeShow(show);
+
+label_return:
+    return ERROR(error);
 }
 
 ERROR_CODE herder_import(Property* remoteHost, Property* remotePort, Property* libraryDirectory, const char* directory){
@@ -1549,6 +1949,118 @@ local inline bool herder_walkDirectoryAcceptFunction(const char* s, const uint_f
     #undef HASH_MP4
     #undef HASH_MKV
     #undef HASH_AVI
+}
+
+ERROR_CODE herder_pullShowInfo(Property* remoteHost, Property* remotePort, Show* show){
+    ERROR_CODE error;
+
+    char* host = (char*) remoteHost->buffer;
+    uint_fast16_t port = util_byteArrayTo_uint64(remotePort->buffer);
+
+    void* httpProcessingBuffer;
+    if((error = util_blockAlloc(&httpProcessingBuffer, HTTP_PROCESSING_BUFFER_SIZE)) != ERROR_NO_ERROR){
+        goto label_unMap;
+    }
+
+    int_fast32_t socketFD;
+    if((error = http_openConnection(&socketFD, host, port)) != ERROR_NO_ERROR){
+        goto label_unMap;
+    }
+
+    const char url[] = "/showInfo";
+
+    HTTP_Request request;
+    if((error = http_initRequest(&request, url, strlen(url), httpProcessingBuffer, HTTP_PROCESSING_BUFFER_SIZE, HTTP_VERSION_1_1, REQUEST_TYPE_POST)) != ERROR_NO_ERROR){
+        goto label_freeRequest;
+    }
+
+    HTTP_ADD_HEADER_FIELD(request, Host, host);
+
+    util_uint64ToByteArray(request.data + request.dataLength, show->nameLength);
+    request.dataLength += sizeof(uint64_t);   
+
+    memcpy(request.data + request.dataLength, show->name, show->nameLength + 1);
+    request.dataLength += show->nameLength + 1;
+
+    HTTP_Response response;
+    http_initResponse(&response, httpProcessingBuffer, HTTP_PROCESSING_BUFFER_SIZE);
+    if((error = http_sendRequest(&request, &response, socketFD)) != ERROR_NO_ERROR){
+        goto label_freeResponse;
+    }
+
+    http_closeConnection(socketFD);
+
+    if(response.statusCode == _200_OK){
+        uint_fast64_t readOffset = 0;
+
+        // Num_Seasons.
+        uint_fast64_t numSeasons = util_byteArrayTo_uint64(response.data + readOffset);
+        readOffset += sizeof(uint64_t);
+
+        if(numSeasons != 0){                
+            for( ; numSeasons > 0; numSeasons--){
+                // Season_Number.
+                const uint_fast16_t seasonNumber = util_byteArrayTo_uint16(response.data + readOffset);
+                readOffset += sizeof(uint16_t);
+
+                Season* season;
+                season = malloc(sizeof(*season));
+                if((error = medialibrary_initSeason(season, seasonNumber)) != ERROR_NO_ERROR){
+                    goto label_freeRequest;
+                }
+                
+                if((error = linkedList_add(&show->seasons, season)) != ERROR_NO_ERROR){
+                    goto label_freeRequest;
+                }
+
+                // Num_Episodes.
+                uint_fast64_t numEpisodes = util_byteArrayTo_uint64(response.data + readOffset);
+                readOffset += sizeof(uint64_t);
+
+                for( ; numEpisodes > 0; numEpisodes--){
+                    // Episode_Number.
+                    const uint_fast16_t episodeNumber = util_byteArrayTo_uint16(response.data + readOffset);
+                    readOffset += sizeof(uint16_t);
+
+                    // Episode_NameLength.
+                    uint_fast64_t nameLength = util_byteArrayTo_uint64(response.data + readOffset);
+                    readOffset += sizeof(uint64_t);
+
+                    // Episode_Name.
+                    char* name = alloca(sizeof(*name) * (nameLength + 1));
+                    memcpy(name, response.data + readOffset, nameLength + 1);
+                    readOffset += nameLength + 1;
+
+                    Episode* episode;
+                    episode = malloc(sizeof(*episode));
+                    if((medialibrary_initEpisode(episode, episodeNumber, name, nameLength, "", 0)) != ERROR_NO_ERROR){
+                        goto label_freeRequest;
+                    }
+
+                    if((error = linkedList_add(&season->episodes, episode)) != ERROR_NO_ERROR){
+                        goto label_freeRequest;
+                    }
+                }
+            }
+        }
+    }else{
+        error = ERROR_INVALID_STATUS_CODE;
+
+        UTIL_LOG_CONSOLE_(LOG_ERR, "Server_status:'%s'.", http_getStatusMsg(response.statusCode));
+    }
+
+label_freeRequest:
+    http_freeHTTP_Request(&request);
+
+label_freeResponse:
+    http_freeHTTP_Response(&response);
+
+label_unMap:
+    if(util_unMap(httpProcessingBuffer, HTTP_PROCESSING_BUFFER_SIZE) != ERROR_NO_ERROR){
+        UTIL_LOG_ERROR(util_toErrorString(ERROR_FAILED_TO_UNMAP_MEMORY));
+    }
+
+    return ERROR(error);
 }
 
 ERROR_CODE herder_walkDirectory(LinkedList* list, const char* directory){

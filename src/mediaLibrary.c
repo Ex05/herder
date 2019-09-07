@@ -66,6 +66,10 @@ local ERROR_CODE mediaLibrary_readFileExtensionLength(FILE*, uint_fast16_t*);
 
 local ERROR_CODE mediaLibrary_readFileExtension(FILE*, char**, uint_fast64_t);
 
+local ERROR_CODE medialibrary_removeShowFrromLibraryFile(MediaLibrary*, const char*);
+
+local ERROR_CODE medialibrary_removeEpisodeFrromLibraryFile(MediaLibrary*, Show*, const Season*, const Episode*);
+
 // TODO:(jan) Clean up this mess.
 ERROR_CODE mediaLibrary_init(MediaLibrary* library, const char* libraryLocation, const uint_fast64_t libraryLocationLength){
     ERROR_CODE error = ERROR_NO_ERROR;
@@ -242,7 +246,6 @@ inline void mediaLibrary_freeShow(Show* show){
     linkedList_free(&show->seasons);
 
     free(show->name);
-    free(show);
 }
 
 inline void mediaLibrary_freeSeason(Season* season){
@@ -284,6 +287,8 @@ inline void mediaLibrary_free(MediaLibrary* library){
         }
 
         mediaLibrary_freeShow(show);
+
+        free(show);
     }
 
     linkedList_free(&library->shows);
@@ -635,6 +640,185 @@ inline ERROR_CODE mediaLibrary_removeShow(MediaLibrary* library, const char* nam
 label_freeShow:
     mediaLibrary_freeShow(show);
 
+    free(show);
+
+    return ERROR(error);
+}
+
+ERROR_CODE medialibrary_removeEpisode(MediaLibrary* library, Show* show, Season* season, Episode* episode, const bool removeFromDisk){
+    ERROR_CODE error;
+
+    if((error = linkedList_remove(&season->episodes, episode)) != ERROR_NO_ERROR){
+        UTIL_LOG_ERROR("Failed to remove episode from season.");
+        
+        goto label_return;
+    }
+
+    if(removeFromDisk){
+        if((error = medialibrary_removeEpisodeFrromLibraryFile(library, show, season, episode)) != ERROR_NO_ERROR){
+            goto label_return;
+        }
+    }
+
+    mediaLibrary_freeEpisode(episode);
+
+    free(episode);
+
+label_return:
+    return ERROR(error);
+}
+
+ERROR_CODE medialibrary_removeEpisodeFrromLibraryFile(MediaLibrary* library, Show* show, const Season* season, const Episode* episode){
+    ERROR_CODE error = ERROR_NO_ERROR;
+
+    FILE* file = library->libraryFile;
+
+    if(fseek(file, 0, SEEK_SET) != 0){
+        error = ERROR_DISK_ERROR;
+
+        goto label_return;
+    }
+
+    if(fseek(file, sizeof(library->version), SEEK_CUR) != 0){
+        error = ERROR_DISK_ERROR;
+
+        goto label_return;
+    }
+
+    const int_fast8_t writeBuffer[1] = {0};
+    for(;;){
+        uint_fast8_t fillZero = 1;
+
+        // Show_Name.
+        uint_fast64_t showNameLength;
+        __UTIL_SUPPRESS_NEXT_ERROR_OF_TYPE__(ERROR_END_OF_FILE);
+        if((error = mediaLibrary_readShowNameLength(file, &showNameLength)) != ERROR_NO_ERROR){
+            if(error == ERROR_END_OF_FILE){
+                error = ERROR_NO_ERROR;
+
+                break;
+            }
+
+            goto label_return;
+        }
+
+        const long showNameOffset = ftell(file);
+
+        char* showName;
+        showName = alloca(sizeof(*showName) * (showNameLength + 1));
+
+        if((error = mediaLibrary_readShowName(file, &showName, showNameLength)) != ERROR_NO_ERROR){
+            goto label_return;
+        }
+
+        if(strncmp(showName, show->name, show->nameLength + 1) == 0){
+            fillZero <<= 1;
+        }
+
+        // Season_Number.
+        uint_fast16_t seasonNumber;
+        if((error = mediaLibrary_readSeasonNumber(file, &seasonNumber)) != ERROR_NO_ERROR){
+            goto label_return;
+        }
+
+        if(seasonNumber == season->number){
+            fillZero <<= 1;
+        }
+
+        // Episode_Number.
+        uint_fast16_t episodeNumber;
+        if((error = mediaLibrary_readEpisodeNumber(file, &episodeNumber)) != ERROR_NO_ERROR){
+            goto label_return;
+        }
+
+        if(episodeNumber == episode->number){
+            fillZero <<= 1;
+        }
+
+        // Episode_Name.
+        uint_fast64_t episodeNameLength;
+        if((error = mediaLibrary_readEpisodeNameLength(file, &episodeNameLength)) != ERROR_NO_ERROR){
+            goto label_return;
+        }
+
+        if(fseek(file, episodeNameLength + 1, SEEK_CUR) != 0){
+            ERROR(error = ERROR_DISK_ERROR);
+
+            goto label_return;
+        }
+
+        // File_Extension.
+        uint_fast16_t fileExtensionLength;
+        if((error = mediaLibrary_readFileExtensionLength(file, &fileExtensionLength)) != ERROR_NO_ERROR){
+            goto label_return;
+        }
+
+        if(fseek(file, fileExtensionLength + 1, SEEK_CUR) != 0){
+            ERROR(error = ERROR_DISK_ERROR);
+        
+            goto label_return;
+        }
+
+        if(fillZero == 8){
+            // Overwrite entry.
+            if(fseek(file, showNameOffset, SEEK_SET) != 0){
+                ERROR(error = ERROR_DISK_ERROR);
+
+                goto label_return;
+            }
+
+            // Show_Name.
+            if(fwrite(writeBuffer, 1, showNameLength + 1, file) != showNameLength + 1){
+                ERROR(error = ERROR_WRITE_ERROR);
+
+                goto label_return;
+            }
+
+            // Season_Number.
+            if(fwrite(writeBuffer, 1, sizeof(uint16_t), file) != sizeof(uint16_t)){
+                ERROR(error = ERROR_WRITE_ERROR);
+
+                goto label_return;
+            }
+
+            // Episode_Number.
+            if(fwrite(writeBuffer, 1, sizeof(uint16_t), file) != sizeof(uint16_t)){
+                ERROR(error = ERROR_WRITE_ERROR);
+
+                goto label_return;
+            }
+  
+            // Episode_Name.
+            if(fseek(file, sizeof(uint64_t), SEEK_CUR) != 0){
+                ERROR(error = ERROR_DISK_ERROR);
+
+                goto label_return;
+            }
+
+            if(fwrite(writeBuffer, 1, episodeNameLength + 1, file) != episodeNameLength + 1){
+                ERROR(error = ERROR_WRITE_ERROR);
+
+                goto label_return;
+            }
+
+            // File_Extension.
+            if(fseek(file, sizeof(uint16_t), SEEK_CUR) != 0){
+                ERROR(error = ERROR_DISK_ERROR);
+
+                goto label_return;
+            }
+
+            if(fwrite(writeBuffer, fileExtensionLength + 1, 1, file) != 1){
+                ERROR(error = ERROR_WRITE_ERROR);
+
+                goto label_return;
+            }    
+
+            break;
+        }
+    }
+
+label_return:
     return ERROR(error);
 }
 
@@ -676,7 +860,7 @@ ERROR_CODE medialibrary_removeShowFrromLibraryFile(MediaLibrary* library, const 
 
         bool fillZero;
         if((fillZero = strncmp(show, showName, showLength) == 0)){
-            // Overwrite  showName.
+            // Overwrite showName.
             if(fseek(file, showNameOffset, SEEK_SET) != 0){
                 error = ERROR_DISK_ERROR;
 
@@ -721,7 +905,7 @@ ERROR_CODE medialibrary_removeShowFrromLibraryFile(MediaLibrary* library, const 
             }
         }
 
-        // Episode_Name.
+         // Episode_Name.
         uint_fast64_t episodeNameLength;
         if((error = mediaLibrary_readEpisodeNameLength(file, &episodeNameLength)) != ERROR_NO_ERROR){
             goto label_return;
@@ -1060,9 +1244,9 @@ inline ERROR_CODE mediaLibrary_readShowName(FILE* file, char** showName, uint_fa
     return ERROR(ERROR_NO_ERROR);
 }
 
-inline ERROR_CODE mediaLibrary_readSeasonNumber(FILE* file, uint_fast16_t* showNameLength){
+inline ERROR_CODE mediaLibrary_readSeasonNumber(FILE* file, uint_fast16_t* seasonNumber){
     ERROR_CODE error;
-    MEDIA_LIBRARY_READ_FROM_LIBRARY_FILE(error, file, showNameLength, uint16_t);
+    MEDIA_LIBRARY_READ_FROM_LIBRARY_FILE(error, file, seasonNumber, uint16_t);
 
     if(error != ERROR_NO_ERROR){
         return ERROR_(error, "Failed to read season number. [%s]", util_toErrorString(error));
@@ -1121,6 +1305,94 @@ inline ERROR_CODE mediaLibrary_readFileExtension(FILE* file, char** fileExtensio
 
     return ERROR(ERROR_NO_ERROR);
 }
+
+// TODO: Implement better/faster sorting algorithm. (jan - 2019.04.24)
+ERROR_CODE mediaLibrary_sortSeasons(Season** sortedSeasons[], LinkedList* seasons){
+    Season** toBeSorted = *sortedSeasons;
+
+    LinkedListIterator it;
+    linkedList_initIterator(&it, seasons);
+
+    toBeSorted[0] = LINKED_LIST_ITERATOR_NEXT(&it);
+
+    register uint_fast64_t endIndex = 0;
+    while(LINKED_LIST_ITERATOR_HAS_NEXT(&it)){
+        Season* current = LINKED_LIST_ITERATOR_NEXT(&it);
+
+        if(current->number >= toBeSorted[endIndex]->number){
+            // Add new largest element to end of list.
+            toBeSorted[endIndex + 1] = current;
+        }else{
+            // Search for place to insert new element.
+            register uint_fast64_t insertionIndex = 0;
+            while(current->number > toBeSorted[insertionIndex]->number){
+                insertionIndex++;
+            }
+        
+            // Insert new element and move the rest up one place in the list.
+            Season* tmp = toBeSorted[insertionIndex];
+
+            toBeSorted[insertionIndex] = current;
+
+            for(insertionIndex += 1; insertionIndex <= endIndex; insertionIndex++){
+                Season* swap = toBeSorted[insertionIndex];
+                toBeSorted[insertionIndex] = tmp;
+
+                tmp = swap;
+            }
+
+            toBeSorted[insertionIndex] = tmp;
+        }
+
+        endIndex++;
+    }
+
+    return ERROR(ERROR_NO_ERROR);
+}
+
+ERROR_CODE mediaLibrary_sortEpisodes(Episode** sortedEpisodes[], LinkedList* episodes){
+    Episode** toBeSorted = *sortedEpisodes;
+
+    LinkedListIterator it;
+    linkedList_initIterator(&it, episodes);
+
+    toBeSorted[0] = LINKED_LIST_ITERATOR_NEXT(&it);
+
+    register uint_fast64_t endIndex = 0;
+    while(LINKED_LIST_ITERATOR_HAS_NEXT(&it)){
+        Episode* current = LINKED_LIST_ITERATOR_NEXT(&it);
+
+        if(current->number >= toBeSorted[endIndex]->number){
+            // Add new largest element to end of list.
+            toBeSorted[endIndex + 1] = current;
+        }else{
+            // Search for place to insert new element.
+            register uint_fast64_t insertionIndex = 0;
+            while(current->number > toBeSorted[insertionIndex]->number){
+                insertionIndex++;
+            }
+        
+            // Insert new element and move the rest up one place in the list.
+            Episode* tmp = toBeSorted[insertionIndex];
+
+            toBeSorted[insertionIndex] = current;
+
+            for(insertionIndex += 1; insertionIndex <= endIndex; insertionIndex++){
+                Episode* swap = toBeSorted[insertionIndex];
+                toBeSorted[insertionIndex] = tmp;
+
+                tmp = swap;
+            }
+
+            toBeSorted[insertionIndex] = tmp;
+        }
+
+        endIndex++;
+    }
+
+    return ERROR(ERROR_NO_ERROR);
+}
+
 
 #undef PROPERTY_LIBRARY_DIRECTORY_NAME
 #undef PROPERTY_IMPORT_DIRECTORY_NAME    
