@@ -131,7 +131,7 @@ local ERROR_CODE herder_pullShowInfo(Property*, Property*, Show*);
 
     bool noValidArgument = true;
 
-   if(argc <= 1 || argumentParser_contains(&parser, &argumentHelp)){
+    if(argc <= 1 || argumentParser_contains(&parser, &argumentHelp)){
         herder_printHelp();
 
         goto label_free;
@@ -1706,31 +1706,46 @@ label_selectEpisode:
         goto label_selectSeason;
     }
 
+label_enterNewName:
     UTIL_LOG_CONSOLE(LOG_INFO, "\nPlease enter a new episode name.");
 
-label_enterNewName:
-    if((error = util_readUserInput(&userInput, &userInputLength)) != ERROR_NO_ERROR){
+    char* newEpisodeName;
+    int_fast64_t newEpisodeNameLength;
+
+    if((error = util_readUserInput(&newEpisodeName, &newEpisodeNameLength)) != ERROR_NO_ERROR){
         goto label_freeShow;
     }
 
     UTIL_LOG_CONSOLE_(LOG_INFO, "\nShow:'%s', s%02" PRIuFAST16 "e%02" PRIuFAST16 " - '%s'", showName, selectedSeason->number, selectedEpisode->number, userInput);
 
-    free(userInput);
-
-label_yesNo:
     UTIL_LOG_CONSOLE_(LOG_INFO, "\nRename episode to '%s'? Yes/No.", userInput);
-
-    if((error = util_readUserInput(&userInput, &userInputLength)) != ERROR_NO_ERROR){
-        goto label_freeShow;
-    }
 
     util_toLowerChase(userInput);
 
-    if(strncmp(userInput, "no", 3) == 0 || strncmp(userInput, "n", 2) != 0){
+    if((error = util_readUserInput(&userInput, &userInputLength)) != ERROR_NO_ERROR){
+        free(userInput);
+
+        free(newEpisodeName);
+
+        goto label_freeShow;
+    }
+
+    UTIL_LOG_CONSOLE_(LOG_DEBUG, "Input:'%s' [%" PRIdFAST64 "]", userInput, userInputLength);
+
+    if(strncmp(userInput, "no", 3) == 0 || strncmp(userInput, "n", 2) == 0){
+        free(userInput);
+        free(newEpisodeName);
+
+        UTIL_LOG_CONSOLE(LOG_DEBUG, "NO");
+
         goto label_enterNewName;
     }else{
-        if(strncmp(userInput, "yes", 4) != 0 || strncmp(userInput, "y", 2) != 0){
-            goto label_yesNo;
+        if(userInputLength != 0 && strncmp(userInput, "yes", 4) != 0 && strncmp(userInput, "y", 2) != 0){
+            UTIL_LOG_CONSOLE(LOG_DEBUG, "Invalid !!!");
+
+            goto label_enterNewName;
+        }else{
+            UTIL_LOG_CONSOLE(LOG_DEBUG, "yes");
         }
     }
 
@@ -1745,7 +1760,7 @@ label_yesNo:
         goto label_unMap;
     }
 
-    const char url[] = "/updateInfo";
+    const char url[] = "/updateShowInfo";
 
     HTTP_Request request;
     if((error = http_initRequest(&request, url, strlen(url), httpProcessingBuffer, HTTP_PROCESSING_BUFFER_SIZE, HTTP_VERSION_1_1, REQUEST_TYPE_POST)) != ERROR_NO_ERROR){
@@ -1787,11 +1802,11 @@ label_yesNo:
     request.dataLength += sizeof(uint16_t);   
 
     // Episode_Name.
-    util_uint64ToByteArray(request.data + request.dataLength, userInputLength);
+    util_uint64ToByteArray(request.data + request.dataLength, newEpisodeNameLength);
     request.dataLength += sizeof(uint64_t);   
 
-    memcpy(request.data + request.dataLength, userInput, userInputLength + 1);
-    request.dataLength += userInputLength + 1;
+    memcpy(request.data + request.dataLength, newEpisodeName, newEpisodeNameLength + 1);
+    request.dataLength += newEpisodeNameLength + 1;
 
     HTTP_Response response;
     http_initResponse(&response, httpProcessingBuffer, HTTP_PROCESSING_BUFFER_SIZE);
@@ -1801,7 +1816,6 @@ label_yesNo:
 
     http_closeConnection(socketFD);
 
-    const uint_fast64_t returnCode = util_byteArrayTo_uint64(response.data);
     if(response.statusCode != _200_OK){
         error = ERROR_INVALID_STATUS_CODE;
 
@@ -1810,6 +1824,7 @@ label_yesNo:
         if(response.dataLength != sizeof(uint64_t)){
             error = ERROR_INVALID_CONTENT_LENGTH;
         }else{
+            const uint_fast64_t returnCode = util_byteArrayTo_uint64(response.data);
             if(returnCode != ERROR_NO_ERROR){
                error = returnCode;
             }

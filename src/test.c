@@ -1393,7 +1393,7 @@ TEST_TEST_FUNCTION_(medialibrary_removeEpisode, MediaLibrary, library){
         return false;
     }
 
-    if(medialibrary_removeEpisode(library, season_01, episode_01) != ERROR_NO_ERROR){
+    if(medialibrary_removeEpisode(library, show, season_01, episode_01, true) != ERROR_NO_ERROR){
         return false;
     }
 
@@ -1407,6 +1407,37 @@ TEST_TEST_FUNCTION_(medialibrary_removeEpisode, MediaLibrary, library){
             return false;
         }
     }
+
+    return true;
+}
+
+TEST_TEST_FUNCTION_(medialibrary_removeEpisodeFrromLibraryFile, MediaLibrary, library){
+    const char showName[] = "Enen no Shouboutai";
+    const uint_fast64_t showNameLength = strlen(showName);
+
+    Show* show;
+    if(mediaLibrary_addShow(library, &show, showName, showNameLength) != ERROR_NO_ERROR){
+        return false;
+    }
+
+    Season* season_01;
+    if(mediaLibrary_addSeason(library, &season_01, show, 1) != ERROR_NO_ERROR){
+        return false;
+    }
+
+    const char episodeName[] = "Shinra Kusakabe Enlists";
+    const uint_fast64_t episodeNameLength = strlen(episodeName);
+
+    Episode* episode_01;
+    if(mediaLibrary_addEpisode(library, &episode_01, show, season_01, 1, episodeName, episodeNameLength, ".mkv", 4, true) != ERROR_NO_ERROR){
+        return false;
+    }
+
+    if(medialibrary_removeEpisodeFrromLibraryFile(library, show, season_01, episode_01) != ERROR_NO_ERROR){
+        return false;
+    } 
+
+    // TODO: Reload library and check if episode was removed. (jan - 2019.08.08)
 
     return true;
 }
@@ -1876,6 +1907,7 @@ int main(void){
         TEST(mediaLibrary_getSeason);
         TEST(mediaLibrary_addEpisode);
         TEST(medialibrary_removeEpisode);
+        TEST(medialibrary_removeEpisodeFrromLibraryFile);
         TEST_NO_SETUP(mediaLibrary_extractShowName);
         TEST_NO_SETUP(mediaLibrary_extractPrefixedNumber);
         TEST_NO_SETUP(mediaLibrary_extractEpisodeInfo);

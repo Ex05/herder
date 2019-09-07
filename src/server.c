@@ -420,6 +420,86 @@ local SERVER_CONTEXT_HANDLER(server_pageShowInfo){
     return ERROR(ERROR_NO_ERROR);
 }
 
+local SERVER_CONTEXT_HANDLER(server_pageUpdateShowInfo){
+     if(request->type != REQUEST_TYPE_POST){
+        server_constructErrorPage(server, request, response, _405_METHOD_NOT_ALLOWED);
+
+        return ERROR(ERROR_NO_ERROR);
+    }
+
+    ERROR_CODE error;
+    
+    uint_fast64_t readOffset = 0;
+
+    // TODO: Handle different packet types. (jan - 31.07.2019)
+
+    // Update packet type.
+    // const uint_fast64_t packetType = util_byteArrayTo_uint64(request->data + readOffset);
+    readOffset += sizeof(uint8_t);
+    
+    // Old values.
+
+    // Show_name.
+    const uint_fast64_t showNameLength = util_byteArrayTo_uint64(request->data + readOffset);
+    readOffset += sizeof(uint64_t);
+
+    const char* showName = (char*) (request->data + readOffset);
+    readOffset += showNameLength + 1;
+
+    Show* show;
+    if((error = medialibrary_getShow(&server->library, &show, showName, showNameLength)) != ERROR_NO_ERROR){
+        goto label_onError;
+    }
+
+    // Season_Number.
+    uint16_t oldSeasonNumber = util_byteArrayTo_uint16(response->data + response->dataLength);
+    readOffset += sizeof(uint16_t);
+
+    Season* season;
+    if((error = medialibrary_getSeason(show, &season, oldSeasonNumber)) != ERROR_NO_ERROR){
+        goto label_onError;
+    }
+
+    // Episode_Number.
+    uint16_t oldEpisodeNumber = util_byteArrayTo_uint16(response->data + response->dataLength);
+    readOffset += sizeof(uint16_t);   
+
+    Episode* episode;
+    if((mediaLibrary_getEpisode(season, &episode, oldEpisodeNumber)) != ERROR_NO_ERROR){
+        goto label_onError;
+    }
+
+    // New values.
+
+    // Season_number
+    // uint16_t newSeasonNumber = util_byteArrayTo_uint16(response->data + response->dataLength);
+    readOffset += sizeof(uint16_t);
+
+    // Episode_Number.
+    // uint16_t newEpisodeNumber = util_byteArrayTo_uint16(response->data + response->dataLength);
+    readOffset += sizeof(uint16_t);   
+
+    // Episode_name.
+    const uint_fast64_t episodeNameLength = util_byteArrayTo_uint64(request->data + readOffset);
+    readOffset += sizeof(uint64_t);
+
+    // const char* episodeName = (char*) (request->data + readOffset);
+    readOffset += episodeNameLength + 1;
+
+ label_onError:
+    util_uint64ToByteArray(response->data + response->dataLength, error);
+    response->dataLength += sizeof(uint64_t);
+
+    http_setHTTP_Version(response, HTTP_VERSION_1_1);
+    response->statusCode = _200_OK;
+    response->contentType = HTTP_CONTENT_TYPE_TEXT_HTML;
+
+    const char connection[] = "close";
+    HTTP_ADD_HEADER_FIELD((*response), Connection, connection);
+   
+    return ERROR(ERROR_NO_ERROR);
+}
+
 local SERVER_CONTEXT_HANDLER(server_pageExtractShowInfo){
      if(request->type != REQUEST_TYPE_POST){
         server_constructErrorPage(server, request, response, _405_METHOD_NOT_ALLOWED);
@@ -660,6 +740,7 @@ label_return:
 			server_addContext(&server, "/shows", server_pageShows);
             server_addContext(&server, "/extractShowInfo", server_pageExtractShowInfo);
             server_addContext(&server, "/showInfo", server_pageShowInfo);
+            server_addContext(&server, "/updateInfo", server_pageUpdateShowInfo);
 
 			UTIL_LOG_INFO_("Starting server on port '%" PRIuFAST16 "'.", port);
 

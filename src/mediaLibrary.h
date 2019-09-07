@@ -61,9 +61,7 @@ ERROR_CODE mediaLibrary_addShow(MediaLibrary*, Show**, const char*, const uint_f
 
 ERROR_CODE mediaLibrary_removeShow(MediaLibrary*, const char*, const uint_fast64_t);
 
-ERROR_CODE medialibrary_removeShowFrromLibraryFile(MediaLibrary*, const char*);
-
-ERROR_CODE medialibrary_removeEpisode(MediaLibrary*, Season*, Episode*);
+ERROR_CODE medialibrary_removeEpisode(MediaLibrary*, Show* show, Season*, Episode*, const bool);
 
 ERROR_CODE medialibrary_getShow(MediaLibrary*, Show**, const char*, const uint_fast64_t);
 
@@ -90,11 +88,11 @@ ERROR_CODE mediaLibrary_sortEpisodes(Episode***, LinkedList*);
 #endif
 
 /*
-Show_Name,
-Season_Number,
-Episode_Number,
-Episode_Name,
-File_Extension
+Show_Name [uint64_t + ~ ],
+Season_Number [uint16_t],
+Episode_Number [uint16_t], 
+Episode_Name [uint64_t + ~ ],
+File_Extension [uint16_t + ~ ]
 */
 
 /*
