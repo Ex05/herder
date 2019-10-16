@@ -118,6 +118,7 @@ local const char* UTIL_ERROR_CODE_MESSAGE_MAPPING_ARRAY[] = {
     "ERROR_END_OF_FILE",
     "ERROR_FAILED_TO_DELETE_DIRECTORY",
     "ERROR_FAILED_TO_REMOVE_NODE",
+    "ERROR_NO_VALID_ARGUMENT",
 };
 
 inline const char* util_toErrorString(const ERROR_CODE errorCode){
@@ -691,7 +692,7 @@ inline ERROR_CODE util_getCurrentWorkingDirectory(char* dir, const uint_fast64_t
     return ERROR(ERROR_NO_ERROR);    
 }
 
-ERROR_CODE util_getFileExtension(char** extension, char* fileName, const uint_fast64_t fileNameLength){
+ERROR_CODE util_getFileExtension(char** extension, const char* fileName, const uint_fast64_t fileNameLength){
     const int_fast64_t fileExtensionOffset = util_findLast(fileName, fileNameLength, '.');
 
     if(fileExtensionOffset == -1){
@@ -700,7 +701,12 @@ ERROR_CODE util_getFileExtension(char** extension, char* fileName, const uint_fa
         return ERROR_(ERROR_INVALID_STRING, "%s does not contain the token '.'", fileName);
     }
 
-    *extension = fileName + (fileExtensionOffset + 1);
+    *extension = malloc(sizeof(**extension) * (fileNameLength - (fileExtensionOffset + 1)));
+    if(*extension == NULL){
+        return ERROR(ERROR_OUT_OF_MEMORY);
+    }
+
+    util_fileCopy(fileName + (fileExtensionOffset + 1), *extension);
 
     return ERROR(ERROR_NO_ERROR);
 }

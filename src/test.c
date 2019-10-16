@@ -279,29 +279,42 @@ TEST_TEST_FUNCTION(argumentParser_parse){
     ARGUMENT_PARSER_ADD_ARGUMENT(Test, 2, "-t", "--test");
     ARGUMENT_PARSER_ADD_ARGUMENT(Import, 1, "-i");
 
-    bool ret = false;
+    bool ret = true;
 
-    const char* argc[] = {"-i", "test", "12", "--test", "abbab", "---Tester", "12"};
+    const char* argc[] = {"-v", "-i", "test", "12", "--test", "abbab", "---Tester", "12"};
 
     if(argumentParser_parse(&parser, UTIL_ARRAY_LENGTH(argc), argc) != ERROR_NO_ERROR){
         UTIL_LOG_ERROR("Failed to parse command line arguments.");
 
+        ret = false;
+
         goto label_free;
     }
 
-    if(argumentParser_contains(&parser, &argumentTest)){
-         if(ARGUMENT_PARSER_ARGUMENT_HAS_VALUE(argumentTest)){
-             if(strncmp("abbab", argumentTest.value, argumentTest.valueLength) == 0){
-                ret = true;
-             }
+    if(!argumentParser_contains(&parser, &argumentTest)){
+        ret = false;
+
+        goto label_free;
+    }else{
+        if(!ARGUMENT_PARSER_ARGUMENT_HAS_VALUE(argumentTest)){
+            ret = false;
+
+            goto label_free;
         }
     }
 
-    if(argumentParser_contains(&parser, &argumentImport)){
+    if(!argumentParser_contains(&parser, &argumentImport)){
+        ret = false;
+
+        goto label_free;
+    }else{
         if(!ARGUMENT_PARSER_ARGUMENT_HAS_VALUE(argumentImport)){
-            ret = true;
+            ret = false;
+
+            goto label_free;
         }
     }
+  
 
 label_free:
     argumentParser_free(&parser);

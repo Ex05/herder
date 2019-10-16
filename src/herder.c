@@ -48,7 +48,7 @@ local void herder_printHelp(void);
 
 local ERROR_CODE herder_listShows(Property*, Property*);
 
-local ERROR_CODE herder_removeShow(Property*, Property*, char*, const uint_fast64_t);
+local ERROR_CODE herder_removeShow(Property*, Property*, const char*, const uint_fast64_t);
 
 local ERROR_CODE herder_renameEpisode(Property*, Property*);
 
@@ -56,13 +56,13 @@ local ERROR_CODE herder_listAllShows(Property*, Property*);
 
 local ERROR_CODE herder_pullShowList(LinkedList*, const char*, const uint_fast16_t);
 
-local ERROR_CODE herder_addShow(Property*, Property*, char*, const uint_fast64_t);
+local ERROR_CODE herder_addShow(Property*, Property*, const char*, const uint_fast64_t);
 
-local ERROR_CODE herder_printShowInfo(Property*, Property*, char*, const uint_fast64_t);
+local ERROR_CODE herder_printShowInfo(Property*, Property*, const char*, const uint_fast64_t);
 
-local ERROR_CODE herder_extractShowInfo(Property*, Property*, EpisodeInfo**, char*, const uint_fast64_t);
+local ERROR_CODE herder_extractShowInfo(Property*, Property*, EpisodeInfo**, const char*, const uint_fast64_t);
 
-local ERROR_CODE herder_addEpisode(Property*, Property*, Property*, char*, const uint_fast64_t);
+local ERROR_CODE herder_addEpisode(Property*, Property*, Property*, const char*, const uint_fast64_t);
 
 local ERROR_CODE herder_argumentSetImportDirectory(Argument*, PropertyFile*, Property**);
 
@@ -561,7 +561,7 @@ label_unMap:
     return ERROR(error);
 }
 
-ERROR_CODE herder_addShow(Property* remoteHost, Property* remotePort, char* showName, const uint_fast64_t showNameLength){
+ERROR_CODE herder_addShow(Property* remoteHost, Property* remotePort, const char* showName, const uint_fast64_t showNameLength){
     ERROR_CODE error = ERROR_NO_ERROR;
 
     char* host = (char*) remoteHost->buffer;
@@ -634,7 +634,7 @@ label_unMap:
     return ERROR(error);
 }
 
-ERROR_CODE herder_removeShow(Property* remoteHost, Property* remotePort, char* showName, const uint_fast64_t showNameLength){
+ERROR_CODE herder_removeShow(Property* remoteHost, Property* remotePort, const char* showName, const uint_fast64_t showNameLength){
     ERROR_CODE error = ERROR_NO_ERROR;
 
     char* host = (char*) remoteHost->buffer;
@@ -701,7 +701,7 @@ label_unMap:
     return ERROR(error);
 }
 
-local ERROR_CODE herder_printShowInfo(Property* remoteHost, Property* remotePort, char* showName, const uint_fast64_t showNameLength){
+local ERROR_CODE herder_printShowInfo(Property* remoteHost, Property* remotePort, const char* showName, const uint_fast64_t showNameLength){
     ERROR_CODE error = ERROR_NO_ERROR;
 
     char* host = (char*) remoteHost->buffer;
@@ -801,7 +801,7 @@ label_unMap:
     return ERROR(error);
 }
 
-ERROR_CODE herder_addEpisode(Property* remoteHost, Property* remotePort, Property* libraryDirectory,  char* filePath, const uint_fast64_t filePathLength){
+ERROR_CODE herder_addEpisode(Property* remoteHost, Property* remotePort, Property* libraryDirectory,  const char* filePath, const uint_fast64_t filePathLength){
     ERROR_CODE error = ERROR_NO_ERROR;
 
     EpisodeInfo* episodeInfo = alloca(sizeof(*episodeInfo));
@@ -939,7 +939,7 @@ label_freeEpisodeInfo:
     return ERROR(error);
 }
 
-ERROR_CODE herder_extractShowInfo(Property* remoteHost, Property* remotePort, EpisodeInfo** episodeInfo, char* filePath, const uint_fast64_t filePathLength){
+ERROR_CODE herder_extractShowInfo(Property* remoteHost, Property* remotePort, EpisodeInfo** episodeInfo, const char* filePath, const uint_fast64_t filePathLength){
     ERROR_CODE error = ERROR_NO_ERROR;
 
     char* host = (char*) remoteHost->buffer;
@@ -960,7 +960,7 @@ label_extractShowInfo:
 
     const uint_fast64_t fileNameOffset = util_findLast(filePath, filePathLength, '/') + 1;
 
-    char* fileName = filePath + fileNameOffset;
+    const char* fileName = filePath + fileNameOffset;
     const uint_fast64_t fileNameLength = filePathLength - fileNameOffset;
 
     const char url[] = "/extractShowInfo";
@@ -1251,7 +1251,9 @@ inline ERROR_CODE herder_argumentSetImportDirectory(Argument* argumentSetImportD
 
     char* importDirectoryString;
     if(slashTerminated){
-        importDirectoryString = argumentSetImportDirectory->value;
+        importDirectoryString = alloca(sizeof(*importDirectoryString) * (argumentSetImportDirectory->valueLength + 1));
+        memmove(importDirectoryString, argumentSetImportDirectory->value, argumentSetImportDirectory->valueLength + 1);
+
     }else{
         importDirectoryString = alloca(sizeof(*importDirectoryString) * (importDirectoryLength + 1));
         memcpy(importDirectoryString, argumentSetImportDirectory->value, argumentSetImportDirectory->valueLength);
@@ -1369,7 +1371,8 @@ inline ERROR_CODE herder_argumentSetLibraryDirectory(Argument* argumentSetLibrar
 
     char* libraryDirectoryString;
     if(slashTerminated){
-        libraryDirectoryString = argumentSetLibraryDirectory->value;
+        libraryDirectoryString = alloca(sizeof(*libraryDirectoryString) * (argumentSetLibraryDirectory->valueLength + 1));
+        memmove(libraryDirectoryString, argumentSetLibraryDirectory->value, argumentSetLibraryDirectory->valueLength + 1);
     }else{
         libraryDirectoryString = alloca(sizeof(*libraryDirectoryString) * (libraryDirectoryLength + 1));
         memcpy(libraryDirectoryString, argumentSetLibraryDirectory->value, argumentSetLibraryDirectory->valueLength);

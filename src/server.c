@@ -1121,7 +1121,8 @@ inline ERROR_CODE server_setRootDirectory(Argument* argumentSetServerRootDirecto
 
     char* serverRootDirectoryString;
     if(slashTerminated){
-        serverRootDirectoryString = argumentSetServerRootDirectory->value;
+        serverRootDirectoryString = alloca(sizeof(*serverRootDirectoryString) * (argumentSetServerRootDirectory->valueLength + 1));
+        memmove(serverRootDirectoryString, argumentSetServerRootDirectory->value, argumentSetServerRootDirectory->valueLength);
     }else{
         serverRootDirectoryString = alloca(sizeof(*serverRootDirectoryString) * (serverRootDirectoryLength + 1));
         memcpy(serverRootDirectoryString, argumentSetServerRootDirectory->value, argumentSetServerRootDirectory->valueLength);
