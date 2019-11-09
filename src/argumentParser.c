@@ -86,8 +86,6 @@ inline ERROR_CODE argumentParser_parse(ArgumentParser* parser, const int numArgu
                             if(argument->value != &ARGUMENT_PARSER_ARGUMENT_PRESENT_FLAG){
                                 error = ERROR_DUPLICATE_ENTRY;
                     
-                                UTIL_LOG_CONSOLE_(LOG_ERR, "Duplicate argument.'%s'", arguments[i]);
-
                                 goto label_return;
                             }
                         }else{
@@ -97,7 +95,17 @@ inline ERROR_CODE argumentParser_parse(ArgumentParser* parser, const int numArgu
                             argument->valueLength = strlen(argument->value);
                         }
                     }else{
-                        argument->value = &ARGUMENT_PARSER_ARGUMENT_PRESENT_FLAG;
+                         if(argument->value != NULL){
+                            if(argument->value != &ARGUMENT_PARSER_ARGUMENT_PRESENT_FLAG){
+                                error = ERROR_DUPLICATE_ENTRY;
+                    
+                                goto label_return;
+                            }
+                         }else{
+                            error = ERROR_NO_ERROR;
+
+                            argument->value = &ARGUMENT_PARSER_ARGUMENT_PRESENT_FLAG;
+                        }
                     }
                 }                
             }              
@@ -105,7 +113,11 @@ inline ERROR_CODE argumentParser_parse(ArgumentParser* parser, const int numArgu
     }
 
 label_return:
-    return ERROR(error);
+    if(error == ERROR_DUPLICATE_ENTRY){
+        return ERROR_(error, "Duplicate argument.'%s'", arguments[i]);
+    }else{
+        return ERROR(error);
+    }
 }
 
 inline bool argumentParser_contains(ArgumentParser* parser, Argument* argument){

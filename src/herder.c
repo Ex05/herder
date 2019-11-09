@@ -96,7 +96,7 @@ local ERROR_CODE herder_pullShowInfo(Property*, Property*, Show*);
 
 // TODO:(jan) Make custom entry point for the client build, so we won't have to use 'main'.
 #ifndef TEST_BUILD
-	int main(const int argc, const char** argv){
+	int main_2(const int argc, const char** argv){
 #else
     int herder_totalyNotMain(const int argc, const char** argv){
 #endif
@@ -396,7 +396,7 @@ inline void herder_printHelp(void){
     UTIL_LOG_CONSOLE_(LOG_INFO, "\t%s\t\t\t%s", "--killDeamon", "Kills the deamon process running the 'herder' server.");
     UTIL_LOG_CONSOLE_(LOG_INFO, "\t%s\t\t\t%s", "--restartDeamon", "Restarts the deamon process running the 'herder' server.");
     UTIL_LOG_CONSOLE_(LOG_INFO, "\t%s\t\t\t%s", "--showSettings", "Prints all available settings and their value.");
-    UTIL_LOG_CONSOLE_(LOG_INFO, "\t%s\t\t%s", "-?, -h, -help, --help", "Displays this help.");
+    UTIL_LOG_CONSOLE_(LOG_INFO, "\t%s\t\t%s", "-?, -h, --help", "Displays this help.");
 }
 
 inline ERROR_CODE herder_listAllShows(Property* remoteHostProperty, Property* remoteHostPortProperty){
@@ -446,7 +446,11 @@ inline ERROR_CODE herder_listShows(Property* remoteHostProperty, Property* remot
 
     LinkedList shows;
     if((error = herder_pullShowList(&shows, host, port)) != ERROR_NO_ERROR){
-        goto label_freeShowList;
+        if(error != ERROR_FAILED_TO_CONNECT){
+            goto label_freeShowList;
+        }else{
+            goto label_return;
+        }
     }
 
     if(shows.length == 0){
@@ -471,6 +475,7 @@ inline ERROR_CODE herder_listShows(Property* remoteHostProperty, Property* remot
 label_freeShowList:
     linkedList_free(&shows);
 
+label_return:
     return ERROR(error);
 }
 
