@@ -63,7 +63,7 @@ local void consoleClient_printHelp(void);
     ARGUMENT_PARSER_ADD_ARGUMENT(RemoveEpisode, 1, "--removeEpisode");
     ARGUMENT_PARSER_ADD_ARGUMENT(ListShows, 3, "-l", "--list", "--listShows");
     ARGUMENT_PARSER_ADD_ARGUMENT(ListAll, 2, "--listAll", "--listAllShows");
-    ARGUMENT_PARSER_ADD_ARGUMENT(ShowInfo, 1, "--showInfo");
+    ARGUMENT_PARSER_ADD_ARGUMENT(ShowInfo, 2, "--showInfo", "--info");
     ARGUMENT_PARSER_ADD_ARGUMENT(SetImportDirectory, 1, "--setImportDirectory");
     ARGUMENT_PARSER_ADD_ARGUMENT(SetLibraryDirectory, 1, "--setLibraryDirectory");
     ARGUMENT_PARSER_ADD_ARGUMENT(SetRemoteHost, 1, "--setRemoteHost");
@@ -229,7 +229,14 @@ local void consoleClient_printHelp(void);
             UTIL_LOG_CONSOLE(LOG_INFO, "Invalid command. Usage: " CONSOLE_CLIENT_USAGE_ARGUMENT_SHOW_INFO);
         }
         else{
-            UTIL_LOG_CONSOLE(LOG_INFO, "--showInfo");
+             if(REMOTE_HOST_PROPERTIES_SET()){
+                 ERROR_CODE error;
+                if((error = herder_printShowInfo(remoteHost, remotePort, argumentShowInfo.value, argumentShowInfo.valueLength))  != ERROR_NO_ERROR){
+                    UTIL_LOG_CONSOLE_(LOG_ERR, "Failed to print show info. '%s'", util_toErrorString(error));
+                }
+            }else{
+                UTIL_LOG_CONSOLE(LOG_ERR, util_toErrorString(ERROR_PROPERTY_NOT_SET));
+            }
         }
         
         goto label_freeProperties;
