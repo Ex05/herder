@@ -54,21 +54,21 @@ local void consoleClient_printHelp(void);
     ArgumentParser parser;
     argumentParser_init(&parser);
     
-    ARGUMENT_PARSER_ADD_ARGUMENT(Help, 3, "-?", "-h", "--help");
-    ARGUMENT_PARSER_ADD_ARGUMENT(AddShow, 1, "--addShow");
-    ARGUMENT_PARSER_ADD_ARGUMENT(RemoveShow, 1, "--removeShow");
-    ARGUMENT_PARSER_ADD_ARGUMENT(Add, 4, "-a", "-add", "--addFile", "--addEpisode");
-    ARGUMENT_PARSER_ADD_ARGUMENT(Import, 2, "-i", "--import");
-    ARGUMENT_PARSER_ADD_ARGUMENT(RenameEpisode, 1, "--renameEpisode");
+    ARGUMENT_PARSER_ADD_ARGUMENT(Help, 3, "-?", "-h", "--help"); //
+    ARGUMENT_PARSER_ADD_ARGUMENT(AddShow, 1, "--addShow"); //
+    ARGUMENT_PARSER_ADD_ARGUMENT(RemoveShow, 1, "--removeShow"); //
+    ARGUMENT_PARSER_ADD_ARGUMENT(Add, 4, "-a", "-add", "--addFile", "--addEpisode"); //
+    ARGUMENT_PARSER_ADD_ARGUMENT(Import, 2, "-i", "--import"); //
+    ARGUMENT_PARSER_ADD_ARGUMENT(RenameEpisode, 1, "--renameEpisode"); //
     ARGUMENT_PARSER_ADD_ARGUMENT(RemoveEpisode, 1, "--removeEpisode");
     ARGUMENT_PARSER_ADD_ARGUMENT(ListShows, 3, "-l", "--list", "--listShows");
     ARGUMENT_PARSER_ADD_ARGUMENT(ListAll, 2, "--listAll", "--listAllShows");
-    ARGUMENT_PARSER_ADD_ARGUMENT(ShowInfo, 2, "--showInfo", "--info");
+    ARGUMENT_PARSER_ADD_ARGUMENT(ShowInfo, 2, "--showInfo", "--info"); //
     ARGUMENT_PARSER_ADD_ARGUMENT(SetImportDirectory, 1, "--setImportDirectory");
     ARGUMENT_PARSER_ADD_ARGUMENT(SetLibraryDirectory, 1, "--setLibraryDirectory");
     ARGUMENT_PARSER_ADD_ARGUMENT(SetRemoteHost, 1, "--setRemoteHost");
     ARGUMENT_PARSER_ADD_ARGUMENT(SetRemoteHostPort, 1, "--setRemotePort");
-    ARGUMENT_PARSER_ADD_ARGUMENT(ShowSettings, 1, "--showSettings");
+    ARGUMENT_PARSER_ADD_ARGUMENT(ShowSettings, 1, "--showSettings"); //
 
     ERROR_CODE error;
     if((error = argumentParser_parse(&parser, argc, argv)) != ERROR_NO_ERROR){
@@ -150,11 +150,18 @@ local void consoleClient_printHelp(void);
             UTIL_LOG_CONSOLE(LOG_INFO, "Invalid command. Usage: " CONSOLE_CLIENT_USAGE_ARGUMENT_REMOVE_SHOW);
         }
         else{
-            UTIL_LOG_CONSOLE(LOG_INFO, "--removeShow");
+             if(REMOTE_HOST_PROPERTIES_SET()){
+                 ERROR_CODE error;
+                if((error = herder_removeShow(remoteHost, remotePort, argumentRemoveShow.value, argumentRemoveShow.valueLength)) != ERROR_NO_ERROR){
+                    UTIL_LOG_CONSOLE_(LOG_ERR, "Failed to remove show. '%s'", util_toErrorString(error));
+                }
+            }else{
+                UTIL_LOG_CONSOLE(LOG_ERR, util_toErrorString(ERROR_PROPERTY_NOT_SET));
+            }
         }
 
         goto label_freeProperties;
-    }
+    } 
 
     // --addEpisode.
     if(argumentParser_contains(&parser, &argumentAdd)){ 
@@ -162,7 +169,46 @@ local void consoleClient_printHelp(void);
             UTIL_LOG_CONSOLE(LOG_INFO, "Invalid command. Usage: " CONSOLE_CLIENT_USAGE_ARGUMENT_ADD_EPISODE);
         }
         else{
-            UTIL_LOG_CONSOLE(LOG_INFO, "--addEpisode");
+            if(REMOTE_HOST_PROPERTIES_SET() && (propertyFile_propertySet(libraryDirectory, PROPERTY_LIBRARY_DIRECTORY_NAME) == ERROR_NO_ERROR)){
+                if(!util_fileExists(argumentAdd.value) || util_isDirectory(argumentAdd.value)){
+                    UTIL_LOG_CONSOLE_(LOG_INFO, "ERROR: '%s' is not a falid file.", argumentAdd.value);
+                }else{
+                    if((error = herder_addEpisode(remoteHost, remotePort, libraryDirectory, argumentAdd.value, argumentAdd.valueLength)) != ERROR_NO_ERROR){
+                           UTIL_LOG_CONSOLE_(LOG_ERR, "Failed to add '%s' to library. [%s]", argumentAdd.value,  util_toErrorString(error));
+                    }else{
+                        UTIL_LOG_CONSOLE_(LOG_INFO, "Successfully added '%s' to the library.", argumentAdd.value);
+                    }
+                }
+            }else{
+                UTIL_LOG_CONSOLE(LOG_ERR, util_toErrorString(ERROR_PROPERTY_NOT_SET));
+            }
+        }
+        
+        goto label_freeProperties;
+    }
+
+    // --import.
+    if(argumentParser_contains(&parser, &argumentImport)){ 
+        if(!ARGUMENT_PARSER_ARGUMENT_HAS_VALUE(argumentImport)){
+            UTIL_LOG_CONSOLE(LOG_INFO, "Invalid command. Usage: " CONSOLE_CLIENT_USAGE_ARGUMENT_IMPORT);
+        }
+        else{
+            ERROR_CODE error;
+            if(ARGUMENT_PARSER_ARGUMENT_HAS_VALUE((argumentImport))){
+                // Import from path.
+                if((error = herder_import(remoteHost, remotePort, libraryDirectory, argumentImport.value)) != ERROR_NO_ERROR){
+                    // 
+                }
+            }else{
+                if(PROPERTY_IS_SET(importDirectory)){
+                    // Import from importDirectory_setting.
+                    if((error = herder_import(remoteHost, remotePort, libraryDirectory, (char*) importDirectory->buffer)) != ERROR_NO_ERROR){
+                        // 
+                    }
+                }else{
+                    UTIL_LOG_CONSOLE(LOG_ERR, "Import directory not set, Use '--setImportDirectory <path>' to set an import directory, or specify the directory to import from when running '-i, --import optional:<path>'.");
+                }
+            }
         }
         
         goto label_freeProperties;
@@ -174,7 +220,14 @@ local void consoleClient_printHelp(void);
             UTIL_LOG_CONSOLE(LOG_INFO, "Invalid command. Usage: " CONSOLE_CLIENT_USAGE_ARGUMENT_RENAME_EPISODE);
         }
         else{
-            UTIL_LOG_CONSOLE(LOG_INFO, "--renameEpisode");
+            if(REMOTE_HOST_PROPERTIES_SET()){
+                ERROR_CODE error;
+                if((error = herder_renameEpisode(remoteHost, remotePort)) != ERROR_NO_ERROR){
+                    UTIL_LOG_CONSOLE_(LOG_ERR, "Failed to rename Episode. '%s'", util_toErrorString(error));
+                }
+            }else{
+                UTIL_LOG_CONSOLE(LOG_ERR, util_toErrorString(ERROR_PROPERTY_NOT_SET));
+            }
         }
         
         goto label_freeProperties;
