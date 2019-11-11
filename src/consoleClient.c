@@ -60,11 +60,11 @@ local void consoleClient_printHelp(void);
     ARGUMENT_PARSER_ADD_ARGUMENT(Add, 4, "-a", "-add", "--addFile", "--addEpisode"); //
     ARGUMENT_PARSER_ADD_ARGUMENT(Import, 2, "-i", "--import"); //
     ARGUMENT_PARSER_ADD_ARGUMENT(RenameEpisode, 1, "--renameEpisode"); //
-    ARGUMENT_PARSER_ADD_ARGUMENT(RemoveEpisode, 1, "--removeEpisode");
+    ARGUMENT_PARSER_ADD_ARGUMENT(RemoveEpisode, 1, "--removeEpisode"); //
     ARGUMENT_PARSER_ADD_ARGUMENT(ListShows, 3, "-l", "--list", "--listShows");
     ARGUMENT_PARSER_ADD_ARGUMENT(ListAll, 2, "--listAll", "--listAllShows");
     ARGUMENT_PARSER_ADD_ARGUMENT(ShowInfo, 2, "--showInfo", "--info"); //
-    ARGUMENT_PARSER_ADD_ARGUMENT(SetImportDirectory, 1, "--setImportDirectory");
+    ARGUMENT_PARSER_ADD_ARGUMENT(SetImportDirectory, 1, "--setImportDirectory"); //
     ARGUMENT_PARSER_ADD_ARGUMENT(SetLibraryDirectory, 1, "--setLibraryDirectory");
     ARGUMENT_PARSER_ADD_ARGUMENT(SetRemoteHost, 1, "--setRemoteHost");
     ARGUMENT_PARSER_ADD_ARGUMENT(SetRemoteHostPort, 1, "--setRemotePort");
@@ -239,7 +239,11 @@ local void consoleClient_printHelp(void);
             UTIL_LOG_CONSOLE(LOG_INFO, "Invalid command. Usage: " CONSOLE_CLIENT_USAGE_ARGUMENT_REMOVE_EPISODE);
         }
         else{
-            UTIL_LOG_CONSOLE(LOG_INFO, "--removeEpisode");
+            if(REMOTE_HOST_PROPERTIES_SET()){
+                UTIL_LOG_CONSOLE(LOG_CRIT, util_toErrorString(ERROR_FUNCTION_NOT_IMPLEMENTED));
+            }else{
+                UTIL_LOG_CONSOLE(LOG_ERR, util_toErrorString(ERROR_PROPERTY_NOT_SET));
+            }
         }
         
         goto label_freeProperties;
@@ -296,12 +300,47 @@ local void consoleClient_printHelp(void);
     }
 
     // --setImportDirectory.
-    if(argumentParser_contains(&parser, &argumentSetImportDirectory)){ 
+    if(argumentParser_contains(&parser, &argumentSetImportDirectory)){
         if(!ARGUMENT_PARSER_ARGUMENT_HAS_VALUE(argumentSetImportDirectory)){
             UTIL_LOG_CONSOLE(LOG_INFO, "Invalid command. Usage: " CONSOLE_CLIENT_USAGE_ARGUMENT_SET_IMPORT_DIRECTORY);
         }
         else{
-            UTIL_LOG_CONSOLE(LOG_INFO, "--setImportDirectory");
+            // Note: Make sure 'slashTerminated' is clamped to '0 - 1' so we can use it later to add/subtract depending on wether the string was slash termianted or not. (jan - 2018.10.20)
+            const bool slashTerminated = (argumentSetImportDirectory.value[argumentSetImportDirectory.valueLength - 1] == '/') & 0x01;
+
+            const uint_fast64_t importDirectoryLength = argumentSetImportDirectory.valueLength + !slashTerminated;
+
+            char* importDirectoryString;
+            if(slashTerminated){
+                importDirectoryString = alloca(sizeof(*importDirectoryString) * (argumentSetImportDirectory.valueLength + 1));
+                memmove(importDirectoryString, argumentSetImportDirectory.value, argumentSetImportDirectory.valueLength + 1);
+
+            }else{
+                importDirectoryString = alloca(sizeof(*importDirectoryString) * (importDirectoryLength + 1));
+                memcpy(importDirectoryString, argumentSetImportDirectory.value, argumentSetImportDirectory.valueLength);
+                importDirectoryString[importDirectoryLength - 1] = '/';
+                importDirectoryString[importDirectoryLength] = '\0';
+            } 
+
+            if(PROPERTY_IS_NOT_SET(importDirectory)){
+                if(propertyFile_addProperty(&properties, &importDirectory, CONSOLE_CLIENT_PROPERTY_IMPORT_DIRECTORY_NAME, importDirectoryLength + 1) != ERROR_NO_ERROR){
+                    return ERROR_(ERROR_FAILED_TO_ADD_PROPERTY, "'%s'", CONSOLE_CLIENT_PROPERTY_IMPORT_DIRECTORY_NAME);
+                }
+            }else{
+                if(importDirectory->entry->length != importDirectoryLength + 1){
+                    if(propertyFile_removeProperty(importDirectory) != ERROR_NO_ERROR){
+                        return ERROR_(ERROR_FAILED_TO_REMOVE_PROPERTY, "'%s'", CONSOLE_CLIENT_PROPERTY_IMPORT_DIRECTORY_NAME);
+                    }
+
+                    if(propertyFile_addProperty(&properties, &importDirectory, CONSOLE_CLIENT_PROPERTY_IMPORT_DIRECTORY_NAME, importDirectoryLength + 1) != ERROR_NO_ERROR){
+                        return ERROR_(ERROR_FAILED_TO_ADD_PROPERTY, "'%s'", CONSOLE_CLIENT_PROPERTY_IMPORT_DIRECTORY_NAME);
+                    }
+                }
+            }
+
+            if(propertyFile_setBuffer(importDirectory, (int8_t*) importDirectoryString) != ERROR_NO_ERROR){
+                return ERROR_(ERROR_FAILED_TO_UPDATE_PROPERTY, "'%s'", CONSOLE_CLIENT_PROPERTY_IMPORT_DIRECTORY_NAME);
+            }
         }
         
         goto label_freeProperties;
