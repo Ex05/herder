@@ -347,12 +347,46 @@ local void consoleClient_printHelp(void);
     }
 
     // --setLibraryDirectory.
-    if(argumentParser_contains(&parser, &argumentSetLibraryDirectory)){ 
+    if(argumentParser_contains(&parser, &argumentSetLibraryDirectory)){
         if(!ARGUMENT_PARSER_ARGUMENT_HAS_VALUE(argumentSetLibraryDirectory)){
             UTIL_LOG_CONSOLE(LOG_INFO, "Invalid command. Usage: " CONSOLE_CLIENT_USAGE_ARGUMENT_SET_LIBRARY_DIRECTORY);
         }
         else{
-            UTIL_LOG_CONSOLE(LOG_INFO, "--setLibraryDirectory");
+             // Note: Make sure 'slashTerminated' is clamped to '0 - 1' so we can use it later to add/subtract depending on wether the string was slash termianted or not. (jan - 2018.10.20)
+            const bool slashTerminated = (argumentSetLibraryDirectory.value[argumentSetLibraryDirectory.valueLength - 1] == '/') & 0x01;
+
+            const uint_fast64_t libraryDirectoryLength = argumentSetLibraryDirectory.valueLength + !slashTerminated;
+
+            char* libraryDirectoryString;
+            if(slashTerminated){
+                libraryDirectoryString = alloca(sizeof(*libraryDirectoryString) * (argumentSetLibraryDirectory.valueLength + 1));
+                memmove(libraryDirectoryString, argumentSetLibraryDirectory.value, argumentSetLibraryDirectory.valueLength + 1);
+            }else{
+                libraryDirectoryString = alloca(sizeof(*libraryDirectory) * (libraryDirectoryLength + 1));
+                memcpy(libraryDirectoryString, argumentSetLibraryDirectory.value, argumentSetLibraryDirectory.valueLength);
+                libraryDirectoryString[libraryDirectoryLength - 1] = '/';
+                libraryDirectoryString[libraryDirectoryLength] = '\0';
+            } 
+
+            if(PROPERTY_IS_NOT_SET(libraryDirectory)){
+                if(propertyFile_addProperty(&properties, &libraryDirectory, CONSOLE_CLIENT_PROPERTY_IMPORT_DIRECTORY_NAME, libraryDirectoryLength + 1) != ERROR_NO_ERROR){
+                    return ERROR_(ERROR_FAILED_TO_ADD_PROPERTY, "'%s'", CONSOLE_CLIENT_PROPERTY_IMPORT_DIRECTORY_NAME);
+                }
+            }else{
+                if(libraryDirectory->entry->length != libraryDirectoryLength + 1){
+                    if(propertyFile_removeProperty(libraryDirectory) != ERROR_NO_ERROR){
+                        return ERROR_(ERROR_FAILED_TO_REMOVE_PROPERTY, "'%s'", CONSOLE_CLIENT_PROPERTY_IMPORT_DIRECTORY_NAME);
+                    }
+
+                    if(propertyFile_addProperty(&properties, &libraryDirectory, CONSOLE_CLIENT_PROPERTY_IMPORT_DIRECTORY_NAME, libraryDirectoryLength + 1) != ERROR_NO_ERROR){
+                        return ERROR_(ERROR_FAILED_TO_ADD_PROPERTY, "'%s'", CONSOLE_CLIENT_PROPERTY_IMPORT_DIRECTORY_NAME);
+                    }
+                }
+            }
+
+            if(propertyFile_setBuffer(libraryDirectory, (int8_t*) libraryDirectoryString) != ERROR_NO_ERROR){
+                return ERROR_(ERROR_FAILED_TO_UPDATE_PROPERTY, "'%s'", CONSOLE_CLIENT_PROPERTY_IMPORT_DIRECTORY_NAME);
+            }
         }
         
         goto label_freeProperties;
