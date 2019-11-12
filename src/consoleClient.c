@@ -54,21 +54,21 @@ local void consoleClient_printHelp(void);
     ArgumentParser parser;
     argumentParser_init(&parser);
     
-    ARGUMENT_PARSER_ADD_ARGUMENT(Help, 3, "-?", "-h", "--help"); //
-    ARGUMENT_PARSER_ADD_ARGUMENT(AddShow, 1, "--addShow"); //
-    ARGUMENT_PARSER_ADD_ARGUMENT(RemoveShow, 1, "--removeShow"); //
-    ARGUMENT_PARSER_ADD_ARGUMENT(Add, 4, "-a", "-add", "--addFile", "--addEpisode"); //
-    ARGUMENT_PARSER_ADD_ARGUMENT(Import, 2, "-i", "--import"); //
-    ARGUMENT_PARSER_ADD_ARGUMENT(RenameEpisode, 1, "--renameEpisode"); //
-    ARGUMENT_PARSER_ADD_ARGUMENT(RemoveEpisode, 1, "--removeEpisode"); //
+    ARGUMENT_PARSER_ADD_ARGUMENT(Help, 3, "-?", "-h", "--help");
+    ARGUMENT_PARSER_ADD_ARGUMENT(AddShow, 1, "--addShow");
+    ARGUMENT_PARSER_ADD_ARGUMENT(RemoveShow, 1, "--removeShow");
+    ARGUMENT_PARSER_ADD_ARGUMENT(Add, 4, "-a", "-add", "--addFile", "--addEpisode");
+    ARGUMENT_PARSER_ADD_ARGUMENT(Import, 2, "-i", "--import");
+    ARGUMENT_PARSER_ADD_ARGUMENT(RenameEpisode, 1, "--renameEpisode");
+    ARGUMENT_PARSER_ADD_ARGUMENT(RemoveEpisode, 1, "--removeEpisode");
     ARGUMENT_PARSER_ADD_ARGUMENT(ListShows, 3, "-l", "--list", "--listShows");
     ARGUMENT_PARSER_ADD_ARGUMENT(ListAll, 2, "--listAll", "--listAllShows");
-    ARGUMENT_PARSER_ADD_ARGUMENT(ShowInfo, 2, "--showInfo", "--info"); //
-    ARGUMENT_PARSER_ADD_ARGUMENT(SetImportDirectory, 1, "--setImportDirectory"); //
+    ARGUMENT_PARSER_ADD_ARGUMENT(ShowInfo, 2, "--showInfo", "--info");
+    ARGUMENT_PARSER_ADD_ARGUMENT(SetImportDirectory, 1, "--setImportDirectory");
     ARGUMENT_PARSER_ADD_ARGUMENT(SetLibraryDirectory, 1, "--setLibraryDirectory");
     ARGUMENT_PARSER_ADD_ARGUMENT(SetRemoteHost, 1, "--setRemoteHost");
     ARGUMENT_PARSER_ADD_ARGUMENT(SetRemoteHostPort, 1, "--setRemotePort");
-    ARGUMENT_PARSER_ADD_ARGUMENT(ShowSettings, 1, "--showSettings"); //
+    ARGUMENT_PARSER_ADD_ARGUMENT(ShowSettings, 1, "--showSettings");
 
     ERROR_CODE error;
     if((error = argumentParser_parse(&parser, argc, argv)) != ERROR_NO_ERROR){
@@ -266,7 +266,14 @@ local void consoleClient_printHelp(void);
         if(ARGUMENT_PARSER_ARGUMENT_HAS_VALUE(argumentListAll)){
             UTIL_LOG_CONSOLE(LOG_INFO, "Invalid command. Usage: " CONSOLE_CLIENT_USAGE_ARGUMENT_LIST_ALL_SHOWS);
         }else{
-            UTIL_LOG_CONSOLE(LOG_INFO, "--listAll");
+            if(REMOTE_HOST_PROPERTIES_SET()){
+                ERROR_CODE error;
+                if((error = herder_listAllShows(remoteHost, remotePort)) != ERROR_NO_ERROR){
+                    UTIL_LOG_CONSOLE_(LOG_ERR, "Failed to list all shows. '%s'", util_toErrorString(error));
+                }
+            }else{
+                UTIL_LOG_CONSOLE(LOG_ERR, util_toErrorString(ERROR_PROPERTY_NOT_SET));
+            }
         }
         
         goto label_freeProperties;
