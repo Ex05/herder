@@ -129,8 +129,7 @@ local void consoleClient_printHelp(void);
     if(argumentParser_contains(&parser, &argumentAddShow)){ 
         if(!ARGUMENT_PARSER_ARGUMENT_HAS_VALUE(argumentAddShow)){
             UTIL_LOG_CONSOLE(LOG_INFO, "Invalid command. Usage: " CONSOLE_CLIENT_USAGE_ARGUMENT_ADD_SHOW);
-        }
-        else{
+        }else{
             if(REMOTE_HOST_PROPERTIES_SET()){
                 ERROR_CODE error;
                 if((error = herder_addShow(remoteHost, remotePort, argumentAddShow.value, argumentAddShow.valueLength)) != ERROR_NO_ERROR){
@@ -148,8 +147,7 @@ local void consoleClient_printHelp(void);
     if(argumentParser_contains(&parser, &argumentRemoveShow)){ 
         if(!ARGUMENT_PARSER_ARGUMENT_HAS_VALUE(argumentRemoveShow)){
             UTIL_LOG_CONSOLE(LOG_INFO, "Invalid command. Usage: " CONSOLE_CLIENT_USAGE_ARGUMENT_REMOVE_SHOW);
-        }
-        else{
+        }else{
              if(REMOTE_HOST_PROPERTIES_SET()){
                  ERROR_CODE error;
                 if((error = herder_removeShow(remoteHost, remotePort, argumentRemoveShow.value, argumentRemoveShow.valueLength)) != ERROR_NO_ERROR){
@@ -167,8 +165,7 @@ local void consoleClient_printHelp(void);
     if(argumentParser_contains(&parser, &argumentAdd)){ 
         if(!ARGUMENT_PARSER_ARGUMENT_HAS_VALUE(argumentAdd)){
             UTIL_LOG_CONSOLE(LOG_INFO, "Invalid command. Usage: " CONSOLE_CLIENT_USAGE_ARGUMENT_ADD_EPISODE);
-        }
-        else{
+        }else{
             if(REMOTE_HOST_PROPERTIES_SET() && (propertyFile_propertySet(libraryDirectory, PROPERTY_LIBRARY_DIRECTORY_NAME) == ERROR_NO_ERROR)){
                 if(!util_fileExists(argumentAdd.value) || util_isDirectory(argumentAdd.value)){
                     UTIL_LOG_CONSOLE_(LOG_INFO, "ERROR: '%s' is not a falid file.", argumentAdd.value);
@@ -191,8 +188,7 @@ local void consoleClient_printHelp(void);
     if(argumentParser_contains(&parser, &argumentImport)){ 
         if(!ARGUMENT_PARSER_ARGUMENT_HAS_VALUE(argumentImport)){
             UTIL_LOG_CONSOLE(LOG_INFO, "Invalid command. Usage: " CONSOLE_CLIENT_USAGE_ARGUMENT_IMPORT);
-        }
-        else{
+        }else{
             ERROR_CODE error;
             if(ARGUMENT_PARSER_ARGUMENT_HAS_VALUE((argumentImport))){
                 // Import from path.
@@ -218,8 +214,7 @@ local void consoleClient_printHelp(void);
     if(argumentParser_contains(&parser, &argumentRenameEpisode)){ 
         if(!ARGUMENT_PARSER_ARGUMENT_HAS_VALUE(argumentRenameEpisode)){
             UTIL_LOG_CONSOLE(LOG_INFO, "Invalid command. Usage: " CONSOLE_CLIENT_USAGE_ARGUMENT_RENAME_EPISODE);
-        }
-        else{
+        }else{
             if(REMOTE_HOST_PROPERTIES_SET()){
                 ERROR_CODE error;
                 if((error = herder_renameEpisode(remoteHost, remotePort)) != ERROR_NO_ERROR){
@@ -237,8 +232,7 @@ local void consoleClient_printHelp(void);
     if(argumentParser_contains(&parser, &argumentRemoveEpisode)){ 
         if(!ARGUMENT_PARSER_ARGUMENT_HAS_VALUE(argumentRemoveEpisode)){
             UTIL_LOG_CONSOLE(LOG_INFO, "Invalid command. Usage: " CONSOLE_CLIENT_USAGE_ARGUMENT_REMOVE_EPISODE);
-        }
-        else{
+        }else{
             if(REMOTE_HOST_PROPERTIES_SET()){
                 UTIL_LOG_CONSOLE(LOG_CRIT, util_toErrorString(ERROR_FUNCTION_NOT_IMPLEMENTED));
             }else{
@@ -253,8 +247,7 @@ local void consoleClient_printHelp(void);
     if(argumentParser_contains(&parser, &argumentListShows)){ 
         if(ARGUMENT_PARSER_ARGUMENT_HAS_VALUE(argumentListShows)){
             UTIL_LOG_CONSOLE(LOG_INFO, "Invalid command. Usage: " CONSOLE_CLIENT_USAGE_ARGUMENT_LIST_SHOWS);
-        }
-        else{
+        }else{
             if(REMOTE_HOST_PROPERTIES_SET()){
                 ERROR_CODE error;
                 if((error = herder_listShows(remoteHost, remotePort)) != ERROR_NO_ERROR){
@@ -272,8 +265,7 @@ local void consoleClient_printHelp(void);
     if(argumentParser_contains(&parser, &argumentListAll)){ 
         if(ARGUMENT_PARSER_ARGUMENT_HAS_VALUE(argumentListAll)){
             UTIL_LOG_CONSOLE(LOG_INFO, "Invalid command. Usage: " CONSOLE_CLIENT_USAGE_ARGUMENT_LIST_ALL_SHOWS);
-        }
-        else{
+        }else{
             UTIL_LOG_CONSOLE(LOG_INFO, "--listAll");
         }
         
@@ -284,8 +276,7 @@ local void consoleClient_printHelp(void);
     if(argumentParser_contains(&parser, &argumentShowInfo)){ 
         if(!ARGUMENT_PARSER_ARGUMENT_HAS_VALUE(argumentShowInfo)){
             UTIL_LOG_CONSOLE(LOG_INFO, "Invalid command. Usage: " CONSOLE_CLIENT_USAGE_ARGUMENT_SHOW_INFO);
-        }
-        else{
+        }else{
              if(REMOTE_HOST_PROPERTIES_SET()){
                  ERROR_CODE error;
                 if((error = herder_printShowInfo(remoteHost, remotePort, argumentShowInfo.value, argumentShowInfo.valueLength))  != ERROR_NO_ERROR){
@@ -350,8 +341,7 @@ local void consoleClient_printHelp(void);
     if(argumentParser_contains(&parser, &argumentSetLibraryDirectory)){
         if(!ARGUMENT_PARSER_ARGUMENT_HAS_VALUE(argumentSetLibraryDirectory)){
             UTIL_LOG_CONSOLE(LOG_INFO, "Invalid command. Usage: " CONSOLE_CLIENT_USAGE_ARGUMENT_SET_LIBRARY_DIRECTORY);
-        }
-        else{
+        }else{
              // Note: Make sure 'slashTerminated' is clamped to '0 - 1' so we can use it later to add/subtract depending on wether the string was slash termianted or not. (jan - 2018.10.20)
             const bool slashTerminated = (argumentSetLibraryDirectory.value[argumentSetLibraryDirectory.valueLength - 1] == '/') & 0x01;
 
@@ -396,9 +386,26 @@ local void consoleClient_printHelp(void);
     if(argumentParser_contains(&parser, &argumentSetRemoteHost)){ 
         if(!ARGUMENT_PARSER_ARGUMENT_HAS_VALUE(argumentSetRemoteHost)){
             UTIL_LOG_CONSOLE(LOG_INFO, "Invalid command. Usage: " CONSOLE_CLIENT_USAGE_ARGUMENT_SET_REMOTE_HOST);
-        }
-        else{
-            UTIL_LOG_CONSOLE(LOG_INFO, "--setRemoteHost");
+        }else{
+            if(PROPERTY_IS_NOT_SET(remoteHost)){
+                if(propertyFile_addProperty(&properties, &remoteHost, CONSOLE_CLIENT_PROPERTY_REMOTE_HOST_NAME, argumentSetRemoteHost.valueLength + 1) != ERROR_NO_ERROR){
+                    return ERROR_(ERROR_FAILED_TO_ADD_PROPERTY, "'%s'", CONSOLE_CLIENT_PROPERTY_REMOTE_HOST_NAME);
+                }
+            }else{
+                if(remoteHost->entry->length != argumentSetRemoteHost.valueLength + 1){
+                    if(propertyFile_removeProperty(remoteHost) != ERROR_NO_ERROR){
+                        return ERROR_(ERROR_FAILED_TO_REMOVE_PROPERTY, "'%s'", CONSOLE_CLIENT_PROPERTY_REMOTE_HOST_NAME);
+                    }
+
+                    if(propertyFile_addProperty(&properties, &remoteHost, CONSOLE_CLIENT_PROPERTY_REMOTE_HOST_NAME, argumentSetRemoteHost.valueLength + 1) != ERROR_NO_ERROR){
+                        return ERROR_(ERROR_FAILED_TO_ADD_PROPERTY, "'%s'", CONSOLE_CLIENT_PROPERTY_REMOTE_HOST_NAME);
+                    }
+                }
+            }
+
+            if(propertyFile_setBuffer(remoteHost, (int8_t*) argumentSetRemoteHost.value) != ERROR_NO_ERROR){
+                return ERROR_(ERROR_FAILED_TO_UPDATE_PROPERTY, "'%s'", CONSOLE_CLIENT_PROPERTY_REMOTE_HOST_NAME);
+            }
         }
         
         goto label_freeProperties;
@@ -408,9 +415,26 @@ local void consoleClient_printHelp(void);
     if(argumentParser_contains(&parser, &argumentSetRemoteHostPort)){ 
         if(!ARGUMENT_PARSER_ARGUMENT_HAS_VALUE(argumentSetRemoteHostPort)){
             UTIL_LOG_CONSOLE(LOG_INFO, "Invalid command. Usage: " CONSOLE_CLIENT_USAGE_ARGUMENT_SET_REMOTE_PORT);
-        }
-        else{
-            UTIL_LOG_CONSOLE(LOG_INFO, "--setRemotePort");
+        }else{
+            if(PROPERTY_IS_NOT_SET(remotePort)){
+                if(propertyFile_addProperty(&properties, &remotePort, CONSOLE_CLIENT_PROPERTY_REMOTE_PORT_NAME, argumentSetRemoteHostPort.valueLength + 1) != ERROR_NO_ERROR){
+                    return ERROR_(ERROR_FAILED_TO_ADD_PROPERTY, "'%s'", CONSOLE_CLIENT_PROPERTY_REMOTE_PORT_NAME);
+                }
+            }else{
+                if(remotePort->entry->length != argumentSetRemoteHostPort.valueLength + 1){
+                    if(propertyFile_removeProperty(remoteHost) != ERROR_NO_ERROR){
+                        return ERROR_(ERROR_FAILED_TO_REMOVE_PROPERTY, "'%s'", CONSOLE_CLIENT_PROPERTY_REMOTE_PORT_NAME);
+                    }
+
+                    if(propertyFile_addProperty(&properties, &remotePort, CONSOLE_CLIENT_PROPERTY_REMOTE_PORT_NAME, argumentSetRemoteHostPort.valueLength + 1) != ERROR_NO_ERROR){
+                        return ERROR_(ERROR_FAILED_TO_ADD_PROPERTY, "'%s'", CONSOLE_CLIENT_PROPERTY_REMOTE_PORT_NAME);
+                    }
+                }
+            }
+
+            if(propertyFile_setBuffer(remotePort, (int8_t*) argumentSetRemoteHostPort.value) != ERROR_NO_ERROR){
+                return ERROR_(ERROR_FAILED_TO_UPDATE_PROPERTY, "'%s'", CONSOLE_CLIENT_PROPERTY_REMOTE_PORT_NAME);
+            }
         }
         
         goto label_freeProperties;
@@ -420,8 +444,7 @@ local void consoleClient_printHelp(void);
     if(argumentParser_contains(&parser, &argumentShowSettings)){ 
         if(ARGUMENT_PARSER_ARGUMENT_HAS_VALUE(argumentShowSettings)){
             UTIL_LOG_CONSOLE(LOG_INFO, "Invalid command. Usage: " CONSOLE_CLIENT_USAGE_ARGUMENT_SHOW_SETTINGS);
-        }
-        else{
+        }else{
             UTIL_LOG_CONSOLE_(LOG_INFO, "ImportDirectory: %s.", PROPERTY_IS_SET(importDirectory) ? (char*) importDirectory->buffer : "NULL");
             UTIL_LOG_CONSOLE_(LOG_INFO, "RemoteHost: %s.", PROPERTY_IS_SET(remoteHost) ? (char*) remoteHost->buffer : "NULL");
             UTIL_LOG_CONSOLE_(LOG_INFO, "RemotePorrt: %" PRIuFAST64 ".", PROPERTY_IS_SET(remotePort) ? util_byteArrayTo_uint64(remotePort->buffer) : 0);
