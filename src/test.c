@@ -15,7 +15,7 @@
 #include "cache.c"
 #include "propertyFile.c"
 #include "server.c"
-#include "herder.c"
+#include "consoleClient.c"
 
 #define TEST_NO_SETUP_FLAG 0x01
 
