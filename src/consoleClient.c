@@ -39,9 +39,15 @@
 #define CONSOLE_CLIENT_PROPERTY_REMOTE_PORT_NAME "remotePort"
 #define CONSOLE_CLIENT_PROPERTY_LIBRARY_DIRECTORY_NAME "libraryDirectory"
 
-#define REMOTE_HOST_PROPERTIES_SET() ((propertyFile_propertySet(remoteHost, CONSOLE_CLIENT_PROPERTY_REMOTE_HOST_NAME) == ERROR_NO_ERROR) && (propertyFile_propertySet(remotePort, CONSOLE_CLIENT_PROPERTY_REMOTE_PORT_NAME) == ERROR_NO_ERROR))
+#define CONSOLE_CLIENT_REMOTE_HOST_PROPERTIES_SET() ((propertyFile_propertySet(remoteHost, CONSOLE_CLIENT_PROPERTY_REMOTE_HOST_NAME) == ERROR_NO_ERROR) && (propertyFile_propertySet(remotePort, CONSOLE_CLIENT_PROPERTY_REMOTE_PORT_NAME) == ERROR_NO_ERROR))
 
 local void consoleClient_printHelp(void);
+
+local ERROR_CODE consoleClient_listShows(Property*, Property*);
+
+local ERROR_CODE consoleClient_import(Property*, Property*, Property*, const char*);
+
+local ERROR_CODE consoleClient_listAllShows(Property*, Property*);
 
 // TODO:(jan) Make custom entry point for the client build, so we won't have to use 'main'.
 #ifndef TEST_BUILD
@@ -118,7 +124,7 @@ local void consoleClient_printHelp(void);
 
     Property* libraryDirectory;
     __UTIL_SUPPRESS_NEXT_ERROR_OF_TYPE__(ERROR_ENTRY_NOT_FOUND);
-    propertyFile_getProperty(&properties, &libraryDirectory, PROPERTY_LIBRARY_DIRECTORY_NAME);
+    propertyFile_getProperty(&properties, &libraryDirectory, CONSOLE_CLIENT_PROPERTY_LIBRARY_DIRECTORY_NAME);
 
     // --help.
     if(argumentParser_contains(&parser, &argumentHelp)){ 
@@ -130,7 +136,7 @@ local void consoleClient_printHelp(void);
         if(!ARGUMENT_PARSER_ARGUMENT_HAS_VALUE(argumentAddShow)){
             UTIL_LOG_CONSOLE(LOG_INFO, "Invalid command. Usage: " CONSOLE_CLIENT_USAGE_ARGUMENT_ADD_SHOW);
         }else{
-            if(REMOTE_HOST_PROPERTIES_SET()){
+            if(CONSOLE_CLIENT_REMOTE_HOST_PROPERTIES_SET()){
                 ERROR_CODE error;
                 if((error = herder_addShow(remoteHost, remotePort, argumentAddShow.value, argumentAddShow.valueLength)) != ERROR_NO_ERROR){
                     UTIL_LOG_CONSOLE_(LOG_ERR, "Failed to add show. '%s'", util_toErrorString(error));
@@ -148,7 +154,7 @@ local void consoleClient_printHelp(void);
         if(!ARGUMENT_PARSER_ARGUMENT_HAS_VALUE(argumentRemoveShow)){
             UTIL_LOG_CONSOLE(LOG_INFO, "Invalid command. Usage: " CONSOLE_CLIENT_USAGE_ARGUMENT_REMOVE_SHOW);
         }else{
-             if(REMOTE_HOST_PROPERTIES_SET()){
+             if(CONSOLE_CLIENT_REMOTE_HOST_PROPERTIES_SET()){
                  ERROR_CODE error;
                 if((error = herder_removeShow(remoteHost, remotePort, argumentRemoveShow.value, argumentRemoveShow.valueLength)) != ERROR_NO_ERROR){
                     UTIL_LOG_CONSOLE_(LOG_ERR, "Failed to remove show. '%s'", util_toErrorString(error));
@@ -166,7 +172,7 @@ local void consoleClient_printHelp(void);
         if(!ARGUMENT_PARSER_ARGUMENT_HAS_VALUE(argumentAdd)){
             UTIL_LOG_CONSOLE(LOG_INFO, "Invalid command. Usage: " CONSOLE_CLIENT_USAGE_ARGUMENT_ADD_EPISODE);
         }else{
-            if(REMOTE_HOST_PROPERTIES_SET() && (propertyFile_propertySet(libraryDirectory, PROPERTY_LIBRARY_DIRECTORY_NAME) == ERROR_NO_ERROR)){
+            if(CONSOLE_CLIENT_REMOTE_HOST_PROPERTIES_SET() && (propertyFile_propertySet(libraryDirectory, CONSOLE_CLIENT_PROPERTY_LIBRARY_DIRECTORY_NAME) == ERROR_NO_ERROR)){
                 if(!util_fileExists(argumentAdd.value) || util_isDirectory(argumentAdd.value)){
                     UTIL_LOG_CONSOLE_(LOG_INFO, "ERROR: '%s' is not a falid file.", argumentAdd.value);
                 }else{
@@ -192,13 +198,13 @@ local void consoleClient_printHelp(void);
             ERROR_CODE error;
             if(ARGUMENT_PARSER_ARGUMENT_HAS_VALUE((argumentImport))){
                 // Import from path.
-                if((error = herder_import(remoteHost, remotePort, libraryDirectory, argumentImport.value)) != ERROR_NO_ERROR){
+                if((error = consoleClient_import(remoteHost, remotePort, libraryDirectory, argumentImport.value)) != ERROR_NO_ERROR){
                     // 
                 }
             }else{
                 if(PROPERTY_IS_SET(importDirectory)){
                     // Import from importDirectory_setting.
-                    if((error = herder_import(remoteHost, remotePort, libraryDirectory, (char*) importDirectory->buffer)) != ERROR_NO_ERROR){
+                    if((error = consoleClient_import(remoteHost, remotePort, libraryDirectory, (char*) importDirectory->buffer)) != ERROR_NO_ERROR){
                         // 
                     }
                 }else{
@@ -215,7 +221,7 @@ local void consoleClient_printHelp(void);
         if(!ARGUMENT_PARSER_ARGUMENT_HAS_VALUE(argumentRenameEpisode)){
             UTIL_LOG_CONSOLE(LOG_INFO, "Invalid command. Usage: " CONSOLE_CLIENT_USAGE_ARGUMENT_RENAME_EPISODE);
         }else{
-            if(REMOTE_HOST_PROPERTIES_SET()){
+            if(CONSOLE_CLIENT_REMOTE_HOST_PROPERTIES_SET()){
                 ERROR_CODE error;
                 if((error = herder_renameEpisode(remoteHost, remotePort)) != ERROR_NO_ERROR){
                     UTIL_LOG_CONSOLE_(LOG_ERR, "Failed to rename Episode. '%s'", util_toErrorString(error));
@@ -233,7 +239,7 @@ local void consoleClient_printHelp(void);
         if(!ARGUMENT_PARSER_ARGUMENT_HAS_VALUE(argumentRemoveEpisode)){
             UTIL_LOG_CONSOLE(LOG_INFO, "Invalid command. Usage: " CONSOLE_CLIENT_USAGE_ARGUMENT_REMOVE_EPISODE);
         }else{
-            if(REMOTE_HOST_PROPERTIES_SET()){
+            if(CONSOLE_CLIENT_REMOTE_HOST_PROPERTIES_SET()){
                 UTIL_LOG_CONSOLE(LOG_CRIT, util_toErrorString(ERROR_FUNCTION_NOT_IMPLEMENTED));
             }else{
                 UTIL_LOG_CONSOLE(LOG_ERR, util_toErrorString(ERROR_PROPERTY_NOT_SET));
@@ -248,9 +254,9 @@ local void consoleClient_printHelp(void);
         if(ARGUMENT_PARSER_ARGUMENT_HAS_VALUE(argumentListShows)){
             UTIL_LOG_CONSOLE(LOG_INFO, "Invalid command. Usage: " CONSOLE_CLIENT_USAGE_ARGUMENT_LIST_SHOWS);
         }else{
-            if(REMOTE_HOST_PROPERTIES_SET()){
+            if(CONSOLE_CLIENT_REMOTE_HOST_PROPERTIES_SET()){
                 ERROR_CODE error;
-                if((error = herder_listShows(remoteHost, remotePort)) != ERROR_NO_ERROR){
+                if((error = consoleClient_listShows(remoteHost, remotePort)) != ERROR_NO_ERROR){
                     UTIL_LOG_CONSOLE_(LOG_ERR, "Failed to list shows. '%s'", util_toErrorString(error));
                 }
             }else{
@@ -266,9 +272,9 @@ local void consoleClient_printHelp(void);
         if(ARGUMENT_PARSER_ARGUMENT_HAS_VALUE(argumentListAll)){
             UTIL_LOG_CONSOLE(LOG_INFO, "Invalid command. Usage: " CONSOLE_CLIENT_USAGE_ARGUMENT_LIST_ALL_SHOWS);
         }else{
-            if(REMOTE_HOST_PROPERTIES_SET()){
+            if(CONSOLE_CLIENT_REMOTE_HOST_PROPERTIES_SET()){
                 ERROR_CODE error;
-                if((error = herder_listAllShows(remoteHost, remotePort)) != ERROR_NO_ERROR){
+                if((error = consoleClient_listAllShows(remoteHost, remotePort)) != ERROR_NO_ERROR){
                     UTIL_LOG_CONSOLE_(LOG_ERR, "Failed to list all shows. '%s'", util_toErrorString(error));
                 }
             }else{
@@ -284,7 +290,7 @@ local void consoleClient_printHelp(void);
         if(!ARGUMENT_PARSER_ARGUMENT_HAS_VALUE(argumentShowInfo)){
             UTIL_LOG_CONSOLE(LOG_INFO, "Invalid command. Usage: " CONSOLE_CLIENT_USAGE_ARGUMENT_SHOW_INFO);
         }else{
-             if(REMOTE_HOST_PROPERTIES_SET()){
+             if(CONSOLE_CLIENT_REMOTE_HOST_PROPERTIES_SET()){
                  ERROR_CODE error;
                 if((error = herder_printShowInfo(remoteHost, remotePort, argumentShowInfo.value, argumentShowInfo.valueLength))  != ERROR_NO_ERROR){
                     UTIL_LOG_CONSOLE_(LOG_ERR, "Failed to print show info. '%s'", util_toErrorString(error));
@@ -506,4 +512,137 @@ inline void consoleClient_printHelp(void){
     UTIL_LOG_CONSOLE_(LOG_INFO, "\t%s\t\t\t\t%s", CONSOLE_CLIENT_USAGE_ARGUMENT_SET_REMOTE_HOST, "Sets the 'remote host' address to the given URL.");
     UTIL_LOG_CONSOLE_(LOG_INFO, "\t%s\t\t\t\t%s", CONSOLE_CLIENT_USAGE_ARGUMENT_SET_REMOTE_PORT, "Sets the 'remote host' port to the given port.");
     UTIL_LOG_CONSOLE_(LOG_INFO, "\t%s\t%s", CONSOLE_CLIENT_USAGE_ARGUMENT_ADD_EPISODE, "Adds the given file to the library.");
+}
+
+inline ERROR_CODE consoleClient_listShows(Property* remoteHostProperty, Property* remoteHostPortProperty){
+    ERROR_CODE error = ERROR_NO_ERROR;
+
+    char* host = (char*) remoteHostProperty->buffer;
+    uint_fast16_t port = util_byteArrayTo_uint64(remoteHostPortProperty->buffer);
+
+    LinkedList shows;
+    if((error = herder_pullShowList(&shows, host, port)) != ERROR_NO_ERROR){
+        if(error != ERROR_FAILED_TO_CONNECT){
+            goto label_freeShowList;
+        }else{
+            goto label_return;
+        }
+    }
+
+    if(shows.length == 0){
+        UTIL_LOG_CONSOLE(LOG_INFO, "Library is empty.");
+
+        goto label_freeShowList;
+    }
+
+    LinkedListIterator it;
+    linkedList_initIterator(&it, &shows);
+
+    uint_fast64_t i = 0;
+    while(LINKED_LIST_ITERATOR_HAS_NEXT(&it)){
+        char* show = LINKED_LIST_ITERATOR_NEXT(&it);
+        
+        UTIL_LOG_CONSOLE_(LOG_INFO, "%02" PRIuFAST64 ":'%s'.", i, show);
+        i++;
+
+        free(show);
+    }
+
+label_freeShowList:
+    linkedList_free(&shows);
+
+label_return:
+    return ERROR(error);
+}
+
+ERROR_CODE consoleClient_import(Property* remoteHost, Property* remotePort, Property* libraryDirectory, const char* directory){
+    ERROR_CODE error;
+
+     if(!CONSOLE_CLIENT_REMOTE_HOST_PROPERTIES_SET() || PROPERTY_IS_NOT_SET(libraryDirectory)){
+        return ERROR(ERROR_PROPERTY_NOT_SET);
+     }
+
+    LinkedList files;
+    if((error = linkedList_init(&files)) != ERROR_NO_ERROR){
+        goto label_return;
+    }
+
+    if((error = herder_walkDirectory(&files, directory)) != ERROR_NO_ERROR){
+        goto label_return;
+    }
+
+    LinkedListIterator it;
+    linkedList_initIterator(&it, &files);
+
+    if(LINKED_LIST_IS_EMPTY(&files)){
+        UTIL_LOG_CONSOLE_(LOG_INFO, "No files recorgnised for import in '%s'.", directory);
+    }
+
+    while(LINKED_LIST_ITERATOR_HAS_NEXT(&it)){
+        DirectoryEntry* entry = LINKED_LIST_ITERATOR_NEXT(&it);
+
+        UTIL_LOG_CONSOLE_(LOG_INFO, "Adding '%s'.", entry->path);
+
+        if((error = herder_addEpisode(remoteHost, remotePort, libraryDirectory, entry->path, entry->pathLength)) != ERROR_NO_ERROR){
+            free(entry->path);
+            free(entry);
+
+            goto label_freeFiles;
+        }else{
+            UTIL_LOG_CONSOLE_(LOG_INFO, "Successfully added '%s'. to library.%s", entry->path, LINKED_LIST_ITERATOR_HAS_NEXT(&it) ? "\n" : "");
+        }
+
+        free(entry->path);
+        free(entry);
+    }
+
+    // TODO: Only delete directories inside import the import directory. (jan - 2019.05.28)
+    if((error = util_deleteDirectory(directory, true, true)) != ERROR_NO_ERROR){
+        goto label_freeFiles;
+    }
+    
+label_freeFiles:
+    linkedList_free(&files);
+
+label_return:
+    return ERROR(error);
+}
+
+inline ERROR_CODE consoleClient_listAllShows(Property* remoteHostProperty, Property* remoteHostPortProperty){
+    ERROR_CODE error = ERROR_NO_ERROR;
+
+    char* host = (char*) remoteHostProperty->buffer;
+    uint_fast16_t port = util_byteArrayTo_uint64(remoteHostPortProperty->buffer);
+
+    LinkedList shows = {0};
+    if((error = herder_pullShowList(&shows, host, port)) != ERROR_NO_ERROR){
+        goto label_freeShowList;
+    }
+
+    if(shows.length == 0){
+        UTIL_LOG_CONSOLE(LOG_INFO, "Library is empty.");
+
+        goto label_freeShowList;
+    }
+
+    LinkedListIterator it;
+    linkedList_initIterator(&it, &shows);
+
+    uint_fast64_t i = 0;
+    while(LINKED_LIST_ITERATOR_HAS_NEXT(&it)){
+        char* show = LINKED_LIST_ITERATOR_NEXT(&it);
+        
+        if((error = herder_printShowInfo(remoteHostProperty, remoteHostPortProperty, show, strlen(show))) != ERROR_NO_ERROR){
+            UTIL_LOG_CONSOLE(LOG_ERR, util_toErrorString(error));
+        }
+
+        i++;
+
+        free(show);
+    }
+
+label_freeShowList:
+    linkedList_free(&shows);
+
+    return ERROR(error);
 }

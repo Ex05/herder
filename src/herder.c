@@ -1,12 +1,4 @@
-// POSIX Version ¢2008
-#define _XOPEN_SOURCE 700
-
-// For mmap flags that are not in the POSIX-Standard.
-#define _GNU_SOURCE
-
-#include <fcntl.h>
-#include <signal.h>
-#include <signal.h>
+#include "herder.h"
 
 #include "util.c"
 #include "linkedList.c"
@@ -15,159 +7,7 @@
 #include "propertyFile.c"
 #include "mediaLibrary.c"
 
-#define HERDER_PROGRAM_NAME "herder"
-
-#define PROPERTY_IMPORT_DIRECTORY_NAME "importDirectory"
-#define PROPERTY_REMOTE_HOST_NAME "remoteHost"
-#define PROPERTY_REMOTE_PORT_NAME "remotePort"
-#define PROPERTY_LIBRARY_DIRECTORY_NAME "libraryDirectory"
-
 #define HTTP_PROCESSING_BUFFER_SIZE 8192 //16384
-
-#define HERDER_CONSTRUCT_FILE_PATH(path, stringLength, episodeInfo) \
-    char* noWhiteSpaceShowName = alloca(sizeof(*noWhiteSpaceShowName) * ((episodeInfo)->showNameLength + 1)); \
-    strncpy(noWhiteSpaceShowName, (episodeInfo)->showName, (episodeInfo)->showNameLength + 1); \
-    util_replaceAllChars(noWhiteSpaceShowName, ' ', '_'); \
-    *stringLength = ((episodeInfo)->showNameLength * 3) + ((episodeInfo)->nameLength) + (3/*" - "*/ + 7/*"Season_"*/ + 2/*"/"*/) + (UTIL_UINT16_STRING_LENGTH * 3); \
-     \
-    *(path) = alloca(sizeof(**(path)) * (*stringLength + 1)); \
-    *stringLength = snprintf(*path, *stringLength, "%s/%s - Season_%02" PRIdFAST16 "/%s_s%02" PRIdFAST16 "e%02" PRIdFAST16 "_%s", noWhiteSpaceShowName, noWhiteSpaceShowName, (episodeInfo)->season, noWhiteSpaceShowName, (episodeInfo)->season, (episodeInfo)->episode, (episodeInfo)->name); \
-     \
-    util_replaceAllChars(*path + (*stringLength - ((episodeInfo)->showNameLength + (2 * UTIL_UINT16_STRING_LENGTH) + (episodeInfo)->nameLength + 4)), ' ', '_')
-
-#define REMOTE_HOST_PROPERTIES_SET() ((propertyFile_propertySet(remoteHost, PROPERTY_REMOTE_HOST_NAME) == ERROR_NO_ERROR) && (propertyFile_propertySet(remotePort, PROPERTY_REMOTE_PORT_NAME) == ERROR_NO_ERROR))
-
-typedef struct{
-    char* path;
-    char* fileName;
-    uint64_t pathLength;
-    uint64_t fileNameLength;
-}DirectoryEntry;
-
-local void herder_printHelp(void);
-
-local ERROR_CODE herder_listShows(Property*, Property*);
-
-local ERROR_CODE herder_removeShow(Property*, Property*, const char*, const uint_fast64_t);
-
-local ERROR_CODE herder_renameEpisode(Property*, Property*);
-
-local ERROR_CODE herder_listAllShows(Property*, Property*);
-
-local ERROR_CODE herder_pullShowList(LinkedList*, const char*, const uint_fast16_t);
-
-local ERROR_CODE herder_addShow(Property*, Property*, const char*, const uint_fast64_t);
-
-local ERROR_CODE herder_printShowInfo(Property*, Property*, const char*, const uint_fast64_t);
-
-local ERROR_CODE herder_extractShowInfo(Property*, Property*, EpisodeInfo**, const char*, const uint_fast64_t);
-
-local ERROR_CODE herder_addEpisode(Property*, Property*, Property*, const char*, const uint_fast64_t);
-
-local ERROR_CODE herder_walkDirectory(LinkedList*, const char*);
-
-local ERROR_CODE herder_import(Property*, Property*, Property*, const char*);
-
-local ERROR_CODE herder_pullShowInfo(Property*, Property*, Show*);
-
-inline void herder_printHelp(void){
-    UTIL_LOG_CONSOLE(LOG_INFO, "Usage: herder --[command]/-[alias] <arguments>.\n\n");
-
-    UTIL_LOG_CONSOLE_(LOG_INFO, "\t%s\t\t\t%s", "-l, --list", "Fetches and prints a list of all shows in the library.");
-    UTIL_LOG_CONSOLE_(LOG_INFO, "\t%s\t\t\t%s", "--info <name>", "Prints all Episodes of the given show.");
-    UTIL_LOG_CONSOLE_(LOG_INFO, "\t%s\t\t%s", "-a, --add <file>", "Adds the given file to the library.");
-    UTIL_LOG_CONSOLE_(LOG_INFO, "\t%s\t\t%s", "--addShow <name>", "Adds the given show to the library.");
-    UTIL_LOG_CONSOLE_(LOG_INFO, "\t%s\t\t%s", "--removeShow <name>", "Removes the given show and all its seasons/episodes from the library.");
-    UTIL_LOG_CONSOLE_(LOG_INFO, "\t%s\t%s", "-i, --import optional:<path>", "Imports all files from the specified import path to the library (See '--setImportDirectory').");
-    UTIL_LOG_CONSOLE_(LOG_INFO, "\t%s\t%s", "--setImportDirectory <path>", "Sets the 'import directory' to the given path.");
-    UTIL_LOG_CONSOLE_(LOG_INFO, "\t%s\t%s", "--setLibraryDirectory <path>", "Sets the 'library directory' to the given path.");
-    UTIL_LOG_CONSOLE_(LOG_INFO, "\t%s\t\t%s", "--setRemoteHost <URL>", "Sets the 'remote host' address to the given URL.");
-    UTIL_LOG_CONSOLE_(LOG_INFO, "\t%s\t\t%s", "--setRemotePort <port>", "Sets the 'remote host' port to the given port.");
-    UTIL_LOG_CONSOLE_(LOG_INFO, "\t%s\t\t\t%s", "--killDeamon", "Kills the deamon process running the 'herder' server.");
-    UTIL_LOG_CONSOLE_(LOG_INFO, "\t%s\t\t\t%s", "--restartDeamon", "Restarts the deamon process running the 'herder' server.");
-    UTIL_LOG_CONSOLE_(LOG_INFO, "\t%s\t\t\t%s", "--showSettings", "Prints all available settings and their value.");
-    UTIL_LOG_CONSOLE_(LOG_INFO, "\t%s\t\t%s", "-?, -h, --help", "Displays this help.");
-}
-
-inline ERROR_CODE herder_listAllShows(Property* remoteHostProperty, Property* remoteHostPortProperty){
-    ERROR_CODE error = ERROR_NO_ERROR;
-
-    char* host = (char*) remoteHostProperty->buffer;
-    uint_fast16_t port = util_byteArrayTo_uint64(remoteHostPortProperty->buffer);
-
-    LinkedList shows = {0};
-    if((error = herder_pullShowList(&shows, host, port)) != ERROR_NO_ERROR){
-        goto label_freeShowList;
-    }
-
-    if(shows.length == 0){
-        UTIL_LOG_CONSOLE(LOG_INFO, "Library is empty.");
-
-        goto label_freeShowList;
-    }
-
-    LinkedListIterator it;
-    linkedList_initIterator(&it, &shows);
-
-    uint_fast64_t i = 0;
-    while(LINKED_LIST_ITERATOR_HAS_NEXT(&it)){
-        char* show = LINKED_LIST_ITERATOR_NEXT(&it);
-        
-        if((error = herder_printShowInfo(remoteHostProperty, remoteHostPortProperty, show, strlen(show))) != ERROR_NO_ERROR){
-            UTIL_LOG_CONSOLE(LOG_ERR, util_toErrorString(error));
-        }
-
-        i++;
-
-        free(show);
-    }
-
-label_freeShowList:
-    linkedList_free(&shows);
-
-    return ERROR(error);
-}
-
-inline ERROR_CODE herder_listShows(Property* remoteHostProperty, Property* remoteHostPortProperty){
-    ERROR_CODE error = ERROR_NO_ERROR;
-
-    char* host = (char*) remoteHostProperty->buffer;
-    uint_fast16_t port = util_byteArrayTo_uint64(remoteHostPortProperty->buffer);
-
-    LinkedList shows;
-    if((error = herder_pullShowList(&shows, host, port)) != ERROR_NO_ERROR){
-        if(error != ERROR_FAILED_TO_CONNECT){
-            goto label_freeShowList;
-        }else{
-            goto label_return;
-        }
-    }
-
-    if(shows.length == 0){
-        UTIL_LOG_CONSOLE(LOG_INFO, "Library is empty.");
-
-        goto label_freeShowList;
-    }
-
-    LinkedListIterator it;
-    linkedList_initIterator(&it, &shows);
-
-    uint_fast64_t i = 0;
-    while(LINKED_LIST_ITERATOR_HAS_NEXT(&it)){
-        char* show = LINKED_LIST_ITERATOR_NEXT(&it);
-        
-        UTIL_LOG_CONSOLE_(LOG_INFO, "%02" PRIuFAST64 ":'%s'.", i, show);
-        i++;
-
-        free(show);
-    }
-
-label_freeShowList:
-    linkedList_free(&shows);
-
-label_return:
-    return ERROR(error);
-}
 
 ERROR_CODE herder_pullShowList(LinkedList* shows, const char* host, const uint_fast16_t port){
     ERROR_CODE error = ERROR_NO_ERROR;
@@ -396,7 +236,7 @@ label_unMap:
     return ERROR(error);
 }
 
-local ERROR_CODE herder_printShowInfo(Property* remoteHost, Property* remotePort, const char* showName, const uint_fast64_t showNameLength){
+ERROR_CODE herder_printShowInfo(Property* remoteHost, Property* remotePort, const char* showName, const uint_fast64_t showNameLength){
     ERROR_CODE error = ERROR_NO_ERROR;
 
     char* host = (char*) remoteHost->buffer;
@@ -1303,59 +1143,6 @@ label_return:
     return ERROR(error);
 }
 
-ERROR_CODE herder_import(Property* remoteHost, Property* remotePort, Property* libraryDirectory, const char* directory){
-    ERROR_CODE error;
-
-     if(!REMOTE_HOST_PROPERTIES_SET() || PROPERTY_IS_NOT_SET(libraryDirectory)){
-        return ERROR(ERROR_PROPERTY_NOT_SET);
-     }
-
-    LinkedList files;
-    if((error = linkedList_init(&files)) != ERROR_NO_ERROR){
-        goto label_return;
-    }
-
-    if((error = herder_walkDirectory(&files, directory)) != ERROR_NO_ERROR){
-        goto label_return;
-    }
-
-    LinkedListIterator it;
-    linkedList_initIterator(&it, &files);
-
-    if(LINKED_LIST_IS_EMPTY(&files)){
-        UTIL_LOG_CONSOLE_(LOG_INFO, "No files recorgnised for import in '%s'.", directory);
-    }
-
-    while(LINKED_LIST_ITERATOR_HAS_NEXT(&it)){
-        DirectoryEntry* entry = LINKED_LIST_ITERATOR_NEXT(&it);
-
-        UTIL_LOG_CONSOLE_(LOG_INFO, "Adding '%s'.", entry->path);
-
-        if((error = herder_addEpisode(remoteHost, remotePort, libraryDirectory, entry->path, entry->pathLength)) != ERROR_NO_ERROR){
-            free(entry->path);
-            free(entry);
-
-            goto label_freeFiles;
-        }else{
-            UTIL_LOG_CONSOLE_(LOG_INFO, "Successfully added '%s'. to library.%s", entry->path, LINKED_LIST_ITERATOR_HAS_NEXT(&it) ? "\n" : "");
-        }
-
-        free(entry->path);
-        free(entry);
-    }
-
-    // TODO: Only delete directories inside import the import directory. (jan - 2019.05.28)
-    if((error = util_deleteDirectory(directory, true, true)) != ERROR_NO_ERROR){
-        goto label_freeFiles;
-    }
-    
-label_freeFiles:
-    linkedList_free(&files);
-
-label_return:
-    return ERROR(error);
-}
-
 /*  printf("#define HASH_MP4 %d\n", util_hashString(".mp4"));
     printf("#define HASH_MKV %d\n", util_hashString(".mkv"));
     printf("#define HASH_AVI %d\n", util_hashString(".avi")); */
@@ -1554,13 +1341,5 @@ label_closeDir:
         
     return ERROR(error);
 }
-
-#undef HERDER_PROGRAM_NAME
-
-#undef REMOTE_HOST_PROPERTIES_SET
-
-#undef PROPERTY_IMPORT_DIRECTORY_NAME
-#undef PROPERTY_REMOTE_HOST_NAME
-#undef PROPERTY_REMOTE_PORT_NAME
 
 #undef HTTP_PROCESSING_BUFFER_SIZE
