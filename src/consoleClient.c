@@ -624,7 +624,7 @@ inline ERROR_CODE consoleClient_listAllShows(Property* remoteHostProperty, Prope
     }
 
     if(shows.length == 0){
-        UTIL_LOG_CONSOLE(LOG_INFO, "Library is empty.");
+        UTIL_LOG_CONSOLE(LOG_INFO,"Library is empty.");
 
         goto label_freeShowList;
     }
@@ -662,6 +662,8 @@ inline ERROR_CODE consoleClient_printShowInfo(Property* remoteHost, Property* re
 
     if((error = herder_pullShowInfo(remoteHost, remotePort, &show))  != ERROR_NO_ERROR){
         UTIL_LOG_CONSOLE_(LOG_ERR, "Failed to print show info. '%s'", util_toErrorString(error));
+
+        goto label_freeShow;
     }
 
     UTIL_LOG_CONSOLE_(LOG_INFO, "%s:", show.name);
@@ -684,6 +686,7 @@ inline ERROR_CODE consoleClient_printShowInfo(Property* remoteHost, Property* re
         }
     }
 
+label_freeShow:
     mediaLibrary_freeShow(&show);
 
 label_return:
