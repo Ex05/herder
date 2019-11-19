@@ -49,6 +49,8 @@ local ERROR_CODE consoleClient_import(Property*, Property*, Property*, const cha
 
 local ERROR_CODE consoleClient_listAllShows(Property*, Property*);
 
+local ERROR_CODE consoleClient_printShowInfo(Property*, Property*, const char*, const uint_fast64_t);
+
 // TODO:(jan) Make custom entry point for the client build, so we won't have to use 'main'.
 #ifndef TEST_BUILD
 	int main(const int argc, const char** argv){
@@ -286,15 +288,16 @@ local ERROR_CODE consoleClient_listAllShows(Property*, Property*);
     }
 
     // --showInfo.
-    if(argumentParser_contains(&parser, &argumentShowInfo)){ 
+    if(argumentParser_contains(&parser, &argumentShowInfo)){
         if(!ARGUMENT_PARSER_ARGUMENT_HAS_VALUE(argumentShowInfo)){
             UTIL_LOG_CONSOLE(LOG_INFO, "Invalid command. Usage: " CONSOLE_CLIENT_USAGE_ARGUMENT_SHOW_INFO);
         }else{
              if(CONSOLE_CLIENT_REMOTE_HOST_PROPERTIES_SET()){
-                 ERROR_CODE error;
-                if((error = herder_printShowInfo(remoteHost, remotePort, argumentShowInfo.value, argumentShowInfo.valueLength))  != ERROR_NO_ERROR){
-                    UTIL_LOG_CONSOLE_(LOG_ERR, "Failed to print show info. '%s'", util_toErrorString(error));
-                }
+                 if((error = consoleClient_printShowInfo(remoteHost, remotePort, argumentShowInfo.value, argumentShowInfo.valueLength))){
+                     UTIL_LOG_CONSOLE(LOG_ERR, util_toErrorString(ERROR_PROPERTY_NOT_SET));
+
+                     goto label_freeProperties;
+                 }
             }else{
                 UTIL_LOG_CONSOLE(LOG_ERR, util_toErrorString(ERROR_PROPERTY_NOT_SET));
             }
@@ -307,9 +310,8 @@ local ERROR_CODE consoleClient_listAllShows(Property*, Property*);
     if(argumentParser_contains(&parser, &argumentSetImportDirectory)){
         if(!ARGUMENT_PARSER_ARGUMENT_HAS_VALUE(argumentSetImportDirectory)){
             UTIL_LOG_CONSOLE(LOG_INFO, "Invalid command. Usage: " CONSOLE_CLIENT_USAGE_ARGUMENT_SET_IMPORT_DIRECTORY);
-        }
-        else{
-            // Note: Make sure 'slashTerminated' is clamped to '0 - 1' so we can use it later to add/subtract depending on wether the string was slash termianted or not. (jan - 2018.10.20)
+        }else{
+            // Note: Make sure 'slashTerminated' is clamped to '0 - 1' so we can use it later to add/subtract depending on whether the string was slash termianted or not. (jan - 2018.10.20)
             const bool slashTerminated = (argumentSetImportDirectory.value[argumentSetImportDirectory.valueLength - 1] == '/') & 0x01;
 
             const uint_fast64_t importDirectoryLength = argumentSetImportDirectory.valueLength + !slashTerminated;
@@ -540,10 +542,12 @@ inline ERROR_CODE consoleClient_listShows(Property* remoteHostProperty, Property
 
     uint_fast64_t i = 0;
     while(LINKED_LIST_ITERATOR_HAS_NEXT(&it)){
-        char* show = LINKED_LIST_ITERATOR_NEXT(&it);
+        Show* show = LINKED_LIST_ITERATOR_NEXT(&it);
         
-        UTIL_LOG_CONSOLE_(LOG_INFO, "%02" PRIuFAST64 ":'%s'.", i, show);
+        UTIL_LOG_CONSOLE_(LOG_INFO, "%02" PRIuFAST64 ":'%s'.", i, show->name);
         i++;
+
+        mediaLibrary_freeShow(show);
 
         free(show);
     }
@@ -630,19 +634,58 @@ inline ERROR_CODE consoleClient_listAllShows(Property* remoteHostProperty, Prope
 
     uint_fast64_t i = 0;
     while(LINKED_LIST_ITERATOR_HAS_NEXT(&it)){
-        char* show = LINKED_LIST_ITERATOR_NEXT(&it);
+        Show* show = LINKED_LIST_ITERATOR_NEXT(&it);
         
-        if((error = herder_printShowInfo(remoteHostProperty, remoteHostPortProperty, show, strlen(show))) != ERROR_NO_ERROR){
+        if((error = consoleClient_printShowInfo(remoteHostProperty, remoteHostPortProperty, show->name, show->nameLength)) != ERROR_NO_ERROR){
             UTIL_LOG_CONSOLE(LOG_ERR, util_toErrorString(error));
         }
 
         i++;
 
+        mediaLibrary_freeShow(show);
         free(show);
     }
 
 label_freeShowList:
     linkedList_free(&shows);
 
+    return ERROR(error);
+}
+
+inline ERROR_CODE consoleClient_printShowInfo(Property* remoteHost, Property* remotePort, const char* showName, const uint_fast64_t showNameLength){
+    ERROR_CODE error;
+
+    Show show;
+    if((error = medialibrary_initShow(&show, showName, showNameLength)) != ERROR_NO_ERROR){
+        goto label_return;
+    }
+
+    if((error = herder_pullShowInfo(remoteHost, remotePort, &show))  != ERROR_NO_ERROR){
+        UTIL_LOG_CONSOLE_(LOG_ERR, "Failed to print show info. '%s'", util_toErrorString(error));
+    }
+
+    UTIL_LOG_CONSOLE_(LOG_INFO, "%s:", show.name);
+
+    LinkedListIterator seasonIterator;
+    linkedList_initIterator(&seasonIterator, &show.seasons);
+
+    while(LINKED_LIST_ITERATOR_HAS_NEXT(&seasonIterator)){
+        Season* season = LINKED_LIST_ITERATOR_NEXT(&seasonIterator);
+
+        UTIL_LOG_CONSOLE_(LOG_INFO, "\tSeason: %02" PRIuFAST16 ".", season->number);
+
+        LinkedListIterator episodeIterator;
+        linkedList_initIterator(&episodeIterator, &season->episodes);
+
+        while(LINKED_LIST_ITERATOR_HAS_NEXT(&episodeIterator)){
+            Episode* episode = LINKED_LIST_ITERATOR_NEXT(&episodeIterator);
+
+            UTIL_LOG_CONSOLE_(LOG_INFO, "\t\t  -> %02" PRIuFAST16 ": '%s'.", episode->number, episode->name);
+        }
+    }
+
+    mediaLibrary_freeShow(&show);
+
+label_return:
     return ERROR(error);
 }

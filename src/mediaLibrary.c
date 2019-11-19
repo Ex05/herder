@@ -243,6 +243,28 @@ ERROR_CODE mediaLibrary_init(MediaLibrary* library, const char* libraryLocation,
 }
 
 inline void mediaLibrary_freeShow(Show* show){
+    LinkedListIterator seasonIterator;
+    linkedList_initIterator(&seasonIterator, &show->seasons);
+
+    while(LINKED_LIST_ITERATOR_HAS_NEXT(&seasonIterator)){
+        Season* season = LINKED_LIST_ITERATOR_NEXT(&seasonIterator);
+
+        LinkedListIterator epsisodeIterator;
+        linkedList_initIterator(&epsisodeIterator, &season->episodes);
+
+        while(LINKED_LIST_ITERATOR_HAS_NEXT(&epsisodeIterator)){
+            Episode* episode = LINKED_LIST_ITERATOR_NEXT(&epsisodeIterator);
+
+            mediaLibrary_freeEpisode(episode);
+
+            free(episode);
+        }
+
+        mediaLibrary_freeSeason(season);
+
+        free(season);
+    }
+
     linkedList_free(&show->seasons);
 
     free(show->name);

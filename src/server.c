@@ -622,10 +622,12 @@ label_return:
         ARGUMENT_PARSER_ADD_ARGUMENT(SetServerExternalPort, 1, "--setServerExternalPort");
         ARGUMENT_PARSER_ADD_ARGUMENT(ShowSettings, 1, "--showSettings");
 
-	    if(argumentParser_parse(&parser, argc, argv) != ERROR_NO_ERROR){
-            UTIL_LOG_ERROR("Failed to parse command line arguments.");
+	    if((error = argumentParser_parse(&parser, argc, argv)) != ERROR_NO_ERROR){
+            if(error != ERROR_NO_VALID_ARGUMENT){
+                UTIL_LOG_ERROR("Failed to parse command line arguments.");
 
-		    goto label_exit;
+                goto label_free;
+            }
         }
 
         bool noValidArgument = true;
@@ -754,7 +756,7 @@ label_return:
 			    UTIL_LOG_ERROR_("Failed to unlock lock file [%d] (%s)", errno, strerror(errno));
 		    }
 		}
-	
+	label_free:
 		close(lockFile);
 
         util_deleteFile(serverDaemonLockFileName);

@@ -12,9 +12,6 @@
 ERROR_CODE herder_pullShowList(LinkedList* shows, const char* host, const uint_fast16_t port){
     ERROR_CODE error = ERROR_NO_ERROR;
     
-    // Note: We have to zero out shows here to not free garbage values in the ArrayList if we fail to connect, as the initialisation of shows requires the number of shows to be send from the server. (jan - 2019.04.04)
-    // memset(shows, 0, sizeof(*shows));
-
     void* httpProcessingBuffer;    
     if((error = util_blockAlloc(&httpProcessingBuffer, HTTP_PROCESSING_BUFFER_SIZE)) != ERROR_NO_ERROR){
         goto label_unMap;
@@ -66,20 +63,12 @@ ERROR_CODE herder_pullShowList(LinkedList* shows, const char* host, const uint_f
         const uint_fast64_t nameLength = util_byteArrayTo_uint64(response.data + readOffset);
         readOffset += sizeof(uint64_t);
 
-        char* name = malloc(sizeof(*name) * (nameLength + 1));
-
-        if(name == NULL){
-            error = ERROR_OUT_OF_MEMORY;
-
-            goto label_freeRequest;
-        }
-
-        memcpy(name, response.data + readOffset, nameLength);
-        name[nameLength] = '\0';
+        Show* show = malloc(sizeof(*show));
+        medialibrary_initShow(show, (char*) response.data + readOffset, nameLength);
 
         readOffset += nameLength;
 
-        linkedList_add(shows, name);
+        linkedList_add(shows, show);
     }
 
 label_freeRequest:
@@ -222,106 +211,6 @@ ERROR_CODE herder_removeShow(Property* remoteHost, Property* remotePort, const c
         }
     }
     
-label_freeRequest:
-    http_freeHTTP_Request(&request);
-
-label_freeResponse:
-    http_freeHTTP_Response(&response);
-
-label_unMap:
-    if(util_unMap(httpProcessingBuffer, HTTP_PROCESSING_BUFFER_SIZE) != ERROR_NO_ERROR){
-        UTIL_LOG_ERROR(util_toErrorString(ERROR_FAILED_TO_UNMAP_MEMORY));
-    }
-
-    return ERROR(error);
-}
-
-ERROR_CODE herder_printShowInfo(Property* remoteHost, Property* remotePort, const char* showName, const uint_fast64_t showNameLength){
-    ERROR_CODE error = ERROR_NO_ERROR;
-
-    char* host = (char*) remoteHost->buffer;
-    uint_fast16_t port = util_byteArrayTo_uint64(remotePort->buffer);
-
-    void* httpProcessingBuffer;
-    if((error = util_blockAlloc(&httpProcessingBuffer, HTTP_PROCESSING_BUFFER_SIZE)) != ERROR_NO_ERROR){
-        goto label_unMap;
-    }
-
-    int_fast32_t socketFD;
-    if((error = http_openConnection(&socketFD, host, port)) != ERROR_NO_ERROR){
-        goto label_unMap;
-    }
-
-    const char url[] = "/showInfo";
-
-    HTTP_Request request;
-    if((error = http_initRequest(&request, url, strlen(url), httpProcessingBuffer, HTTP_PROCESSING_BUFFER_SIZE, HTTP_VERSION_1_1, REQUEST_TYPE_POST)) != ERROR_NO_ERROR){
-        goto label_freeRequest;
-    }
-
-    HTTP_ADD_HEADER_FIELD(request, Host, host);
-
-    util_uint64ToByteArray(request.data + request.dataLength, showNameLength);
-    request.dataLength += sizeof(uint64_t);   
-
-    memcpy(request.data + request.dataLength, showName, showNameLength + 1);
-    request.dataLength += showNameLength + 1;
-
-    HTTP_Response response;
-    http_initResponse(&response, httpProcessingBuffer, HTTP_PROCESSING_BUFFER_SIZE);
-    if((error = http_sendRequest(&request, &response, socketFD)) != ERROR_NO_ERROR){
-        goto label_freeResponse;
-    }
-
-    http_closeConnection(socketFD);
-
-    UTIL_LOG_CONSOLE_(LOG_INFO, "%s:", showName);
-
-    if(response.statusCode == _200_OK){
-        uint_fast64_t readOffset = 0;
-
-        // Num_Seasons.
-        uint_fast64_t numSeasons = util_byteArrayTo_uint64(response.data + readOffset);
-        readOffset += sizeof(uint64_t);
-
-        if(numSeasons != 0){                
-            for( ; numSeasons > 0; numSeasons--){
-                // Season_Number.
-                const uint_fast16_t season = util_byteArrayTo_uint16(response.data + readOffset);
-                readOffset += sizeof(uint16_t);
-
-                UTIL_LOG_CONSOLE_(LOG_INFO, "\tSeason: %02" PRIuFAST16 ".", season);
-
-                // Num_Episodes.
-                uint_fast64_t numEpisodes = util_byteArrayTo_uint64(response.data + readOffset);
-                readOffset += sizeof(uint64_t);
-
-                for( ; numEpisodes > 0; numEpisodes--){
-                    // Episode_Number.
-                    const uint_fast16_t episode = util_byteArrayTo_uint16(response.data + readOffset);
-                    readOffset += sizeof(uint16_t);
-
-                    // Episode_NameLength.
-                    uint_fast64_t nameLength = util_byteArrayTo_uint64(response.data + readOffset);
-                    readOffset += sizeof(uint64_t);
-
-                    // Episode_Name.
-                    char* name = alloca(sizeof(*name) * (nameLength + 1));
-                    memcpy(name, response.data + readOffset, nameLength + 1);
-                    readOffset += nameLength + 1;
-
-                    UTIL_LOG_CONSOLE_(LOG_INFO, "\t\t  -> %02" PRIuFAST16 ": '%s'.", episode, name);
-                }
-            }
-        }else{
-            UTIL_LOG_CONSOLE(LOG_INFO, "\tShow is empty.");
-        }
-    }else{
-        error = ERROR_INVALID_STATUS_CODE;
-
-        UTIL_LOG_CONSOLE_(LOG_ERR, "Server_status:'%s'.", http_getStatusMsg(response.statusCode));
-    }
-
 label_freeRequest:
     http_freeHTTP_Request(&request);
 
