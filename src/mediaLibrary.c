@@ -185,6 +185,7 @@ ERROR_CODE mediaLibrary_init(MediaLibrary* library, const char* libraryLocation,
             }
 
             Season* season;
+            __UTIL_SUPPRESS_NEXT_ERROR_OF_TYPE__(ERROR_ENTRY_NOT_FOUND);
             if(!entryWasRemoved && (error = medialibrary_getSeason(show, &season, seasonNumber)) != ERROR_NO_ERROR){
                 if(error == ERROR_ENTRY_NOT_FOUND){
                     if((error = mediaLibrary_addSeason(library, &season, show, seasonNumber)) != ERROR_NO_ERROR){
@@ -590,7 +591,8 @@ inline ERROR_CODE mediaLibrary_addShow(MediaLibrary* library, Show** show, const
     __UTIL_SUPPRESS_NEXT_ERROR_OF_TYPE__(ERROR_ENTRY_NOT_FOUND);
     if((error = mediaLibrary_containsShow(&library->shows, show, noneWhiteSpaceName, noneWhiteSpaceNameLength)) == ERROR_NO_ERROR){
         // NOTE: One could make a strong argument here to return "ERROR_DUPLICATE_ENTRY' but the current eco-system does not support nested suppresion of error. But because the caller can not distinguish from the outside, we are for now just gona pretend everything is 'OK' and return 'ERROR_NO_ERROR'. (jan - 2019.09.04)*/
-        return ERROR(ERROR_NO_ERROR);
+        __UTIL_SUPPRESS_NEXT_ERROR_OF_TYPE__(ERROR_DUPLICATE_ENTRY);
+        return ERROR(ERROR_DUPLICATE_ENTRY);
     }
 
     *show = malloc(sizeof(**show));

@@ -219,6 +219,7 @@ local SERVER_CONTEXT_HANDLER(server_pageAdd){
     }
 
     Season* season;
+    __UTIL_SUPPRESS_NEXT_ERROR_OF_TYPE__(ERROR_ENTRY_NOT_FOUND);
     if((error = medialibrary_getSeason(show, &season, seasonNumber)) != ERROR_NO_ERROR){
         if((error = mediaLibrary_addSeason(&server->library, &season, show, seasonNumber)) != ERROR_NO_ERROR){
             goto label_return;
@@ -577,6 +578,12 @@ label_return:
     int server_totalyNotMain(const int argc, const char** argv){
 #endif
         openlog(SERVER_DAEMON_NAME, LOG_PID | LOG_NOWAIT, LOG_DAEMON);
+
+        UTIL_LOG_DEBUG("############################################");
+        UTIL_LOG_DEBUG("############################################");
+        UTIL_LOG_DEBUG("############################################");
+        UTIL_LOG_DEBUG("############################################");
+        UTIL_LOG_DEBUG("############################################");
 
         ERROR_CODE error;
 
