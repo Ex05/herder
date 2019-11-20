@@ -276,30 +276,70 @@ TEST_TEST_FUNCTION(argumentParser_parse){
         // TODO:(jan); Add preprocessor macros for other compiler.
     #endif
 
-    ARGUMENT_PARSER_ADD_ARGUMENT(Test, 2, "-t", "--test");
-    ARGUMENT_PARSER_ADD_ARGUMENT(Import, 1, "-i");
+    ARGUMENT_PARSER_ADD_ARGUMENT(Test_0, 2, "-t", "--test");
+    ARGUMENT_PARSER_ADD_ARGUMENT(Import_0, 1, "-i");
 
-    bool ret = false;
-
-    const char* argc[] = {"-i", "test", "12", "--test", "abbab", "---Tester", "12"};
-
-    if(argumentParser_parse(&parser, UTIL_ARRAY_LENGTH(argc), argc) != ERROR_NO_ERROR){
-        UTIL_LOG_ERROR("Failed to parse command line arguments.");
+    bool ret = true;
+    
+    const char* argc_0[] = {"./test", "-t", "-t"};
+    __UTIL_SUPPRESS_NEXT_ERROR_OF_TYPE__(ERROR_DUPLICATE_ENTRY);
+    if(argumentParser_parse(&parser, UTIL_ARRAY_LENGTH(argc_0), argc_0) != ERROR_DUPLICATE_ENTRY){
+        ret = false;
 
         goto label_free;
     }
 
-    if(argumentParser_contains(&parser, &argumentTest)){
-         if(ARGUMENT_PARSER_ARGUMENT_HAS_VALUE(argumentTest)){
-             if(strncmp("abbab", argumentTest.value, argumentTest.valueLength) == 0){
-                ret = true;
-             }
+    argumentParser_free(&parser);
+
+    argumentParser_init(&parser);
+
+    ARGUMENT_PARSER_ADD_ARGUMENT(Test_1, 2, "-t", "--test");
+    ARGUMENT_PARSER_ADD_ARGUMENT(Import_1, 1, "-i");
+
+    const char* argc_1[] = {"./test", "-i"};
+    if(argumentParser_parse(&parser, UTIL_ARRAY_LENGTH(argc_1), argc_1) != ERROR_NO_ERROR){
+        ret = false;
+
+        goto label_free;
+    }
+
+    argumentParser_free(&parser);
+
+    argumentParser_init(&parser);
+
+    ARGUMENT_PARSER_ADD_ARGUMENT(Test_2, 2, "-t", "--test");
+    ARGUMENT_PARSER_ADD_ARGUMENT(Import_2, 1, "-i");
+
+    const char* argc_2[] = {"./test", "-v", "-i", "test", "12", "--test", "abbab", "---Tester", "12"};
+    if(argumentParser_parse(&parser, UTIL_ARRAY_LENGTH(argc_2), argc_2) != ERROR_NO_ERROR){
+        UTIL_LOG_ERROR("Failed to parse command line arguments.");
+
+        ret = false;
+
+        goto label_free;
+    }
+
+    if(!argumentParser_contains(&parser, &argumentTest_2)){
+        ret = false;
+
+        goto label_free;
+    }else{
+        if(!ARGUMENT_PARSER_ARGUMENT_HAS_VALUE(argumentTest_2)){
+            ret = false;
+
+            goto label_free;
         }
     }
 
-    if(argumentParser_contains(&parser, &argumentImport)){
-        if(!ARGUMENT_PARSER_ARGUMENT_HAS_VALUE(argumentImport)){
-            ret = true;
+    if(!argumentParser_contains(&parser, &argumentImport_2)){
+        ret = false;
+
+        goto label_free;
+    }else{
+        if(!ARGUMENT_PARSER_ARGUMENT_HAS_VALUE(argumentImport_2)){
+            ret = false;
+
+            goto label_free;
         }
     }
 

@@ -28,7 +28,6 @@ inline ERROR_CODE argumentParser_initArgument(Argument* argument, const uint_fas
     argument->valueLength = 0;
 
     argument->arguments = malloc(sizeof(*argument->arguments) * numArguments);
-
     if(argument->arguments == NULL){
        return ERROR(ERROR_OUT_OF_MEMORY);
     }
@@ -66,11 +65,16 @@ ERROR_CODE argumentParser_addArgument(ArgumentParser* parser, Argument* argument
 }
 
 inline ERROR_CODE argumentParser_parse(ArgumentParser* parser, const int numArguments, const char** arguments){
+    ERROR_CODE error = ERROR_NO_VALID_ARGUMENT;
+
+    if(numArguments <= 1){
+        goto label_return;
+    }
+
     LinkedListIterator it;
     register int i;
     for(i = 0; i < numArguments; i++){
         linkedList_initIterator(&it, &parser->arguments);
-
         while(LINKED_LIST_ITERATOR_HAS_NEXT(&it)){
             Argument* argument = LINKED_LIST_ITERATOR_NEXT(&it);
 
@@ -78,25 +82,42 @@ inline ERROR_CODE argumentParser_parse(ArgumentParser* parser, const int numArgu
             for(j = 0; j < argument->numArguments; j++){
                 if(strcmp(arguments[i], argument->arguments[j]) == 0){
                     if(i + 1 < numArguments){
-                        const char* const value = arguments[i + 1];
+                        if(argument->value != NULL){
+                            if(argument->value != &ARGUMENT_PARSER_ARGUMENT_PRESENT_FLAG){
+                                error = ERROR_DUPLICATE_ENTRY;
+                    
+                                goto label_return;
+                            }
+                        }else{
+                            error = ERROR_NO_ERROR;
 
-                        argument->valueLength = strlen(value);
-
-                        argument->value = malloc(sizeof(*argument->value) * (argument->valueLength + 1));
-                        if(argument->value == NULL){
-                            return ERROR(ERROR_OUT_OF_MEMORY);
+                            argument->value = arguments[i + 1];
+                            argument->valueLength = strlen(argument->value);
                         }
-
-                        memcpy(argument->value, value, argument->valueLength + 1);
                     }else{
-                        argument->value = &ARGUMENT_PARSER_ARGUMENT_PRESENT_FLAG;
+                         if(argument->value != NULL){
+                            if(argument->value != &ARGUMENT_PARSER_ARGUMENT_PRESENT_FLAG){
+                                error = ERROR_DUPLICATE_ENTRY;
+                    
+                                goto label_return;
+                            }
+                         }else{
+                            error = ERROR_NO_ERROR;
+
+                            argument->value = &ARGUMENT_PARSER_ARGUMENT_PRESENT_FLAG;
+                        }
                     }
                 }                
             }              
         }
     }
 
-    return ERROR(ERROR_NO_ERROR);
+label_return:
+    if(error == ERROR_DUPLICATE_ENTRY){
+        return ERROR_(error, "Duplicate argument.'%s'", arguments[i]);
+    }else{
+        return ERROR(error);
+    }
 }
 
 inline bool argumentParser_contains(ArgumentParser* parser, Argument* argument){
@@ -124,10 +145,6 @@ void argumentParser_free(ArgumentParser* parser){
         register uint_fast8_t i;
         for(i = 0; i < argument->numArguments; i++){
             free(argument->arguments[i]);
-        }
-
-        if(argument->value != &ARGUMENT_PARSER_ARGUMENT_PRESENT_FLAG){
-            free(argument->value);
         }
 
         free(argument->arguments);

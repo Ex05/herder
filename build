@@ -222,13 +222,13 @@ fi
 if [ "$1" == "herder" ] || [ "$1" == "all" ]; then
     # Build the debug version of the executable.
     if [ "$2" == "debug" ];then
-        buildDebug herder herder
+        buildDebug consoleClient herder
 
         if [ "$1" != "all" ]; then
             exit 0
         fi
     else
-        buildRelease herder herder
+        buildRelease consoleClient herder
 
         printf "\nBuild completeted.\n"
 

@@ -17,7 +17,7 @@ argumentParser_addArgument(&parser, &argument ## name, numArguments, __VA_ARGS__
 typedef struct{
     char** arguments;
     uint_fast8_t numArguments;   
-    char* value;
+    const char* value;
     uint_fast64_t valueLength;
 }Argument;
 
