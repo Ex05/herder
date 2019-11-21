@@ -365,9 +365,12 @@ local SERVER_CONTEXT_HANDLER(server_pageShowInfo){
 
     Show* show;    
     if(medialibrary_getShow(&server->library, &show, showName, nameLength) == ERROR_ENTRY_NOT_FOUND){
-        util_uint64ToByteArray(response->data + response->dataLength, 0);
+        util_uint64ToByteArray(response->data + response->dataLength, ERROR_ENTRY_NOT_FOUND);
         response->dataLength += sizeof(uint64_t);
     }else{
+        util_uint64ToByteArray(response->data + response->dataLength, ERROR_NO_ERROR);
+        response->dataLength += sizeof(uint64_t);
+
         // Num_Seasons.
         util_uint64ToByteArray(response->data + response->dataLength, show->seasons.length);
         response->dataLength += sizeof(uint64_t);

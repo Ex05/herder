@@ -294,9 +294,9 @@ local ERROR_CODE consoleClient_printShowInfo(Property*, Property*, const char*, 
         }else{
              if(CONSOLE_CLIENT_REMOTE_HOST_PROPERTIES_SET()){
                  if((error = consoleClient_printShowInfo(remoteHost, remotePort, argumentShowInfo.value, argumentShowInfo.valueLength))){
-                     UTIL_LOG_CONSOLE(LOG_ERR, util_toErrorString(ERROR_PROPERTY_NOT_SET));
+                    UTIL_LOG_CONSOLE_(LOG_ERR, "Failed to print show info for '%s': '%s'.", argumentShowInfo.value, util_toErrorString(error));
 
-                     goto label_freeProperties;
+                    goto label_freeProperties;
                  }
             }else{
                 UTIL_LOG_CONSOLE(LOG_ERR, util_toErrorString(ERROR_PROPERTY_NOT_SET));
@@ -660,9 +660,7 @@ inline ERROR_CODE consoleClient_printShowInfo(Property* remoteHost, Property* re
         goto label_return;
     }
 
-    if((error = herder_pullShowInfo(remoteHost, remotePort, &show))  != ERROR_NO_ERROR){
-        UTIL_LOG_CONSOLE_(LOG_ERR, "Failed to print show info. '%s'", util_toErrorString(error));
-
+    if((error = herder_pullShowInfo(remoteHost, remotePort, &show)) != ERROR_NO_ERROR){
         goto label_freeShow;
     }
 
@@ -671,7 +669,10 @@ inline ERROR_CODE consoleClient_printShowInfo(Property* remoteHost, Property* re
     LinkedListIterator seasonIterator;
     linkedList_initIterator(&seasonIterator, &show.seasons);
 
+    bool showEmpty = true;
     while(LINKED_LIST_ITERATOR_HAS_NEXT(&seasonIterator)){
+        showEmpty = false;
+
         Season* season = LINKED_LIST_ITERATOR_NEXT(&seasonIterator);
 
         UTIL_LOG_CONSOLE_(LOG_INFO, "\tSeason: %02" PRIuFAST16 ".", season->number);
@@ -684,6 +685,10 @@ inline ERROR_CODE consoleClient_printShowInfo(Property* remoteHost, Property* re
 
             UTIL_LOG_CONSOLE_(LOG_INFO, "\t\t  -> %02" PRIuFAST16 ": '%s'.", episode->number, episode->name);
         }
+    }
+
+    if(showEmpty){
+        UTIL_LOG_CONSOLE(LOG_INFO, "\tEmpty.");
     }
 
 label_freeShow:
