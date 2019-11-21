@@ -257,12 +257,10 @@ inline void mediaLibrary_freeShow(Show* show){
             Episode* episode = LINKED_LIST_ITERATOR_NEXT(&epsisodeIterator);
 
             mediaLibrary_freeEpisode(episode);
-
             free(episode);
         }
 
         mediaLibrary_freeSeason(season);
-
         free(season);
     }
 
@@ -286,31 +284,8 @@ inline void mediaLibrary_free(MediaLibrary* library){
 
     while(LINKED_LIST_ITERATOR_HAS_NEXT(&it)){
         Show* show = LINKED_LIST_ITERATOR_NEXT(&it);
-
-        LinkedListIterator seasonIterator;
-        linkedList_initIterator(&seasonIterator, &show->seasons);
-
-        while(LINKED_LIST_ITERATOR_HAS_NEXT(&seasonIterator)){
-            Season* season = LINKED_LIST_ITERATOR_NEXT(&seasonIterator);
-
-            LinkedListIterator episodeIterator;
-            linkedList_initIterator(&episodeIterator, &season->episodes);
-
-            while(LINKED_LIST_ITERATOR_HAS_NEXT(&episodeIterator)){
-                Episode* episode = LINKED_LIST_ITERATOR_NEXT(&episodeIterator);
-
-                mediaLibrary_freeEpisode(episode);
-
-                free(episode);
-            }
-
-            mediaLibrary_freeSeason(season);
-
-            free(season);
-        }
-
+        
         mediaLibrary_freeShow(show);
-
         free(show);
     }
 
