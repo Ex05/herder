@@ -230,7 +230,7 @@ ERROR_CODE mediaLibrary_init(MediaLibrary* library, const char* libraryLocation,
             
             Episode* episode;
             if(!entryWasRemoved){
-                error = mediaLibrary_addEpisode(library, &episode, show, season, episodeNumber, episodeName, episodeNameLength, fileExtension, fileExtensionLength,  false);
+                error = mediaLibrary_addEpisode(library, &episode, show, season, episodeNumber, episodeName, episodeNameLength, fileExtension, fileExtensionLength, false);
             }            
 
         label_return:
@@ -578,8 +578,6 @@ inline ERROR_CODE mediaLibrary_addShow(MediaLibrary* library, Show** show, const
     medialibrary_initShow(*show, noneWhiteSpaceName, noneWhiteSpaceNameLength);
 
     linkedList_add(&library->shows, *show);
-
-    UTIL_LOG_DEBUG_("Added Show:'%s'.", (*show)->name);
 
     return ERROR(ERROR_NO_ERROR);
 }
@@ -1032,8 +1030,6 @@ inline ERROR_CODE mediaLibrary_addSeason(MediaLibrary* library, Season** season,
     if((error = linkedList_add(&show->seasons, *season)) != ERROR_NO_ERROR){
         goto label_return;
     }
-
-    UTIL_LOG_DEBUG_("Added Season:%02" PRIuFAST16 " to '%s'.", (*season)->number,  show->name);
 
 label_return:
     return ERROR(ERROR_NO_ERROR);

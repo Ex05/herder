@@ -583,10 +583,6 @@ label_return:
         openlog(SERVER_DAEMON_NAME, LOG_PID | LOG_NOWAIT, LOG_DAEMON);
 
         UTIL_LOG_DEBUG("############################################");
-        UTIL_LOG_DEBUG("############################################");
-        UTIL_LOG_DEBUG("############################################");
-        UTIL_LOG_DEBUG("############################################");
-        UTIL_LOG_DEBUG("############################################");
 
         ERROR_CODE error;
 
