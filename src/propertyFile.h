@@ -8,6 +8,7 @@
 #define PROPERTY_IS_NOT_SET(property) (property == NULL)
 #define PROPERTY_IS_SET(property) (property != NULL)
 
+
 typedef struct{
 	uint_fast8_t release;
     uint_fast8_t update;
@@ -29,7 +30,7 @@ typedef struct{
     uint_fast64_t dataOffset;
     uint_fast64_t length;
 }PropertyFileEntry;
-
+ 
 typedef struct{
     PropertyFileEntry** entries;
     uint_fast64_t offset;
@@ -60,6 +61,14 @@ ERROR_CODE propertyFile_removeProperty(Property*);
 bool propertyFile_contains(PropertyFile*, const char*);
 
 ERROR_CODE propertyFile_propertySet(Property*, const char*);
+
+ERROR_CODE propertyFile_createAndSetDirectoryProperty(PropertyFile*, Property*, const char*, const char*, const uint_fast64_t);
+
+ERROR_CODE propertyFile_createAndSetStringProperty(PropertyFile*, Property*, const char*, const char*, const uint_fast64_t);
+
+ERROR_CODE propertyFile_createAndSetUINT16Property(PropertyFile*, Property*, const char*, const uint16_t);
+
+ERROR_CODE propertyFile_createProperty(PropertyFile*, Property*, const char*, const uint_fast64_t);
 
 #endif
 

@@ -43,7 +43,7 @@ ERROR_CODE herder_pullShowList(LinkedList* shows, const char* host, const uint_f
         goto label_freeRequest;
     }
 
-    if(response.statusCode != _200_OK){
+if(response.statusCode != _200_OK){
         error = ERROR_SERVER_ERROR;
 
         goto label_freeRequest;

@@ -57,10 +57,13 @@ local ERROR_CODE consoleClient_printShowInfo(Property*, Property*, const char*, 
 #else
     int consoleClient_totalyNotMain(const int argc, const char** argv){
 #endif
+    ERROR_CODE error;
     openlog(CONSOLE_CLIENT_PROGRAM_NAME, LOG_PID | LOG_NOWAIT | LOG_CONS, LOG_USER);
 
     ArgumentParser parser;
-    argumentParser_init(&parser);
+    if((error = argumentParser_init(&parser)) != ERROR_NO_ERROR){
+        goto label_free;
+    }
     
     ARGUMENT_PARSER_ADD_ARGUMENT(Help, 3, "-?", "-h", "--help");
     ARGUMENT_PARSER_ADD_ARGUMENT(AddShow, 1, "--addShow");
@@ -78,7 +81,6 @@ local ERROR_CODE consoleClient_printShowInfo(Property*, Property*, const char*, 
     ARGUMENT_PARSER_ADD_ARGUMENT(SetRemoteHostPort, 1, "--setRemotePort");
     ARGUMENT_PARSER_ADD_ARGUMENT(ShowSettings, 1, "--showSettings");
 
-    ERROR_CODE error;
     if((error = argumentParser_parse(&parser, argc, argv)) != ERROR_NO_ERROR){
         if(error == ERROR_NO_VALID_ARGUMENT){
             UTIL_LOG_CONSOLE(LOG_ERR, "No valid command line arguments.\nUse '" CONSOLE_CLIENT_USAGE_ARGUMENT_HELP "' to display a help message.");    
@@ -311,44 +313,13 @@ local ERROR_CODE consoleClient_printShowInfo(Property*, Property*, const char*, 
         if(!ARGUMENT_PARSER_ARGUMENT_HAS_VALUE(argumentSetImportDirectory)){
             UTIL_LOG_CONSOLE(LOG_INFO, "Invalid command. Usage: " CONSOLE_CLIENT_USAGE_ARGUMENT_SET_IMPORT_DIRECTORY);
         }else{
-            // Note: Make sure 'slashTerminated' is clamped to '0 - 1' so we can use it later to add/subtract depending on whether the string was slash termianted or not. (jan - 2018.10.20)
-            const bool slashTerminated = (argumentSetImportDirectory.value[argumentSetImportDirectory.valueLength - 1] == '/') & 0x01;
-
-            const uint_fast64_t importDirectoryLength = argumentSetImportDirectory.valueLength + !slashTerminated;
-
-            char* importDirectoryString;
-            if(slashTerminated){
-                importDirectoryString = alloca(sizeof(*importDirectoryString) * (argumentSetImportDirectory.valueLength + 1));
-                memmove(importDirectoryString, argumentSetImportDirectory.value, argumentSetImportDirectory.valueLength + 1);
-
+            if((error = propertyFile_createAndSetDirectoryProperty(&properties, importDirectory, CONSOLE_CLIENT_PROPERTY_IMPORT_DIRECTORY_NAME, argumentSetImportDirectory.value, argumentSetImportDirectory.valueLength)) != ERROR_NO_ERROR){
+                UTIL_LOG_CONSOLE(LOG_ERR, util_toErrorString(error));
             }else{
-                importDirectoryString = alloca(sizeof(*importDirectoryString) * (importDirectoryLength + 1));
-                memcpy(importDirectoryString, argumentSetImportDirectory.value, argumentSetImportDirectory.valueLength);
-                importDirectoryString[importDirectoryLength - 1] = '/';
-                importDirectoryString[importDirectoryLength] = '\0';
-            } 
-
-            if(PROPERTY_IS_NOT_SET(importDirectory)){
-                if(propertyFile_addProperty(&properties, &importDirectory, CONSOLE_CLIENT_PROPERTY_IMPORT_DIRECTORY_NAME, importDirectoryLength + 1) != ERROR_NO_ERROR){
-                    return ERROR_(ERROR_FAILED_TO_ADD_PROPERTY, "'%s'", CONSOLE_CLIENT_PROPERTY_IMPORT_DIRECTORY_NAME);
-                }
-            }else{
-                if(importDirectory->entry->length != importDirectoryLength + 1){
-                    if(propertyFile_removeProperty(importDirectory) != ERROR_NO_ERROR){
-                        return ERROR_(ERROR_FAILED_TO_REMOVE_PROPERTY, "'%s'", CONSOLE_CLIENT_PROPERTY_IMPORT_DIRECTORY_NAME);
-                    }
-
-                    if(propertyFile_addProperty(&properties, &importDirectory, CONSOLE_CLIENT_PROPERTY_IMPORT_DIRECTORY_NAME, importDirectoryLength + 1) != ERROR_NO_ERROR){
-                        return ERROR_(ERROR_FAILED_TO_ADD_PROPERTY, "'%s'", CONSOLE_CLIENT_PROPERTY_IMPORT_DIRECTORY_NAME);
-                    }
-                }
-            }
-
-            if(propertyFile_setBuffer(importDirectory, (int8_t*) importDirectoryString) != ERROR_NO_ERROR){
-                return ERROR_(ERROR_FAILED_TO_UPDATE_PROPERTY, "'%s'", CONSOLE_CLIENT_PROPERTY_IMPORT_DIRECTORY_NAME);
+                UTIL_LOG_CONSOLE_(LOG_INFO, "Successfully set '%s' to '%s'", CONSOLE_CLIENT_PROPERTY_IMPORT_DIRECTORY_NAME, argumentSetImportDirectory.value);
             }
         }
-        
+
         goto label_freeProperties;
     }
 
@@ -357,43 +328,13 @@ local ERROR_CODE consoleClient_printShowInfo(Property*, Property*, const char*, 
         if(!ARGUMENT_PARSER_ARGUMENT_HAS_VALUE(argumentSetLibraryDirectory)){
             UTIL_LOG_CONSOLE(LOG_INFO, "Invalid command. Usage: " CONSOLE_CLIENT_USAGE_ARGUMENT_SET_LIBRARY_DIRECTORY);
         }else{
-             // Note: Make sure 'slashTerminated' is clamped to '0 - 1' so we can use it later to add/subtract depending on wether the string was slash termianted or not. (jan - 2018.10.20)
-            const bool slashTerminated = (argumentSetLibraryDirectory.value[argumentSetLibraryDirectory.valueLength - 1] == '/') & 0x01;
-
-            const uint_fast64_t libraryDirectoryLength = argumentSetLibraryDirectory.valueLength + !slashTerminated;
-
-            char* libraryDirectoryString;
-            if(slashTerminated){
-                libraryDirectoryString = alloca(sizeof(*libraryDirectoryString) * (argumentSetLibraryDirectory.valueLength + 1));
-                memmove(libraryDirectoryString, argumentSetLibraryDirectory.value, argumentSetLibraryDirectory.valueLength + 1);
+            if((error = propertyFile_createAndSetDirectoryProperty(&properties, libraryDirectory, CONSOLE_CLIENT_PROPERTY_LIBRARY_DIRECTORY_NAME, argumentSetLibraryDirectory.value, argumentSetLibraryDirectory.valueLength)) != ERROR_NO_ERROR){
+                UTIL_LOG_CONSOLE(LOG_ERR, util_toErrorString(error));
             }else{
-                libraryDirectoryString = alloca(sizeof(*libraryDirectory) * (libraryDirectoryLength + 1));
-                memcpy(libraryDirectoryString, argumentSetLibraryDirectory.value, argumentSetLibraryDirectory.valueLength);
-                libraryDirectoryString[libraryDirectoryLength - 1] = '/';
-                libraryDirectoryString[libraryDirectoryLength] = '\0';
-            } 
-
-            if(PROPERTY_IS_NOT_SET(libraryDirectory)){
-                if(propertyFile_addProperty(&properties, &libraryDirectory, CONSOLE_CLIENT_PROPERTY_IMPORT_DIRECTORY_NAME, libraryDirectoryLength + 1) != ERROR_NO_ERROR){
-                    return ERROR_(ERROR_FAILED_TO_ADD_PROPERTY, "'%s'", CONSOLE_CLIENT_PROPERTY_IMPORT_DIRECTORY_NAME);
-                }
-            }else{
-                if(libraryDirectory->entry->length != libraryDirectoryLength + 1){
-                    if(propertyFile_removeProperty(libraryDirectory) != ERROR_NO_ERROR){
-                        return ERROR_(ERROR_FAILED_TO_REMOVE_PROPERTY, "'%s'", CONSOLE_CLIENT_PROPERTY_IMPORT_DIRECTORY_NAME);
-                    }
-
-                    if(propertyFile_addProperty(&properties, &libraryDirectory, CONSOLE_CLIENT_PROPERTY_IMPORT_DIRECTORY_NAME, libraryDirectoryLength + 1) != ERROR_NO_ERROR){
-                        return ERROR_(ERROR_FAILED_TO_ADD_PROPERTY, "'%s'", CONSOLE_CLIENT_PROPERTY_IMPORT_DIRECTORY_NAME);
-                    }
-                }
-            }
-
-            if(propertyFile_setBuffer(libraryDirectory, (int8_t*) libraryDirectoryString) != ERROR_NO_ERROR){
-                return ERROR_(ERROR_FAILED_TO_UPDATE_PROPERTY, "'%s'", CONSOLE_CLIENT_PROPERTY_IMPORT_DIRECTORY_NAME);
+                UTIL_LOG_CONSOLE_(LOG_INFO, "Successfully set '%s' to '%s'", CONSOLE_CLIENT_PROPERTY_LIBRARY_DIRECTORY_NAME, argumentSetLibraryDirectory.value);
             }
         }
-        
+
         goto label_freeProperties;
     }
 
@@ -402,24 +343,10 @@ local ERROR_CODE consoleClient_printShowInfo(Property*, Property*, const char*, 
         if(!ARGUMENT_PARSER_ARGUMENT_HAS_VALUE(argumentSetRemoteHost)){
             UTIL_LOG_CONSOLE(LOG_INFO, "Invalid command. Usage: " CONSOLE_CLIENT_USAGE_ARGUMENT_SET_REMOTE_HOST);
         }else{
-            if(PROPERTY_IS_NOT_SET(remoteHost)){
-                if(propertyFile_addProperty(&properties, &remoteHost, CONSOLE_CLIENT_PROPERTY_REMOTE_HOST_NAME, argumentSetRemoteHost.valueLength + 1) != ERROR_NO_ERROR){
-                    return ERROR_(ERROR_FAILED_TO_ADD_PROPERTY, "'%s'", CONSOLE_CLIENT_PROPERTY_REMOTE_HOST_NAME);
-                }
+            if((error = propertyFile_createAndSetStringProperty(&properties, libraryDirectory, CONSOLE_CLIENT_PROPERTY_REMOTE_HOST_NAME, argumentSetRemoteHost.value, argumentSetRemoteHost.valueLength)) != ERROR_NO_ERROR){
+                UTIL_LOG_CONSOLE(LOG_ERR, util_toErrorString(error));
             }else{
-                if(remoteHost->entry->length != argumentSetRemoteHost.valueLength + 1){
-                    if(propertyFile_removeProperty(remoteHost) != ERROR_NO_ERROR){
-                        return ERROR_(ERROR_FAILED_TO_REMOVE_PROPERTY, "'%s'", CONSOLE_CLIENT_PROPERTY_REMOTE_HOST_NAME);
-                    }
-
-                    if(propertyFile_addProperty(&properties, &remoteHost, CONSOLE_CLIENT_PROPERTY_REMOTE_HOST_NAME, argumentSetRemoteHost.valueLength + 1) != ERROR_NO_ERROR){
-                        return ERROR_(ERROR_FAILED_TO_ADD_PROPERTY, "'%s'", CONSOLE_CLIENT_PROPERTY_REMOTE_HOST_NAME);
-                    }
-                }
-            }
-
-            if(propertyFile_setBuffer(remoteHost, (int8_t*) argumentSetRemoteHost.value) != ERROR_NO_ERROR){
-                return ERROR_(ERROR_FAILED_TO_UPDATE_PROPERTY, "'%s'", CONSOLE_CLIENT_PROPERTY_REMOTE_HOST_NAME);
+                UTIL_LOG_CONSOLE_(LOG_INFO, "Successfully set '%s' to '%s'", CONSOLE_CLIENT_PROPERTY_REMOTE_HOST_NAME, argumentSetRemoteHost.value);
             }
         }
         
@@ -428,27 +355,27 @@ local ERROR_CODE consoleClient_printShowInfo(Property*, Property*, const char*, 
 
     // --setRemotePort.
     if(argumentParser_contains(&parser, &argumentSetRemoteHostPort)){ 
-        if(!ARGUMENT_PARSER_ARGUMENT_HAS_VALUE(argumentSetRemoteHostPort)){
-            UTIL_LOG_CONSOLE(LOG_INFO, "Invalid command. Usage: " CONSOLE_CLIENT_USAGE_ARGUMENT_SET_REMOTE_PORT);
+       if(!ARGUMENT_PARSER_ARGUMENT_HAS_VALUE(argumentSetRemoteHostPort)){
+            UTIL_LOG_CONSOLE(LOG_INFO, "Invalid command. Usage: " CONSOLE_CLIENT_USAGE_ARGUMENT_SET_REMOTE_HOST);
         }else{
-            if(PROPERTY_IS_NOT_SET(remotePort)){
-                if(propertyFile_addProperty(&properties, &remotePort, CONSOLE_CLIENT_PROPERTY_REMOTE_PORT_NAME, argumentSetRemoteHostPort.valueLength + 1) != ERROR_NO_ERROR){
-                    return ERROR_(ERROR_FAILED_TO_ADD_PROPERTY, "'%s'", CONSOLE_CLIENT_PROPERTY_REMOTE_PORT_NAME);
-                }
-            }else{
-                if(remotePort->entry->length != argumentSetRemoteHostPort.valueLength + 1){
-                    if(propertyFile_removeProperty(remoteHost) != ERROR_NO_ERROR){
-                        return ERROR_(ERROR_FAILED_TO_REMOVE_PROPERTY, "'%s'", CONSOLE_CLIENT_PROPERTY_REMOTE_PORT_NAME);
-                    }
+            int64_t port;
+            ERROR_CODE error;
+            if((error = util_stringToInt(argumentSetRemoteHostPort.value, &port)) != ERROR_NO_ERROR){
+                UTIL_LOG_CONSOLE_(LOG_ERR, "Port value must be in range of 0-%" PRIu16 ". '%s'.", UINT16_MAX, util_toErrorString(ERROR_INVALID_VALUE));
 
-                    if(propertyFile_addProperty(&properties, &remotePort, CONSOLE_CLIENT_PROPERTY_REMOTE_PORT_NAME, argumentSetRemoteHostPort.valueLength + 1) != ERROR_NO_ERROR){
-                        return ERROR_(ERROR_FAILED_TO_ADD_PROPERTY, "'%s'", CONSOLE_CLIENT_PROPERTY_REMOTE_PORT_NAME);
-                    }
+                goto label_freeProperties;
+            }else{
+                if(port <= 0 || port > UINT16_MAX){
+                    UTIL_LOG_CONSOLE_(LOG_ERR, "Port value must be in range of 0-%" PRIu16 ". '%s'.", UINT16_MAX, util_toErrorString(ERROR_INVALID_VALUE));
+
+                    goto label_freeProperties;
                 }
             }
 
-            if(propertyFile_setBuffer(remotePort, (int8_t*) argumentSetRemoteHostPort.value) != ERROR_NO_ERROR){
-                return ERROR_(ERROR_FAILED_TO_UPDATE_PROPERTY, "'%s'", CONSOLE_CLIENT_PROPERTY_REMOTE_PORT_NAME);
+            if((error = propertyFile_createAndSetUINT16Property(&properties, libraryDirectory, CONSOLE_CLIENT_PROPERTY_REMOTE_PORT_NAME, port)) != ERROR_NO_ERROR){
+                UTIL_LOG_CONSOLE(LOG_ERR, util_toErrorString(error));
+            }else{
+                UTIL_LOG_CONSOLE_(LOG_INFO, "Successfully set '%s' to '%s'", CONSOLE_CLIENT_PROPERTY_REMOTE_PORT_NAME, argumentSetRemoteHostPort.value);
             }
         }
         

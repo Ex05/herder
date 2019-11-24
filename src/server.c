@@ -28,8 +28,11 @@
 
 #define SERVER_WEB_DIRECTORY "www/"
 
+#define SERVER_USAGE_ARGUMENT_HELP "-?, -h, --help"
+#define SERVER_USAGE_ARGUMENT_SET_SERVER_ROOT_DIRECTORY "--setServerRootDirectory <path>"
+
 #define PROPERTY_FILE_NAME "server_settings"
-#define PROPERTY_SERVER_ROOT_DIRECTORY_NAME "serverRootDirectory"
+#define SERVER_PROPERTY_SERVER_ROOT_DIRECTORY_NAME "serverRootDirectory"
 #define PROPERTY_SERVER_EXTERNAL_PORT_NAME "serverExternalPort"
 
 local void server_initClient(Client*, HerderServer*);
@@ -41,10 +44,6 @@ local void server_freeContext(Context*);
 local ERROR_CODE server_getFile(HerderServer*, CacheObject**, char*, const uint_fast64_t);
 
 local void server_daemonize(const char* workingDirectory);
-
-local ERROR_CODE server_setRootDirectory(Argument*, PropertyFile*, Property**);
-
-local ERROR_CODE server_setServerExternalPort(Argument*, PropertyFile*, Property**);
 
 local HerderServer server;
  
@@ -580,11 +579,30 @@ label_return:
 #else
     int server_totalyNotMain(const int argc, const char** argv){
 #endif
+        ERROR_CODE error;
         openlog(SERVER_DAEMON_NAME, LOG_PID | LOG_NOWAIT, LOG_DAEMON);
 
-        UTIL_LOG_DEBUG("############################################");
+        ArgumentParser parser;
+        if((error = argumentParser_init(&parser)) != ERROR_NO_ERROR){
+            goto label_exit;
+        }
+    
+        ARGUMENT_PARSER_ADD_ARGUMENT(Help, 3, "-?", "-h", "--help");
+        ARGUMENT_PARSER_ADD_ARGUMENT(SetServerRootDirectory, 1, "--setServerRootDirectory");
+        ARGUMENT_PARSER_ADD_ARGUMENT(SetServerExternalPort, 1, "--setServerExternalPort");
+        ARGUMENT_PARSER_ADD_ARGUMENT(ShowSettings, 1, "--showSettings");
 
-        ERROR_CODE error;
+        if((error = argumentParser_parse(&parser, argc, argv)) != ERROR_NO_ERROR){
+            if(error == ERROR_NO_VALID_ARGUMENT){
+                UTIL_LOG_CONSOLE(LOG_ERR, "No valid command line arguments.\nUse '" SERVER_USAGE_ARGUMENT_HELP "' to display a help message.");
+            }else{
+                if(error == ERROR_DUPLICATE_ENTRY){
+                    UTIL_LOG_CONSOLE(LOG_ERR, "Duplicate argument.");
+                }
+            }
+
+		    goto label_exit;
+        }
 
         const char* userHome = util_getHomeDirectory();
         const uint_fast64_t userHomeLength = strlen(userHome);
@@ -615,32 +633,12 @@ label_return:
         propertyFile_init(&properties, propertyFilePath);
 
         Property* serverRootDirectory;
-        propertyFile_getProperty(&properties, &serverRootDirectory, PROPERTY_SERVER_ROOT_DIRECTORY_NAME);
+        propertyFile_getProperty(&properties, &serverRootDirectory, SERVER_PROPERTY_SERVER_ROOT_DIRECTORY_NAME);
 
         Property* serverExternalPort;
         propertyFile_getProperty(&properties, &serverExternalPort, PROPERTY_SERVER_EXTERNAL_PORT_NAME);
 
-        ArgumentParser parser;
-        argumentParser_init(&parser);
-
-        ARGUMENT_PARSER_ADD_ARGUMENT(Help, 3, "-?", "-h", "--help");
-        ARGUMENT_PARSER_ADD_ARGUMENT(SetServerRootDirectory, 1, "--setServerRootDirectory");
-        ARGUMENT_PARSER_ADD_ARGUMENT(SetServerExternalPort, 1, "--setServerExternalPort");
-        ARGUMENT_PARSER_ADD_ARGUMENT(ShowSettings, 1, "--showSettings");
-
-	    if((error = argumentParser_parse(&parser, argc, argv)) != ERROR_NO_ERROR){
-            if(error != ERROR_NO_VALID_ARGUMENT){
-                UTIL_LOG_ERROR("Failed to parse command line arguments.");
-
-                goto label_free;
-            }
-        }
-
-        bool noValidArgument = true;
-
         if(argumentParser_contains(&parser, &argumentHelp)){
-            noValidArgument = false;
-
             UTIL_LOG_CONSOLE(LOG_INFO, "Usage: herder --[command]/-[alias] <arguments>.\n");
 
             UTIL_LOG_CONSOLE_(LOG_INFO, "\t%s\t%s", "--setServerRootDirectory <path>", "Sets the 'server root directory' to the given path.");
@@ -652,30 +650,53 @@ label_return:
             goto label_exit;
         }
 
+        // --setServerRootDirectory
         if(argumentParser_contains(&parser, &argumentSetServerRootDirectory)){
-            noValidArgument = false;
+           if(!ARGUMENT_PARSER_ARGUMENT_HAS_VALUE(argumentSetServerRootDirectory)){
+                UTIL_LOG_CONSOLE(LOG_INFO, "Invalid command. Usage: " SERVER_USAGE_ARGUMENT_SET_SERVER_ROOT_DIRECTORY);
+            }else{
+                if((error = propertyFile_createAndSetDirectoryProperty(&properties, serverRootDirectory, SERVER_PROPERTY_SERVER_ROOT_DIRECTORY_NAME, argumentSetServerRootDirectory.value, argumentSetServerRootDirectory.valueLength)) != ERROR_NO_ERROR){
+                    UTIL_LOG_CONSOLE(LOG_ERR, util_toErrorString(error));
+                }else{
+                    UTIL_LOG_CONSOLE_(LOG_INFO, "Successfully set '%s' to '%s'", SERVER_PROPERTY_SERVER_ROOT_DIRECTORY_NAME, argumentSetServerRootDirectory.value);
+                }
 
-            if((error = server_setRootDirectory(&argumentSetServerRootDirectory, &properties, &serverRootDirectory)) == ERROR_NO_ERROR){
-                UTIL_LOG_CONSOLE_(LOG_INFO, "Successfully set '%s' to '%s'.", PROPERTY_SERVER_ROOT_DIRECTORY_NAME , (char*)serverRootDirectory->buffer);
+                goto label_free;
             }
-
-            goto label_exit;
         }
 
+        // --setServerExternalPort
         if(argumentParser_contains(&parser, &argumentSetServerExternalPort)){
-            noValidArgument = false;
+	        if(!ARGUMENT_PARSER_ARGUMENT_HAS_VALUE(argumentSetServerExternalPort)){
+                UTIL_LOG_CONSOLE(LOG_INFO, "Invalid command. Usage: " PROPERTY_SERVER_EXTERNAL_PORT_NAME);
+            }else{
+                int64_t port;
+                ERROR_CODE error;
+                if((error = util_stringToInt(argumentSetServerExternalPort.value, &port)) != ERROR_NO_ERROR){
+                    UTIL_LOG_CONSOLE_(LOG_ERR, "Port value must be in range of 0-%" PRIu16 ". '%s'.", UINT16_MAX, util_toErrorString(ERROR_INVALID_VALUE));
 
-		     if((error = server_setServerExternalPort(&argumentSetServerExternalPort, &properties, &serverExternalPort)) == ERROR_NO_ERROR){
-                UTIL_LOG_CONSOLE_(LOG_INFO, "Successfully set '%s' to '%" PRIuFAST16 "'.", PROPERTY_SERVER_EXTERNAL_PORT_NAME , util_byteArrayTo_uint16(serverExternalPort->buffer));
+                    goto label_free;
+                }else{
+                    if(port <= 0 || port > UINT16_MAX){
+                        UTIL_LOG_CONSOLE_(LOG_ERR, "Port value must be in range of 0-%" PRIu16 ". '%s'.", UINT16_MAX, util_toErrorString(ERROR_INVALID_VALUE));
+
+                        goto label_free;
+                    }
+                }
+
+                if((error = propertyFile_createAndSetUINT16Property(&properties, serverExternalPort, PROPERTY_SERVER_EXTERNAL_PORT_NAME, port)) != ERROR_NO_ERROR){
+                    UTIL_LOG_CONSOLE(LOG_ERR, util_toErrorString(error));
+                }else{
+                    UTIL_LOG_CONSOLE_(LOG_INFO, "Successfully set '%s' to '%s'", PROPERTY_SERVER_EXTERNAL_PORT_NAME, argumentSetServerExternalPort.value);
+                }
+
+                goto label_free;
             }
-
-            goto label_exit;
         }
 
+        // --showSettings
         if(argumentParser_contains(&parser, &argumentShowSettings)){
-            noValidArgument = false;
-
-		    if(ARGUMENT_PARSER_ARGUMENT_HAS_VALUE(argumentShowSettings)){
+  		    if(ARGUMENT_PARSER_ARGUMENT_HAS_VALUE(argumentShowSettings)){
                 UTIL_LOG_CONSOLE(LOG_INFO, "Invalid command. Usage --showSettings.");
             }else{
                 UTIL_LOG_CONSOLE_(LOG_INFO, "ServerRootDirectory: '%s'.", PROPERTY_IS_SET(serverRootDirectory) ? (char*) serverRootDirectory->buffer : "NULL");
@@ -689,19 +710,13 @@ label_return:
         argumentParser_free(&parser);
 
         if(PROPERTY_IS_NOT_SET(serverRootDirectory)){
-            UTIL_LOG_CONSOLE_(LOG_ERR, "Error: Failed to find server settings entry for '%s'.\n\tUse --setServerRootDirectory <path> to set the http server root directory.", PROPERTY_SERVER_ROOT_DIRECTORY_NAME);
+            UTIL_LOG_CONSOLE_(LOG_ERR, "Error: Failed to find server settings entry for '%s'.\n\tUse --setServerRootDirectory <path> to set the http server root directory.", SERVER_PROPERTY_SERVER_ROOT_DIRECTORY_NAME);
 
             goto label_exit;
         }
 
         if(PROPERTY_IS_NOT_SET(serverExternalPort)){
             UTIL_LOG_CONSOLE_(LOG_ERR, "Error: Failed to find server settings entry for '%s'.\n\tUse --setServerExternalPort <port> to set the external http server port.", PROPERTY_SERVER_EXTERNAL_PORT_NAME);
-
-            goto label_exit;
-        }
-
-        if(argc > 1 && noValidArgument){
-            UTIL_LOG_CONSOLE(LOG_ERR, "ERROR: No valid argument. Use '-?', '-h', '-help', '--help' to show help info.");
 
             goto label_exit;
         }
@@ -1119,95 +1134,6 @@ inline void server_daemonize(const char* workingDirectory){
     if(sigaction(SIGTERM, &action, NULL) != 0) {
 		UTIL_LOG_WARNING("Failed to append signal handler. [SIGTERM]"); 
 	}
-}
-
-inline ERROR_CODE server_setRootDirectory(Argument* argumentSetServerRootDirectory, PropertyFile* propertyFile, Property** serverRootDirectory){
-    // Note: Make sure 'slashTerminated' is clamped to '0 - 1' so we can use it later to add/subtract depending on wether the string was slash termianted or not. (jan - 2018.10.20)
-    const bool slashTerminated = (argumentSetServerRootDirectory->value[argumentSetServerRootDirectory->valueLength - 1] == '/') & 0x01;
-
-    const uint_fast64_t serverRootDirectoryLength = argumentSetServerRootDirectory->valueLength + !slashTerminated;
-
-    char* serverRootDirectoryString;
-    if(slashTerminated){
-        serverRootDirectoryString = alloca(sizeof(*serverRootDirectoryString) * (argumentSetServerRootDirectory->valueLength + 1));
-        memmove(serverRootDirectoryString, argumentSetServerRootDirectory->value, argumentSetServerRootDirectory->valueLength);
-    }else{
-        serverRootDirectoryString = alloca(sizeof(*serverRootDirectoryString) * (serverRootDirectoryLength + 1));
-        memcpy(serverRootDirectoryString, argumentSetServerRootDirectory->value, argumentSetServerRootDirectory->valueLength);
-        serverRootDirectoryString[serverRootDirectoryLength - 1] = '/';
-        serverRootDirectoryString[serverRootDirectoryLength] = '\0';
-    }
-
-    if(ARGUMENT_PARSER_ARGUMENT_HAS_VALUE((*argumentSetServerRootDirectory))){
-        if(PROPERTY_IS_NOT_SET(*serverRootDirectory)){
-            if(propertyFile_addProperty(propertyFile, serverRootDirectory, PROPERTY_SERVER_ROOT_DIRECTORY_NAME, serverRootDirectoryLength + 1) != ERROR_NO_ERROR){
-                return ERROR_(ERROR_FAILED_TO_ADD_PROPERTY, "'%s'", PROPERTY_SERVER_ROOT_DIRECTORY_NAME);
-            }
-        }else{
-            if((*serverRootDirectory)->entry->length != serverRootDirectoryLength + 1){
-                if(propertyFile_removeProperty(*serverRootDirectory) != ERROR_NO_ERROR){
-                    return ERROR_(ERROR_FAILED_TO_REMOVE_PROPERTY, "'%s'", PROPERTY_SERVER_ROOT_DIRECTORY_NAME);
-                }
-
-                if(propertyFile_addProperty(propertyFile, serverRootDirectory, PROPERTY_SERVER_ROOT_DIRECTORY_NAME, serverRootDirectoryLength + 1) != ERROR_NO_ERROR){
-                    return ERROR_(ERROR_FAILED_TO_ADD_PROPERTY, "'%s'", PROPERTY_SERVER_ROOT_DIRECTORY_NAME);
-                }
-            }
-        }
-
-        if(propertyFile_setBuffer(*serverRootDirectory, (int8_t*) serverRootDirectoryString) != ERROR_NO_ERROR){
-            return ERROR_(ERROR_FAILED_TO_UPDATE_PROPERTY, "'%s'", PROPERTY_SERVER_ROOT_DIRECTORY_NAME);
-        }
-    }else{
-        UTIL_LOG_CONSOLE(LOG_INFO, "Invalid command. Usage --setServerRootDirectory <path>.");
-
-        return ERROR(ERROR_INVALID_COMMAND_USAGE);
-    }
-
-    return ERROR(ERROR_NO_ERROR);
-}
-
-inline ERROR_CODE server_setServerExternalPort(Argument* argumentSetServerExternalPort, PropertyFile* propertyFile, Property** serverExternalPort){
-    if(ARGUMENT_PARSER_ARGUMENT_HAS_VALUE((*argumentSetServerExternalPort))){
-        if(PROPERTY_IS_NOT_SET(*serverExternalPort)){
-            if(propertyFile_addProperty(propertyFile, serverExternalPort, PROPERTY_SERVER_EXTERNAL_PORT_NAME, sizeof(uint16_t)) != ERROR_NO_ERROR){
-                return ERROR_(ERROR_FAILED_TO_ADD_PROPERTY, "'%s'", PROPERTY_SERVER_EXTERNAL_PORT_NAME);
-            }
-        }else{
-            if((*serverExternalPort)->entry->length != sizeof(uint16_t)){
-                if(propertyFile_removeProperty(*serverExternalPort) != ERROR_NO_ERROR){
-                    return ERROR_(ERROR_FAILED_TO_REMOVE_PROPERTY, "'%s'", PROPERTY_SERVER_EXTERNAL_PORT_NAME);
-                }
-
-                if(propertyFile_addProperty(propertyFile, serverExternalPort, PROPERTY_SERVER_EXTERNAL_PORT_NAME, sizeof(uint16_t)) != ERROR_NO_ERROR){
-                    return ERROR_(ERROR_FAILED_TO_ADD_PROPERTY, "'%s'", PROPERTY_SERVER_EXTERNAL_PORT_NAME);
-                }
-            }
-        }
-
-        int64_t port;
-        ERROR_CODE error;
-        if((error = util_stringToInt(argumentSetServerExternalPort->value, &port)) != ERROR_NO_ERROR){
-            return ERROR(error);
-        }else{
-            if(port <= 0 || port > UINT16_MAX){
-                return ERROR_(ERROR_INVALID_VALUE, "Port value must be in range of 0-%" PRIu16 ".", UINT16_MAX);
-            }
-        }
-
-        int8_t* buffer = alloca(sizeof(uint16_t));
-        util_uint16ToByteArray(buffer, port);
-
-        if(propertyFile_setBuffer(*serverExternalPort, buffer) != ERROR_NO_ERROR){
-            return ERROR_(ERROR_FAILED_TO_UPDATE_PROPERTY, "'%s'", PROPERTY_SERVER_EXTERNAL_PORT_NAME);
-        }
-    }else{
-        UTIL_LOG_CONSOLE(LOG_INFO, "Invalid command. Usage --setServerExternalPort <port>.");
-
-        return ERROR(ERROR_INVALID_COMMAND_USAGE);
-    }
-
-   return ERROR(ERROR_NO_ERROR);
 }
 
 #undef SERVER_WEB_DIRECTORY
