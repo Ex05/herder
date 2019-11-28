@@ -143,7 +143,9 @@ local ERROR_CODE consoleClient_printShowInfo(Property*, Property*, const char*, 
             if(CONSOLE_CLIENT_REMOTE_HOST_PROPERTIES_SET()){
                 ERROR_CODE error;
                 if((error = herder_addShow(remoteHost, remotePort, argumentAddShow.value, argumentAddShow.valueLength)) != ERROR_NO_ERROR){
-                    UTIL_LOG_CONSOLE_(LOG_ERR, "Failed to add show. '%s'", util_toErrorString(error));
+                    UTIL_LOG_CONSOLE_(LOG_ERR, "Failed to add show '%s' to the library. '%s'", argumentAddShow.value,  util_toErrorString(error));
+                }else{
+                    UTIL_LOG_CONSOLE_(LOG_INFO, "Successfully added show '%s' to the library.", argumentAddShow.value);
                 }
             }else{
                 UTIL_LOG_CONSOLE(LOG_ERR, util_toErrorString(ERROR_PROPERTY_NOT_SET));
@@ -162,6 +164,8 @@ local ERROR_CODE consoleClient_printShowInfo(Property*, Property*, const char*, 
                  ERROR_CODE error;
                 if((error = herder_removeShow(remoteHost, remotePort, argumentRemoveShow.value, argumentRemoveShow.valueLength)) != ERROR_NO_ERROR){
                     UTIL_LOG_CONSOLE_(LOG_ERR, "Failed to remove show. '%s'", util_toErrorString(error));
+                }else{
+                    UTIL_LOG_CONSOLE_(LOG_INFO, "Successfully removed show '%s' from the library.", argumentRemoveShow.value);
                 }
             }else{
                 UTIL_LOG_CONSOLE(LOG_ERR, util_toErrorString(ERROR_PROPERTY_NOT_SET));
@@ -420,7 +424,7 @@ label_freeProperties:
         free(remoteHost);
     }
 
-     if(PROPERTY_IS_SET(importDirectory)){
+    if(PROPERTY_IS_SET(importDirectory)){
         propertyFile_freeProperty(importDirectory);
 
         free(importDirectory);

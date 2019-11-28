@@ -605,6 +605,8 @@ inline ERROR_CODE mediaLibrary_removeShow(MediaLibrary* library, const char* nam
     }
 
     linkedList_remove(&library->shows, show);
+
+    const bool isShowEmpty = LINKED_LIST_IS_EMPTY(&show->seasons);
     
     LinkedListIterator seasonIterator;
     linkedList_initIterator(&seasonIterator, &show->seasons);
@@ -614,7 +616,7 @@ inline ERROR_CODE mediaLibrary_removeShow(MediaLibrary* library, const char* nam
 
         LinkedListIterator episodeIterator;
         linkedList_initIterator(&episodeIterator, &season->episodes);
-
+ 
         while(LINKED_LIST_ITERATOR_HAS_NEXT(&episodeIterator)){
             Episode* episode = LINKED_LIST_ITERATOR_NEXT(&episodeIterator);
 
@@ -628,11 +630,11 @@ inline ERROR_CODE mediaLibrary_removeShow(MediaLibrary* library, const char* nam
         free(season);
     }
 
-    if((error = medialibrary_removeShowFrromLibraryFile(library, name)) != ERROR_NO_ERROR){
-        goto label_freeShow;
+    if(!isShowEmpty){
+        if((error = medialibrary_removeShowFrromLibraryFile(library, name)) != ERROR_NO_ERROR){
+           goto label_freeShow;
+        }
     }
-
-    UTIL_LOG_DEBUG_("Removed Show:'%s'.", show->name);
 
 label_freeShow:
     mediaLibrary_freeShow(show);

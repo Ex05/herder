@@ -30,6 +30,8 @@
 
 #define SERVER_USAGE_ARGUMENT_HELP "-?, -h, --help"
 #define SERVER_USAGE_ARGUMENT_SET_SERVER_ROOT_DIRECTORY "--setServerRootDirectory <path>"
+#define SERVER_USAGE_ARGUMENT_SET_SERVER_EXTERNAL_PORT "--setServerExternalPort <port>"
+#define SERVER_USAGE_ARGUMENT_SHOW_SETTINGS "--showSettings <path>"
 
 #define PROPERTY_FILE_NAME "server_settings"
 #define SERVER_PROPERTY_SERVER_ROOT_DIRECTORY_NAME "serverRootDirectory"
@@ -592,16 +594,13 @@ label_return:
         ARGUMENT_PARSER_ADD_ARGUMENT(SetServerExternalPort, 1, "--setServerExternalPort");
         ARGUMENT_PARSER_ADD_ARGUMENT(ShowSettings, 1, "--showSettings");
 
+        __UTIL_SUPPRESS_NEXT_ERROR_OF_TYPE__(ERROR_NO_VALID_ARGUMENT);
         if((error = argumentParser_parse(&parser, argc, argv)) != ERROR_NO_ERROR){
-            if(error == ERROR_NO_VALID_ARGUMENT){
-                UTIL_LOG_CONSOLE(LOG_ERR, "No valid command line arguments.\nUse '" SERVER_USAGE_ARGUMENT_HELP "' to display a help message.");
-            }else{
-                if(error == ERROR_DUPLICATE_ENTRY){
-                    UTIL_LOG_CONSOLE(LOG_ERR, "Duplicate argument.");
-                }
-            }
+            if(error == ERROR_DUPLICATE_ENTRY){
+                UTIL_LOG_CONSOLE(LOG_ERR, "Duplicate argument.");
 
-		    goto label_exit;
+                goto label_exit;
+            }
         }
 
         const char* userHome = util_getHomeDirectory();
@@ -641,11 +640,11 @@ label_return:
         if(argumentParser_contains(&parser, &argumentHelp)){
             UTIL_LOG_CONSOLE(LOG_INFO, "Usage: herder --[command]/-[alias] <arguments>.\n");
 
-            UTIL_LOG_CONSOLE_(LOG_INFO, "\t%s\t%s", "--setServerRootDirectory <path>", "Sets the 'server root directory' to the given path.");
-            UTIL_LOG_CONSOLE_(LOG_INFO, "\t%s\t%s", "--setServerExternalPort <port>", "Sets the external port to the given port.");
-            UTIL_LOG_CONSOLE_(LOG_INFO, "\t%s\t\t\t%s", "--showSettings", "Shows a quick overview of all the user settings.");
+            UTIL_LOG_CONSOLE_(LOG_INFO, "\t%s\t%s", SERVER_USAGE_ARGUMENT_SET_SERVER_ROOT_DIRECTORY,  "Sets the 'server root directory' to the given path.");
+            UTIL_LOG_CONSOLE_(LOG_INFO, "\t%s\t%s", SERVER_USAGE_ARGUMENT_SET_SERVER_EXTERNAL_PORT, "Sets the external port to the given port.");
+            UTIL_LOG_CONSOLE_(LOG_INFO, "\t%s\t\t\t%s", SERVER_USAGE_ARGUMENT_SHOW_SETTINGS, "Shows a quick overview of all the user settings.");
 
-            UTIL_LOG_CONSOLE_(LOG_INFO, "\t%s\t\t%s", "-?, -h, -help, --help", "Displays this help.");
+            UTIL_LOG_CONSOLE_(LOG_INFO, "\t%s\t\t%s", SERVER_USAGE_ARGUMENT_HELP, "Displays this help.");
 
             goto label_exit;
         }
@@ -777,12 +776,25 @@ label_return:
 			    UTIL_LOG_ERROR_("Failed to unlock lock file [%d] (%s)", errno, strerror(errno));
 		    }
 		}
+
 	label_free:
 		close(lockFile);
 
         util_deleteFile(serverDaemonLockFileName);
 
         propertyFile_free(&properties);
+
+        if(PROPERTY_IS_SET(serverRootDirectory)){
+            propertyFile_freeProperty(serverRootDirectory);
+
+            free(serverRootDirectory);
+        }
+
+        if(PROPERTY_IS_SET(serverExternalPort)){
+            propertyFile_freeProperty(serverExternalPort);
+
+            free(serverExternalPort);
+        }
 
 		closelog();
 
