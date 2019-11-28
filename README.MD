@@ -1,4 +1,4 @@
-# Herder v0.1.2-indev
+# Herder v0.1.3-indev
 A media organization tool. Designed to easily store and archive digitalised copies of your favourite shows.
 
 This project was started as an exercice to study the ins and outs of the C programming language, with an emphasis on multi threading, networking, advanced usage of macros and low level memory management. With the side goal of learning how to publish and maintain packages for different Linux distribution and try out different git branching models.
