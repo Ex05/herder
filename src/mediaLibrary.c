@@ -1203,9 +1203,24 @@ inline ERROR_CODE mediaLibrary_initEpisodeInfo(EpisodeInfo* info){
     return ERROR(ERROR_NO_ERROR);
 }
 
+inline ERROR_CODE mediaLibrary_initEpisodeInfo_(EpisodeInfo* info, char* filePath, const uint_fast64_t filePathLength){
+    memset(info, 0, sizeof(*info));
+
+    info->name = malloc(sizeof(*info->name) * (filePathLength + 1));
+    if(info->name == NULL){
+        return ERROR(ERROR_OUT_OF_MEMORY);
+    }
+    strncpy(info->name, filePath, filePathLength + 1);
+
+    info->pathLength = filePathLength;
+
+    return ERROR(ERROR_NO_ERROR);
+}
+
 inline void mediaLibrary_freeEpisodeInfo(EpisodeInfo* info){
     free(info->showName);
     free(info->name);
+    free(info->path);
     // free(info->fileExtension);
 }
 

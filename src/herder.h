@@ -29,12 +29,14 @@ ERROR_CODE herder_pullShowList(LinkedList*, const char*, const uint_fast16_t);
 
 ERROR_CODE herder_addShow(Property*, Property*, const char*, const uint_fast64_t);
 
-ERROR_CODE herder_extractShowInfo(Property*, Property*, EpisodeInfo**, const char*, const uint_fast64_t);
+ERROR_CODE herder_extractShowInfo(Property*, Property*, EpisodeInfo*);
 
-ERROR_CODE herder_addEpisode(Property*, Property*, Property*, const char*, const uint_fast64_t);
+ERROR_CODE herder_addEpisode(Property*, Property*, Property*, char*, const uint_fast64_t);
 
 ERROR_CODE herder_walkDirectory(LinkedList*, const char*);
 
 ERROR_CODE herder_pullShowInfo(Property*, Property*, Show*);
+
+ERROR_CODE herder_add(Property*, Property*, Property*, EpisodeInfo*);
 
 #endif

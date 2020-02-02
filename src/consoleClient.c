@@ -183,12 +183,14 @@ local ERROR_CODE consoleClient_printShowInfo(Property*, Property*, const char*, 
             if(CONSOLE_CLIENT_REMOTE_HOST_PROPERTIES_SET() && (propertyFile_propertySet(libraryDirectory, CONSOLE_CLIENT_PROPERTY_LIBRARY_DIRECTORY_NAME) == ERROR_NO_ERROR)){
                 if(!util_fileExists(argumentAdd.value) || util_isDirectory(argumentAdd.value)){
                     UTIL_LOG_CONSOLE_(LOG_INFO, "ERROR: '%s' is not a falid file.", argumentAdd.value);
-                }else{
-                    if((error = herder_addEpisode(remoteHost, remotePort, libraryDirectory, argumentAdd.value, argumentAdd.valueLength)) != ERROR_NO_ERROR){
-                           UTIL_LOG_CONSOLE_(LOG_ERR, "Failed to add '%s' to library. [%s]", argumentAdd.value,  util_toErrorString(error));
-                    }else{
-                        UTIL_LOG_CONSOLE_(LOG_INFO, "Successfully added '%s' to the library.", argumentAdd.value);
-                    }
+                }else{             
+
+
+                    // if((error = herder_addEpisode(remoteHost, remotePort, libraryDirectory, argumentAdd.value, argumentAdd.valueLength)) != ERROR_NO_ERROR){
+                    //        UTIL_LOG_CONSOLE_(LOG_ERR, "Failed to add '%s' to library. [%s]", argumentAdd.value,  util_toErrorString(error));
+                    // }else{
+                    //     UTIL_LOG_CONSOLE_(LOG_INFO, "Successfully added '%s' to the library.", argumentAdd.value);
+                    // }
                 }
             }else{
                 UTIL_LOG_CONSOLE(LOG_ERR, util_toErrorString(ERROR_PROPERTY_NOT_SET));
@@ -531,7 +533,7 @@ ERROR_CODE consoleClient_import(Property* remoteHost, Property* remotePort, Prop
         free(entry);
     }
 
-    // TODO: Only delete directories inside import the import directory. (jan - 2019.05.28)
+    // TODO: Only delete directories inside the import directory. (jan - 2019.05.28)
     if((error = util_deleteDirectory(directory, true, true)) != ERROR_NO_ERROR){
         goto label_freeFiles;
     }
@@ -624,6 +626,122 @@ inline ERROR_CODE consoleClient_printShowInfo(Property* remoteHost, Property* re
 
 label_freeShow:
     mediaLibrary_freeShow(&show);
+
+label_return:
+    return ERROR(error);
+}
+
+ERROR_CODE consoleClient_extractShowInfo(Property* remoteHost, Property* remotePort, EpisodeInfo* episodeInfo){
+    ERROR_CODE error;
+
+    if((error = herder_extractShowInfo(remoteHost, remotePort, episodeInfo)) != ERROR_NO_ERROR){
+        if(error != ERROR_INCOMPLETE){
+            goto label_return;
+        }
+    }
+
+    // Display extracted episode info.
+    UTIL_LOG_CONSOLE(LOG_INFO, "Are these values correct? Yes/No.");
+    UTIL_LOG_CONSOLE_(LOG_INFO, "\tShow:'%s'.",episodeInfo->showName);
+    UTIL_LOG_CONSOLE_(LOG_INFO, "\tSeason:'%" PRIdFAST16 "'.", episodeInfo->season);
+    UTIL_LOG_CONSOLE_(LOG_INFO, "\tEpisode:'%" PRIdFAST16 "'.", episodeInfo->episode);
+    UTIL_LOG_CONSOLE_(LOG_INFO, "\t\t'%s'.", episodeInfo->name);
+
+    int_fast64_t userInputLength;
+    char* userInput;
+label_readUserInput:
+    if((error = util_readUserInput(&userInput, &userInputLength)) != ERROR_NO_ERROR){
+        goto label_freeUserInput;
+    }
+
+    util_toLowerChase(userInput);
+
+    if(userInputLength != 0 && strncmp("no", userInput, userInputLength) == 0){
+        // Show name.
+        UTIL_LOG_CONSOLE_(LOG_INFO, "Show name:'%s'. Press <Enter> to accept.", episodeInfo->showName);
+
+        char* showName;
+        if((error = util_readUserInput(&showName, &userInputLength)) != ERROR_NO_ERROR){
+            goto label_freeUserInput;
+        }
+
+        if(userInputLength != 0){
+            free(episodeInfo->showName);
+
+            episodeInfo->showName = showName;
+            episodeInfo->showNameLength = userInputLength;
+        }else{
+            free(showName);
+        }
+
+    label_seasonNumber:
+        // Season number.
+        UTIL_LOG_CONSOLE_(LOG_INFO, "Season:'%" PRIiFAST16 "'. Press <Enter> to accept.", episodeInfo->season);
+
+        char* season;
+        if((error = util_readUserInput(&season, &userInputLength)) != ERROR_NO_ERROR){
+            goto label_freeUserInput;
+        }
+
+        if(userInputLength != 0){
+            if((error = util_stringToInt(season, &episodeInfo->season)) != ERROR_NO_ERROR){
+                UTIL_LOG_CONSOLE_(LOG_ERR, "%s.", util_toErrorString(error));
+
+                free(season);
+
+                goto label_seasonNumber;
+            }
+        }
+
+        free(season);
+
+    label_episodeNumber:
+        // Episode number.
+        UTIL_LOG_CONSOLE_(LOG_INFO, "Episode:'%" PRIiFAST16 "'. Press <Enter> to accept.", episodeInfo->episode);
+
+        char* episode;
+        if((error = util_readUserInput(&episode, &userInputLength)) != ERROR_NO_ERROR){
+            goto label_freeUserInput;
+        }
+
+        if(userInputLength != 0){
+            if((error = util_stringToInt(episode, &episodeInfo->episode)) != ERROR_NO_ERROR){
+                UTIL_LOG_CONSOLE_(LOG_ERR, "%s.", util_toErrorString(error));
+
+                free(episode);
+
+                goto label_episodeNumber;
+            }
+        }
+
+        free(episode);
+
+        // Episode name.
+        UTIL_LOG_CONSOLE_(LOG_INFO, "Episode name:'%s'. Press <Enter> to accept.", episodeInfo->name);
+
+        char* episodeName;
+        if((error = util_readUserInput(&episodeName, &userInputLength)) != ERROR_NO_ERROR){
+            goto label_freeUserInput;
+        }
+
+        if(userInputLength != 0){
+            free(episodeInfo->name);
+
+            episodeInfo->name = episodeName;
+            episodeInfo->nameLength = userInputLength;
+        }
+    }else{
+        if(userInputLength != 0 || strncmp("yes", userInput, userInputLength) != 0){
+            UTIL_LOG_CONSOLE_(LOG_INFO, "'%s' is not a valid answer, please type Yes/No.", userInput);
+
+            free(userInput);
+
+            goto label_readUserInput;
+        }
+    }
+
+label_freeUserInput:
+    free(userInput);
 
 label_return:
     return ERROR(error);
