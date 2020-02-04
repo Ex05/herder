@@ -1183,6 +1183,7 @@ inline ERROR_CODE medialibrary_initEpisode(Episode* episode, const uint_fast16_t
 
         goto label_return;
     }
+    
     strncpy(episode->name, name, nameLength + 1);
 
     episode->fileExtension = malloc(sizeof(*episode->fileExtension) * (fileExtensionLength + 1));
@@ -1191,6 +1192,7 @@ inline ERROR_CODE medialibrary_initEpisode(Episode* episode, const uint_fast16_t
 
         goto label_return;
     }
+
     strncpy(episode->fileExtension, fileExtension, fileExtensionLength + 1);
 
 label_return:
@@ -1203,10 +1205,25 @@ inline ERROR_CODE mediaLibrary_initEpisodeInfo(EpisodeInfo* info){
     return ERROR(ERROR_NO_ERROR);
 }
 
+inline ERROR_CODE mediaLibrary_initEpisodeInfo_(EpisodeInfo* info, char* filePath, const uint_fast64_t filePathLength){
+    mediaLibrary_initEpisodeInfo(info);
+
+    info->name = malloc(sizeof(*info->name) * (filePathLength + 1));
+    if(info->name == NULL){
+        return ERROR(ERROR_OUT_OF_MEMORY);
+    }
+
+    strncpy(info->name, filePath, filePathLength + 1);
+
+    info->pathLength = filePathLength;
+
+    return ERROR(ERROR_NO_ERROR);
+}
+
 inline void mediaLibrary_freeEpisodeInfo(EpisodeInfo* info){
     free(info->showName);
     free(info->name);
-    // free(info->fileExtension);
+    free(info->path);
 }
 
 inline ERROR_CODE mediaLibrary_readStringFromLibraryFile(FILE* file, char** s, uint_fast64_t length){

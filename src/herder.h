@@ -14,13 +14,6 @@
      \
     util_replaceAllChars(*path + (*stringLength - ((episodeInfo)->showNameLength + (2 * UTIL_UINT16_STRING_LENGTH) + (episodeInfo)->nameLength + 4)), ' ', '_')
 
-typedef struct{
-    char* path;
-    char* fileName;
-    uint64_t pathLength;
-    uint64_t fileNameLength;
-}DirectoryEntry;
-
 ERROR_CODE herder_removeShow(Property*, Property*, const char*, const uint_fast64_t);
 
 ERROR_CODE herder_renameEpisode(Property*, Property*);
@@ -29,12 +22,12 @@ ERROR_CODE herder_pullShowList(LinkedList*, const char*, const uint_fast16_t);
 
 ERROR_CODE herder_addShow(Property*, Property*, const char*, const uint_fast64_t);
 
-ERROR_CODE herder_extractShowInfo(Property*, Property*, EpisodeInfo**, const char*, const uint_fast64_t);
+ERROR_CODE herder_extractShowInfo(Property*, Property*, EpisodeInfo*);
 
-ERROR_CODE herder_addEpisode(Property*, Property*, Property*, const char*, const uint_fast64_t);
-
-ERROR_CODE herder_walkDirectory(LinkedList*, const char*);
+ERROR_CODE herder_addEpisode(Property*, Property*, Property*, EpisodeInfo*);
 
 ERROR_CODE herder_pullShowInfo(Property*, Property*, Show*);
+
+ERROR_CODE herder_add(Property*, Property*, Property*, EpisodeInfo*);
 
 #endif

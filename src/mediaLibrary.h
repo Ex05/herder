@@ -40,8 +40,12 @@ typedef struct{
     char* showName;
     char* name;
     char* fileExtension;
+    char* path;
+    char* fileName;
+    uint_fast64_t pathLength;
     uint_fast64_t showNameLength;
     uint_fast64_t nameLength;
+    uint_fast64_t fileNameLength;
     uint_fast16_t fileExtensionLength;
     int_fast16_t season;
     int_fast16_t episode;
@@ -76,6 +80,8 @@ ERROR_CODE mediaLibrary_getEpisode(Season*, Episode**, const uint_fast16_t);
 ERROR_CODE mediaLibrary_extractEpisodeInfo(EpisodeInfo*, LinkedList*, char*, const uint_fast64_t);
 
 ERROR_CODE mediaLibrary_initEpisodeInfo(EpisodeInfo*);
+
+ERROR_CODE mediaLibrary_initEpisodeInfo_(EpisodeInfo*, char*, const uint_fast64_t);
 
 ERROR_CODE mediaLibrary_extractPrefixedNumber(char*, uint_fast64_t, int_fast16_t*, const char);
 

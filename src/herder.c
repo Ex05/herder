@@ -225,17 +225,8 @@ label_unMap:
     return ERROR(error);
 }
 
-ERROR_CODE herder_addEpisode(Property* remoteHost, Property* remotePort, Property* libraryDirectory,  const char* filePath, const uint_fast64_t filePathLength){
+ERROR_CODE herder_addEpisode(Property* remoteHost, Property* remotePort, Property* libraryDirectory, EpisodeInfo* episodeInfo){
     ERROR_CODE error = ERROR_NO_ERROR;
-
-    EpisodeInfo* episodeInfo = alloca(sizeof(*episodeInfo));
-    if((error = mediaLibrary_initEpisodeInfo(episodeInfo)) != ERROR_NO_ERROR){
-        goto label_freeEpisodeInfo;
-    }
-    
-    if((error = herder_extractShowInfo(remoteHost, remotePort, &episodeInfo, filePath, filePathLength)) != ERROR_NO_ERROR){
-        goto label_freeEpisodeInfo;
-    }
 
     char* host = (char*) remoteHost->buffer;
     uint_fast16_t port = util_byteArrayTo_uint64(remotePort->buffer);
@@ -309,15 +300,11 @@ ERROR_CODE herder_addEpisode(Property* remoteHost, Property* remotePort, Propert
         goto label_freeRequest;
     }
 
-    const uint_fast64_t fileExtensionOffset = util_findLast(filePath, filePathLength, '.');
-    const uint_fast64_t fileExtensionLength = filePathLength - fileExtensionOffset;
-    const char* fileExtension = filePath + (filePathLength - fileExtensionLength);
-
     char* path;
     uint_fast64_t pathLength;
     HERDER_CONSTRUCT_FILE_PATH(&path, &pathLength, episodeInfo);
 
-    const uint_fast64_t fileDstLength = (libraryDirectory->entry->length - 1) + pathLength + fileExtensionLength;
+    const uint_fast64_t fileDstLength = (libraryDirectory->entry->length - 1) + pathLength + episodeInfo->fileExtensionLength + 1;
 
     char* fileDst = alloca(sizeof(*fileDst) * (fileDstLength + 1));
     uint_fast64_t writeOffset = 0;
@@ -328,19 +315,22 @@ ERROR_CODE herder_addEpisode(Property* remoteHost, Property* remotePort, Propert
     strncpy(fileDst + writeOffset, path, pathLength);
     writeOffset += pathLength;
 
-    strncpy(fileDst + writeOffset, fileExtension, fileExtensionLength);
-    writeOffset += fileExtensionLength;
+    fileDst[writeOffset] = '.';
+    writeOffset++;
+
+    strncpy(fileDst + writeOffset, episodeInfo->fileExtension, episodeInfo->fileExtensionLength);
+    writeOffset += episodeInfo->fileExtensionLength;
     fileDst[writeOffset] = '\0';
 
     if((error = util_createAllDirectories(fileDst, fileDstLength)) != ERROR_NO_ERROR){
         goto label_freeRequest;
     }
 
-    if((error = util_fileCopy(filePath, fileDst)) != ERROR_NO_ERROR){
+    if((error = util_fileCopy(episodeInfo->path, fileDst)) != ERROR_NO_ERROR){
         goto label_freeRequest;
     }
 
-    if(util_deleteFile(filePath) != ERROR_NO_ERROR){
+    if(util_deleteFile(episodeInfo->path) != ERROR_NO_ERROR){
         goto label_freeRequest;
     }
 
@@ -356,23 +346,17 @@ label_unMap:
     if(util_unMap(httpProcessingBuffer, HTTP_PROCESSING_BUFFER_SIZE) != ERROR_NO_ERROR){
         UTIL_LOG_ERROR(util_toErrorString(ERROR_FAILED_TO_UNMAP_MEMORY));
     }
-    
-label_freeEpisodeInfo:
-    mediaLibrary_freeEpisodeInfo(episodeInfo);
 
     return ERROR(error);
 }
 
-ERROR_CODE herder_extractShowInfo(Property* remoteHost, Property* remotePort, EpisodeInfo** episodeInfo, const char* filePath, const uint_fast64_t filePathLength){
-    ERROR_CODE error = ERROR_NO_ERROR;
+ERROR_CODE herder_extractShowInfo(Property* remoteHost, Property* remotePort, EpisodeInfo* episodeInfo){
+    ERROR_CODE error;
 
     char* host = (char*) remoteHost->buffer;
     uint_fast16_t port = util_byteArrayTo_uint64(remotePort->buffer);
 
     void* httpProcessingBuffer;
-    char* showName = NULL;
-    uint_fast64_t showNameLength = 0;
-label_extractShowInfo:
     if((error = util_blockAlloc(&httpProcessingBuffer, HTTP_PROCESSING_BUFFER_SIZE)) != ERROR_NO_ERROR){
         goto label_unMap;
     }
@@ -382,18 +366,22 @@ label_extractShowInfo:
         goto label_unMap;
     }
 
-    const uint_fast64_t fileNameOffset = util_findLast(filePath, filePathLength, '/') + 1;
+    const uint_fast64_t fileNameOffset = util_findLast(episodeInfo->path, episodeInfo->pathLength, '/') + 1;
 
-    const char* fileName = filePath + fileNameOffset;
-    const uint_fast64_t fileNameLength = filePathLength - fileNameOffset;
+    const char* fileName = episodeInfo->path + fileNameOffset;
+    const uint_fast64_t fileNameLength = episodeInfo->pathLength - fileNameOffset;
 
     const char url[] = "/extractShowInfo";
 
-    if((error = util_getFileExtension(&((*episodeInfo)->fileExtension), filePath, filePathLength)) != ERROR_NO_ERROR){
+    if((error = util_getFileExtension(&episodeInfo->fileExtension, &episodeInfo->fileExtensionLength, episodeInfo->path, episodeInfo->pathLength)) != ERROR_NO_ERROR){
+        if(error == ERROR_INVALID_STRING){
+            error = ERROR_INVALID_FILE_EXTENSION;
+        }
+
         goto label_unMap;
     }
 
-    (*episodeInfo)->fileExtensionLength = strlen((*episodeInfo)->fileExtension);
+    episodeInfo->fileExtensionLength = strlen(episodeInfo->fileExtension);
 
     HTTP_Request request;
     if((error = http_initRequest(&request, url, strlen(url), httpProcessingBuffer, HTTP_PROCESSING_BUFFER_SIZE, HTTP_VERSION_1_1, REQUEST_TYPE_POST)) != ERROR_NO_ERROR){
@@ -425,43 +413,43 @@ label_extractShowInfo:
         if(returnCode != ERROR_NO_ERROR && returnCode != ERROR_INCOMPLETE){
             error = returnCode;
         }else{
-            (*episodeInfo)->showNameLength = util_byteArrayTo_uint64(response.data + readOffset);
+            episodeInfo->showNameLength = util_byteArrayTo_uint64(response.data + readOffset);
             readOffset += sizeof(uint64_t);
 
-            if((*episodeInfo)->showNameLength != 0){
-                 (*episodeInfo)->showName = malloc(sizeof(*(*episodeInfo)->showName) * ((*episodeInfo)->showNameLength) + 1);
-                if((*episodeInfo)->showName == NULL){
-                    return  ERROR(ERROR_OUT_OF_MEMORY);
+            if(episodeInfo->showNameLength != 0){
+                 episodeInfo->showName = malloc(sizeof(*episodeInfo->showName) * (episodeInfo->showNameLength) + 1);
+                if(episodeInfo->showName == NULL){
+                    return ERROR(ERROR_OUT_OF_MEMORY);
                 }
 
-                strncpy((*episodeInfo)->showName, (char*) (response.data + readOffset), (*episodeInfo)->showNameLength);
-                (*episodeInfo)->showName[(*episodeInfo)->showNameLength] = '\0';
+                strncpy(episodeInfo->showName, (char*) (response.data + readOffset), episodeInfo->showNameLength);
+                episodeInfo->showName[episodeInfo->showNameLength] = '\0';
 
-                readOffset += (*episodeInfo)->showNameLength;
+                readOffset += episodeInfo->showNameLength;
             }else{
-                (*episodeInfo)->showName = NULL;
+                episodeInfo->showName = NULL;
             }            
 
-            (*episodeInfo)->nameLength = util_byteArrayTo_uint64(response.data + readOffset);
+            episodeInfo->nameLength = util_byteArrayTo_uint64(response.data + readOffset);
             readOffset += sizeof(uint64_t);
 
-            if((*episodeInfo)->nameLength != 0){
-                (*episodeInfo)->name = malloc(sizeof(*(*episodeInfo)->name) * ((*episodeInfo)->nameLength + 1));
+            if(episodeInfo->nameLength != 0){
+                episodeInfo->name = malloc(sizeof(*episodeInfo->name) * (episodeInfo->nameLength + 1));
 
-                 if((*episodeInfo)->name == NULL){
-                    return  ERROR(ERROR_OUT_OF_MEMORY);
+                 if(episodeInfo->name == NULL){
+                    return ERROR(ERROR_OUT_OF_MEMORY);
                 }
 
-                strncpy((*episodeInfo)->name, (char*) (response.data + readOffset), (*episodeInfo)->nameLength);
-                readOffset += (*episodeInfo)->nameLength;
+                strncpy(episodeInfo->name, (char*) (response.data + readOffset), episodeInfo->nameLength);
+                readOffset += episodeInfo->nameLength;
             }else{
-                (*episodeInfo)->name = NULL;
+                episodeInfo->name = NULL;
             }
 
-            (*episodeInfo)->season = util_byteArrayTo_uint16(response.data + readOffset);
+            episodeInfo->season = util_byteArrayTo_uint16(response.data + readOffset);
             readOffset += sizeof(uint16_t);
 
-            (*episodeInfo)->episode = util_byteArrayTo_uint16(response.data + readOffset);
+            episodeInfo->episode = util_byteArrayTo_uint16(response.data + readOffset);
             readOffset += sizeof(uint16_t);
         }
     }else{
@@ -470,189 +458,6 @@ label_extractShowInfo:
         UTIL_LOG_CONSOLE_(LOG_ERR, "Server_status:'%s'.", http_getStatusMsg(response.statusCode));
     }
 
-    if(showName != NULL && showNameLength != 0){
-        free((*episodeInfo)->showName);
-
-        (*episodeInfo)->showName = showName;
-        (*episodeInfo)->showNameLength = showNameLength;
-    }
-
-    // TODO: Extract this to its own function . (jan - 2018.12.07)
-    if((*episodeInfo)->showName == NULL){
-        UTIL_LOG_CONSOLE_(LOG_INFO, "Failed to extract show name from file: '%s'.", fileName);
-
-        UTIL_LOG_CONSOLE(LOG_INFO, "Please enter the show name...");
-
-        int_fast64_t userInputLength;
-        if((error = util_readUserInput(&showName, &userInputLength)) != ERROR_NO_ERROR){
-            goto label_freeRequest;
-        }
-
-        showNameLength = userInputLength;
-
-        if((error = herder_addShow(remoteHost, remotePort, showName, userInputLength)) != ERROR_NO_ERROR){
-            goto label_freeRequest;
-        }
-        
-        http_freeHTTP_Request(&request);
-        http_freeHTTP_Response(&response);
-
-        if(util_unMap(httpProcessingBuffer, HTTP_PROCESSING_BUFFER_SIZE) != ERROR_NO_ERROR){
-            UTIL_LOG_ERROR(util_toErrorString(ERROR_FAILED_TO_UNMAP_MEMORY));
-        }
-
-        mediaLibrary_freeEpisodeInfo(*episodeInfo);
-
-        goto label_extractShowInfo;
-    }
-
-    if((*episodeInfo)->season == 0){
-        UTIL_LOG_CONSOLE_(LOG_INFO, "Failed to extract season number from file: '%s'.", fileName);
-
-        UTIL_LOG_CONSOLE(LOG_INFO, "Please enter the season number...");
-
-        char* seasonNumber;
-        int_fast64_t userInputLength;
-        if((error = util_readUserInput(&seasonNumber, &userInputLength)) != ERROR_NO_ERROR){
-            goto label_freeRequest;
-        }
-
-        if((error = util_stringToInt(seasonNumber, &(*episodeInfo)->season)) != ERROR_NO_ERROR){
-            goto label_freeRequest;
-        }
-    }
-
-    if((*episodeInfo)->episode == 0){
-        UTIL_LOG_CONSOLE_(LOG_INFO, "Failed to extract episode number from file: '%s'.", fileName);
-
-        UTIL_LOG_CONSOLE(LOG_INFO, "Please enter the episode number...");
-
-        char* eoisodeNumber;
-        int_fast64_t userInputLength;
-        if((error = util_readUserInput(&eoisodeNumber, &userInputLength)) != ERROR_NO_ERROR){
-            goto label_freeRequest;
-        }
-
-
-        if((error = util_stringToInt(eoisodeNumber, &(*episodeInfo)->episode)) != ERROR_NO_ERROR){
-            goto label_freeRequest;
-        }
-    }
-
-    if((*episodeInfo)->name == NULL){
-        UTIL_LOG_CONSOLE_(LOG_INFO, "Failed to extract episode name from file: '%s'.", fileName);
-
-        UTIL_LOG_CONSOLE(LOG_INFO, "Please enter the episode name...");
-
-        int_fast64_t userInputLength;
-        if((error = util_readUserInput(&(*episodeInfo)->name, &userInputLength)) != ERROR_NO_ERROR){
-            goto label_freeRequest;
-        }
-
-        (*episodeInfo)->nameLength = userInputLength;
-    }
-
-    UTIL_LOG_CONSOLE(LOG_INFO, "Are these values correct? Yes/No.");
-    UTIL_LOG_CONSOLE_(LOG_INFO, "\tShow:'%s'.", (*episodeInfo)->showName);
-    UTIL_LOG_CONSOLE_(LOG_INFO, "\tSeason:'%" PRIdFAST16 "'.", (*episodeInfo)->season);
-    UTIL_LOG_CONSOLE_(LOG_INFO, "\tEpisode:'%" PRIdFAST16 "'.", (*episodeInfo)->episode);
-    UTIL_LOG_CONSOLE_(LOG_INFO, "\t\t'%s'.", (*episodeInfo)->name);
-
-    int_fast64_t userInputLength;
-    char* userInput;    
-label_invalidUserInput:    
-    if((error = util_readUserInput(&userInput, &userInputLength)) != ERROR_NO_ERROR){
-        goto label_freeRequest;
-    }
-
-    util_toLowerChase(userInput);
-
-    if(userInputLength != 0 && strncmp("no", userInput, userInputLength) == 0){
-        // Show name.
-        UTIL_LOG_CONSOLE_(LOG_INFO, "Show name:'%s'. Press <Enter> to accept.", (*episodeInfo)->showName);
-
-        char* showName;
-        if((error = util_readUserInput(&showName, &userInputLength)) != ERROR_NO_ERROR){
-            goto label_freeRequest;
-        }
-
-        if(userInputLength != 0){
-            free((*episodeInfo)->showName);
-
-            (*episodeInfo)->showName = showName;
-            (*episodeInfo)->showNameLength = userInputLength;
-        }else{
-            free(showName);
-        }
-
-    label_seasonNumber:
-        // Season number.
-        UTIL_LOG_CONSOLE_(LOG_INFO, "Season:'%" PRIiFAST16 "'. Press <Enter> to accept.", (*episodeInfo)->season);
-
-        char* season;
-        if((error = util_readUserInput(&season, &userInputLength)) != ERROR_NO_ERROR){
-            goto label_freeRequest;
-        }
-
-        if(userInputLength != 0){
-            if((error = util_stringToInt(season, &(*episodeInfo)->season)) != ERROR_NO_ERROR){
-                free(season);
-
-                UTIL_LOG_CONSOLE_(LOG_ERR, "%s.", util_toErrorString(error));
-
-                goto label_seasonNumber;
-            }
-        }
-
-        free(season);
-
-        label_episodeNumber:
-        // Episode number.
-        UTIL_LOG_CONSOLE_(LOG_INFO, "Episode:'%" PRIiFAST16 "'. Press <Enter> to accept.", (*episodeInfo)->episode);
-
-        char* episode;
-        if((error = util_readUserInput(&episode, &userInputLength)) != ERROR_NO_ERROR){
-            goto label_freeRequest;
-        }
-
-        if(userInputLength != 0){
-            if((error = util_stringToInt(episode, &(*episodeInfo)->episode)) != ERROR_NO_ERROR){
-                free(episode);
-
-                UTIL_LOG_CONSOLE_(LOG_ERR, "%s.", util_toErrorString(error));
-
-                goto label_episodeNumber;
-            }
-        }
-
-        free(episode);
-
-        // Episode name.
-        UTIL_LOG_CONSOLE_(LOG_INFO, "Episode name:'%s'. Press <Enter> to accept.", (*episodeInfo)->name);
-
-        char* episodeName;
-        if((error = util_readUserInput(&episodeName, &userInputLength)) != ERROR_NO_ERROR){
-            goto label_freeRequest;
-        }
-
-        if(userInputLength != 0){
-            free((*episodeInfo)->name);
-
-            (*episodeInfo)->name = episodeName;
-            (*episodeInfo)->nameLength = userInputLength;
-        }
-    }else{
-        if(userInputLength != 0 || strncmp("yes", userInput, userInputLength) != 0){
-            UTIL_LOG_CONSOLE_(LOG_INFO, "'%s' is not a valid answer, please type Yes/No.", userInput);
-
-            free(userInput);
-
-            goto label_invalidUserInput;
-        }
-    }
-
-    free(userInput);
-    
 label_freeRequest:
     http_freeHTTP_Request(&request);
 
@@ -664,6 +469,128 @@ label_unMap:
         UTIL_LOG_ERROR(util_toErrorString(ERROR_FAILED_TO_UNMAP_MEMORY));
     }
 
+    return ERROR(error);
+}
+
+ERROR_CODE herder_add(Property* remoteHost, Property* remotePort, Property* libraryDirectory, EpisodeInfo* episodeInfo){
+    ERROR_CODE error;
+
+    char* host = (char*) remoteHost->buffer;
+    uint_fast16_t port = util_byteArrayTo_uint64(remotePort->buffer);
+
+    void* httpProcessingBuffer;
+    if((error = util_blockAlloc(&httpProcessingBuffer, HTTP_PROCESSING_BUFFER_SIZE)) != ERROR_NO_ERROR){
+        goto label_unMap;
+    }
+
+    int_fast32_t socketFD;
+    if((error = http_openConnection(&socketFD, host, port)) != ERROR_NO_ERROR){
+        goto label_unMap;
+    }
+
+    const char url[] = "/add";
+
+    HTTP_Request request;
+    if((error = http_initRequest(&request, url, strlen(url), httpProcessingBuffer, HTTP_PROCESSING_BUFFER_SIZE, HTTP_VERSION_1_1, REQUEST_TYPE_POST)) != ERROR_NO_ERROR){
+        goto label_freeRequest;
+    }
+
+    HTTP_ADD_HEADER_FIELD(request, Host, host);
+
+    // ShowName.
+    util_uint64ToByteArray(request.data + request.dataLength, episodeInfo->showNameLength);
+    request.dataLength += sizeof(uint64_t);   
+
+    memcpy(request.data + request.dataLength, episodeInfo->showName, episodeInfo->showNameLength);
+    request.dataLength += episodeInfo->showNameLength;
+
+    // EpisodeName.
+    util_uint64ToByteArray(request.data + request.dataLength, episodeInfo->nameLength);
+    request.dataLength += sizeof(uint64_t);   
+
+    memcpy(request.data + request.dataLength, episodeInfo->name, episodeInfo->nameLength);
+    request.dataLength += episodeInfo->nameLength;
+
+    // Season.
+    util_uint16ToByteArray(request.data + request.dataLength, episodeInfo->season);
+    request.dataLength += sizeof(uint16_t);
+
+    // Episode.
+    util_uint16ToByteArray(request.data + request.dataLength, episodeInfo->episode);
+    request.dataLength += sizeof(uint16_t);   
+
+    // FileExtension.
+    util_uint16ToByteArray(request.data + request.dataLength, episodeInfo->fileExtensionLength);
+    request.dataLength += sizeof(uint16_t);   
+
+    memcpy(request.data + request.dataLength, episodeInfo->fileExtension, episodeInfo->fileExtensionLength);
+    request.dataLength += episodeInfo->showNameLength;
+
+    HTTP_Response response;
+    http_initResponse(&response, httpProcessingBuffer, HTTP_PROCESSING_BUFFER_SIZE);
+    if((error = http_sendRequest(&request, &response, socketFD)) != ERROR_NO_ERROR){
+        goto label_freeResponse;
+    }
+
+    http_closeConnection(socketFD);
+
+    uint_fast64_t readOffset = 0;
+    
+    error = util_byteArrayTo_uint64(response.data + readOffset);
+    readOffset += sizeof(uint64_t);
+
+    if(error != ERROR_NO_ERROR){
+        if(error == ERROR_NAME_MISSMATCH || ERROR_DUPLICATE_ENTRY){
+            UTIL_LOG_CONSOLE_(LOG_ERR, "Failed to add Season:%02" PRIdFAST16 " Episode:%02" PRIdFAST16 " of '%s' to the library, an entry for this episode %s. [%s]", episodeInfo->season, episodeInfo->episode, episodeInfo->showName, error == ERROR_NAME_MISSMATCH ? "with a different name is already present" : "is already present.", util_toErrorString(error));
+        }
+        
+        goto label_freeRequest;
+    }
+
+    char* path;
+    uint_fast64_t pathLength;
+    HERDER_CONSTRUCT_FILE_PATH(&path, &pathLength, episodeInfo);
+
+    const uint_fast64_t fileDstLength = (libraryDirectory->entry->length - 1) + pathLength + episodeInfo->fileExtensionLength;
+
+    char* fileDst = alloca(sizeof(*fileDst) * (fileDstLength + 1));
+    uint_fast64_t writeOffset = 0;
+
+    strncpy(fileDst + writeOffset, (char*) libraryDirectory->buffer, libraryDirectory->entry->length - 1);
+    writeOffset += libraryDirectory->entry->length - 1;
+
+    strncpy(fileDst + writeOffset, path, pathLength);
+    writeOffset += pathLength;
+
+    strncpy(fileDst + writeOffset, episodeInfo->fileExtension, episodeInfo->fileExtensionLength);
+    writeOffset += episodeInfo->fileExtensionLength;
+    fileDst[writeOffset] = '\0';
+
+    if((error = util_createAllDirectories(fileDst, fileDstLength)) != ERROR_NO_ERROR){
+        goto label_freeRequest;
+    }
+
+    if((error = util_fileCopy(episodeInfo->path, fileDst)) != ERROR_NO_ERROR){
+        goto label_freeRequest;
+    }
+
+    if(util_deleteFile(episodeInfo->path) != ERROR_NO_ERROR){
+        goto label_freeRequest;
+    }
+    
+    // TODO: Inform server that something went wrong and stuff should be removed from the library in case of failed file copy. (jan - 2018.11.28)
+
+label_freeRequest:
+    http_freeHTTP_Request(&request);
+
+label_freeResponse:
+    http_freeHTTP_Response(&response);
+
+label_unMap:
+    if(util_unMap(httpProcessingBuffer, HTTP_PROCESSING_BUFFER_SIZE) != ERROR_NO_ERROR){
+        UTIL_LOG_ERROR(util_toErrorString(ERROR_FAILED_TO_UNMAP_MEMORY));
+    }
+    
     return ERROR(error);
 }
 
@@ -1172,69 +1099,6 @@ label_unMap:
         UTIL_LOG_ERROR(util_toErrorString(ERROR_FAILED_TO_UNMAP_MEMORY));
     }
 
-    return ERROR(error);
-}
-
-ERROR_CODE herder_walkDirectory(LinkedList* list, const char* directory){
-    ERROR_CODE error = ERROR_NO_ERROR;
-
-    DIR* currentDirectory = opendir(directory);
-    if(currentDirectory == NULL){
-        error = ERROR_FAILED_TO_OPEN_DIRECTORY;
-
-        goto label_closeDir;
-    }
-
-    struct dirent* directoryEntry;
-
-    const uint_fast64_t directoryLength = strlen(directory);
-
-    while((directoryEntry = readdir(currentDirectory)) != NULL){
-        // Avoid reentering current and parent directory.
-        const uint_fast64_t currentEntryLength = strlen(directoryEntry->d_name);
-        if(strncmp(directoryEntry->d_name, ".", currentEntryLength) == 0 || strncmp(directoryEntry->d_name, "..", currentEntryLength) == 0){
-            continue;
-        }
-
-        if(directoryEntry->d_type == DT_DIR){                      
-            const uint_fast64_t directoryPathLength = directoryLength + currentEntryLength + 1;  
-
-            char* directoryPath;
-            directoryPath = alloca(sizeof(*directoryPath) * (directoryPathLength + 1));
-            strncpy(directoryPath, directory, directoryLength + 1);     
-
-            util_append(directoryPath + directoryLength, directoryPathLength - 1 - directoryLength, directoryEntry->d_name, currentEntryLength);        
-            directoryPath[directoryPathLength - 1] = '/';
-            directoryPath[directoryPathLength] = '\0';
-          
-            if((error = herder_walkDirectory(list, directoryPath)) != ERROR_NO_ERROR){
-                goto label_closeDir;
-            }
-        }else{                                
-            const uint_fast64_t pathLength = directoryLength + currentEntryLength; 
-
-            char* path;
-            path = malloc(sizeof(*path) * (pathLength + 1));
-            strncpy(path, directory, directoryLength + 1);     
-
-            util_append(path + directoryLength, pathLength - directoryLength, directoryEntry->d_name, currentEntryLength);        
-            path[pathLength] = '\0';
-
-            DirectoryEntry* dirEnt = malloc(sizeof(*dirEnt));
-            dirEnt->path = path;                  
-            dirEnt->pathLength = pathLength;
-            dirEnt->fileName = path + (pathLength - currentEntryLength);
-            dirEnt->fileNameLength = currentEntryLength;
-
-            if((error = linkedList_add(list, dirEnt)) !=ERROR_NO_ERROR){
-                goto label_closeDir;
-            }
-        }
-    }
-
-label_closeDir:
-    closedir(currentDirectory);
-        
     return ERROR(error);
 }
 

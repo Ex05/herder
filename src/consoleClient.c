@@ -23,6 +23,7 @@
 #define CONSOLE_CLIENT_USAGE_ARGUMENT_REMOVE_SHOW "--removeShow <name>."
 #define CONSOLE_CLIENT_USAGE_ARGUMENT_ADD_EPISODE "-a, --add, --addFile, --addEpisode <file>."
 #define CONSOLE_CLIENT_USAGE_ARGUMENT_IMPORT "-i, --import"
+#define CONSOLE_CLIENT_USAGE_ARGUMENT_BATCH_IMPORT "-b, --batch, --batchImport"
 #define CONSOLE_CLIENT_USAGE_ARGUMENT_RENAME_EPISODE "--renameEpisode <old_name> <new_name>"
 #define CONSOLE_CLIENT_USAGE_ARGUMENT_REMOVE_EPISODE "--removeEpisode <name>"
 #define CONSOLE_CLIENT_USAGE_ARGUMENT_LIST_SHOWS "-l, --list"
@@ -45,11 +46,15 @@ local void consoleClient_printHelp(void);
 
 local ERROR_CODE consoleClient_listShows(Property*, Property*);
 
-local ERROR_CODE consoleClient_import(Property*, Property*, Property*, const char*);
+local ERROR_CODE consoleClient_import(Property*, Property*, Property*, const char*, const bool);
 
 local ERROR_CODE consoleClient_listAllShows(Property*, Property*);
 
 local ERROR_CODE consoleClient_printShowInfo(Property*, Property*, const char*, const uint_fast64_t);
+
+local ERROR_CODE consoleClient_walkDirectory(LinkedList*, const char*);
+
+local ERROR_CODE consoleClient_extractShowInfo(Property*, Property*, EpisodeInfo*, const bool);
 
 // TODO:(jan) Make custom entry point for the client build, so we won't have to use 'main'.
 #ifndef TEST_BUILD
@@ -70,6 +75,7 @@ local ERROR_CODE consoleClient_printShowInfo(Property*, Property*, const char*, 
     ARGUMENT_PARSER_ADD_ARGUMENT(RemoveShow, 1, "--removeShow");
     ARGUMENT_PARSER_ADD_ARGUMENT(Add, 4, "-a", "-add", "--addFile", "--addEpisode");
     ARGUMENT_PARSER_ADD_ARGUMENT(Import, 2, "-i", "--import");
+    ARGUMENT_PARSER_ADD_ARGUMENT(BatchImport, 3, "-b", "--batch", "--batchImport");
     ARGUMENT_PARSER_ADD_ARGUMENT(RenameEpisode, 1, "--renameEpisode");
     ARGUMENT_PARSER_ADD_ARGUMENT(RemoveEpisode, 1, "--removeEpisode");
     ARGUMENT_PARSER_ADD_ARGUMENT(ListShows, 3, "-l", "--list", "--listShows");
@@ -183,12 +189,12 @@ local ERROR_CODE consoleClient_printShowInfo(Property*, Property*, const char*, 
             if(CONSOLE_CLIENT_REMOTE_HOST_PROPERTIES_SET() && (propertyFile_propertySet(libraryDirectory, CONSOLE_CLIENT_PROPERTY_LIBRARY_DIRECTORY_NAME) == ERROR_NO_ERROR)){
                 if(!util_fileExists(argumentAdd.value) || util_isDirectory(argumentAdd.value)){
                     UTIL_LOG_CONSOLE_(LOG_INFO, "ERROR: '%s' is not a falid file.", argumentAdd.value);
-                }else{
-                    if((error = herder_addEpisode(remoteHost, remotePort, libraryDirectory, argumentAdd.value, argumentAdd.valueLength)) != ERROR_NO_ERROR){
-                           UTIL_LOG_CONSOLE_(LOG_ERR, "Failed to add '%s' to library. [%s]", argumentAdd.value,  util_toErrorString(error));
-                    }else{
-                        UTIL_LOG_CONSOLE_(LOG_INFO, "Successfully added '%s' to the library.", argumentAdd.value);
-                    }
+                }else{             
+                    // if((error = herder_addEpisode(remoteHost, remotePort, libraryDirectory, argumentAdd.value, argumentAdd.valueLength)) != ERROR_NO_ERROR){
+                    //        UTIL_LOG_CONSOLE_(LOG_ERR, "Failed to add '%s' to library. [%s]", argumentAdd.value,  util_toErrorString(error));
+                    // }else{
+                    //     UTIL_LOG_CONSOLE_(LOG_INFO, "Successfully added '%s' to the library.", argumentAdd.value);
+                    // }
                 }
             }else{
                 UTIL_LOG_CONSOLE(LOG_ERR, util_toErrorString(ERROR_PROPERTY_NOT_SET));
@@ -200,24 +206,46 @@ local ERROR_CODE consoleClient_printShowInfo(Property*, Property*, const char*, 
 
     // --import.
     if(argumentParser_contains(&parser, &argumentImport)){ 
-        if(!ARGUMENT_PARSER_ARGUMENT_HAS_VALUE(argumentImport)){
-            UTIL_LOG_CONSOLE(LOG_INFO, "Invalid command. Usage: " CONSOLE_CLIENT_USAGE_ARGUMENT_IMPORT);
+        ERROR_CODE error;
+        if(ARGUMENT_PARSER_ARGUMENT_HAS_VALUE((argumentImport))){
+            // Import from path.
+            if((error = consoleClient_import(remoteHost, remotePort, libraryDirectory, argumentImport.value, false)) != ERROR_NO_ERROR){
+                UTIL_LOG_CONSOLE_(LOG_ERR, "ERROR: Failed to import from directory: '%s'. [%s]", argumentImport.value, util_toErrorString(error));
+            }
         }else{
-            ERROR_CODE error;
-            if(ARGUMENT_PARSER_ARGUMENT_HAS_VALUE((argumentImport))){
-                // Import from path.
-                if((error = consoleClient_import(remoteHost, remotePort, libraryDirectory, argumentImport.value)) != ERROR_NO_ERROR){
-                    // 
+            if(PROPERTY_IS_SET(importDirectory)){
+                // Import from importDirectory_setting.
+                if((error = consoleClient_import(remoteHost, remotePort, libraryDirectory, (char*) importDirectory->buffer), false) != ERROR_NO_ERROR){
+                    if(error != ERROR_DUPLICATE_ENTRY){
+                        UTIL_LOG_CONSOLE_(LOG_ERR, "ERROR: Failed to import from directory: '%s'. [%s]", (char*) importDirectory->buffer, util_toErrorString(error));
+                    }
                 }
             }else{
-                if(PROPERTY_IS_SET(importDirectory)){
-                    // Import from importDirectory_setting.
-                    if((error = consoleClient_import(remoteHost, remotePort, libraryDirectory, (char*) importDirectory->buffer)) != ERROR_NO_ERROR){
-                        // 
+                UTIL_LOG_CONSOLE(LOG_ERR, "Import directory not set, Use '--setImportDirectory <path>' to set an import directory, or specify the directory to import from when running '-i, --import optional:<path>'.");
+            }
+        }
+        
+        goto label_freeProperties;
+    }
+
+    // --batch.
+    if(argumentParser_contains(&parser, &argumentBatchImport)){ 
+        ERROR_CODE error;
+        if(ARGUMENT_PARSER_ARGUMENT_HAS_VALUE((argumentBatchImport))){
+            // Import from path.
+            if((error = consoleClient_import(remoteHost, remotePort, libraryDirectory, argumentBatchImport.value, true)) != ERROR_NO_ERROR){
+                UTIL_LOG_CONSOLE_(LOG_ERR, "ERROR: Failed to import from directory: '%s'. [%s]", argumentBatchImport.value, util_toErrorString(error));
+            }
+        }else{
+            if(PROPERTY_IS_SET(importDirectory)){
+                // Import from importDirectory_setting.
+                if((error = consoleClient_import(remoteHost, remotePort, libraryDirectory, (char*) importDirectory->buffer), true) != ERROR_NO_ERROR){
+                    if(error != ERROR_DUPLICATE_ENTRY){
+                        UTIL_LOG_CONSOLE_(LOG_ERR, "ERROR: Failed to import from directory: '%s'. [%s]", (char*) importDirectory->buffer, util_toErrorString(error));
                     }
-                }else{
-                    UTIL_LOG_CONSOLE(LOG_ERR, "Import directory not set, Use '--setImportDirectory <path>' to set an import directory, or specify the directory to import from when running '-i, --import optional:<path>'.");
                 }
+            }else{
+                UTIL_LOG_CONSOLE(LOG_ERR, "Import directory not set, Use '--setImportDirectory <path>' to set an import directory, or specify the directory to import from when running '-i, --import optional:<path>'.");
             }
         }
         
@@ -490,54 +518,79 @@ label_return:
     return ERROR(error);
 }
 
-ERROR_CODE consoleClient_import(Property* remoteHost, Property* remotePort, Property* libraryDirectory, const char* directory){
+ERROR_CODE consoleClient_import(Property* remoteHost, Property* remotePort, Property* libraryDirectory, const char* directory, const bool batchImport){
     ERROR_CODE error;
 
      if(!CONSOLE_CLIENT_REMOTE_HOST_PROPERTIES_SET() || PROPERTY_IS_NOT_SET(libraryDirectory)){
         return ERROR(ERROR_PROPERTY_NOT_SET);
      }
 
-    LinkedList files;
-    if((error = linkedList_init(&files)) != ERROR_NO_ERROR){
+    LinkedList infos;
+    if((error = linkedList_init(&infos)) != ERROR_NO_ERROR){
         goto label_return;
     }
 
-    if((error = herder_walkDirectory(&files, directory)) != ERROR_NO_ERROR){
+    if((error = consoleClient_walkDirectory(&infos, directory)) != ERROR_NO_ERROR){
         goto label_return;
     }
 
     LinkedListIterator it;
-    linkedList_initIterator(&it, &files);
+    linkedList_initIterator(&it, &infos);
 
-    if(LINKED_LIST_IS_EMPTY(&files)){
+    if(LINKED_LIST_IS_EMPTY(&infos)){
         UTIL_LOG_CONSOLE_(LOG_INFO, "No files recorgnised for import in '%s'.", directory);
     }
 
     while(LINKED_LIST_ITERATOR_HAS_NEXT(&it)){
-        DirectoryEntry* entry = LINKED_LIST_ITERATOR_NEXT(&it);
+        EpisodeInfo* info = LINKED_LIST_ITERATOR_NEXT(&it);
 
-        UTIL_LOG_CONSOLE_(LOG_INFO, "Adding '%s'.", entry->path);
+        UTIL_LOG_CONSOLE_(LOG_INFO, "\"%s\"", info->fileName);
+          
+        if((error = consoleClient_extractShowInfo(remoteHost, remotePort, info, batchImport)) != ERROR_NO_ERROR){
+            UTIL_LOG_CONSOLE_(LOG_ERR, "Failed to extract show info from file: '%s'. [%s]", info->fileName, util_toErrorString(error));
 
-        if((error = herder_addEpisode(remoteHost, remotePort, libraryDirectory, entry->path, entry->pathLength)) != ERROR_NO_ERROR){
-            free(entry->path);
-            free(entry);
+            linkedList_remove(&infos, info);
+            mediaLibrary_freeEpisodeInfo(info);
+
+            free(info);
+        }
+    }
+
+    UTIL_LOG_CONSOLE(LOG_INFO, "Importing:...");
+
+    const uint_fast64_t entries = infos.length;
+    uint_fast64_t i = 0;
+
+    linkedList_initIterator(&it, &infos);
+    while(LINKED_LIST_ITERATOR_HAS_NEXT(&it)){
+        EpisodeInfo* info = LINKED_LIST_ITERATOR_NEXT(&it);
+
+        if((error = herder_addEpisode(remoteHost, remotePort, libraryDirectory, info)) != ERROR_NO_ERROR){
+            if(error != ERROR_DUPLICATE_ENTRY){
+                UTIL_LOG_CONSOLE_(LOG_ERR, "Failed to add Episode: '%s'. [%s]", info->fileName, util_toErrorString(error));
+            }
+
+            mediaLibrary_freeEpisodeInfo(info);
+            free(info);
 
             goto label_freeFiles;
         }else{
-            UTIL_LOG_CONSOLE_(LOG_INFO, "Successfully added '%s'. to library.%s", entry->path, LINKED_LIST_ITERATOR_HAS_NEXT(&it) ? "\n" : "");
+            i++;
+            
+            UTIL_LOG_CONSOLE_(LOG_INFO, "Successfully added '%s'. to library. %" PRIdFAST64 "\\%" PRIdFAST64 ".", info->fileName, i, entries);
         }
 
-        free(entry->path);
-        free(entry);
+        mediaLibrary_freeEpisodeInfo(info);
+        free(info);
     }
 
-    // TODO: Only delete directories inside import the import directory. (jan - 2019.05.28)
+    __UTIL_SUPPRESS_NEXT_ERROR_OF_TYPE__(ERROR_FAILED_TO_DELETE_DIRECTORY);
     if((error = util_deleteDirectory(directory, true, true)) != ERROR_NO_ERROR){
         goto label_freeFiles;
     }
-    
+
 label_freeFiles:
-    linkedList_free(&files);
+    linkedList_free(&infos);
 
 label_return:
     return ERROR(error);
@@ -626,5 +679,206 @@ label_freeShow:
     mediaLibrary_freeShow(&show);
 
 label_return:
+    return ERROR(error);
+}
+
+ERROR_CODE consoleClient_extractShowInfo(Property* remoteHost, Property* remotePort, EpisodeInfo* episodeInfo, const bool batchImport){
+    ERROR_CODE error;
+
+label_extractShowInfo:
+    if((error = herder_extractShowInfo(remoteHost, remotePort, episodeInfo)) != ERROR_NO_ERROR){
+        if(error != ERROR_INCOMPLETE){
+            goto label_return;
+        }
+    }
+
+    int_fast64_t userInputLength;
+    char* userInput;
+    if(episodeInfo->showName == NULL){
+        UTIL_LOG_CONSOLE(LOG_INFO, "Failed to extract the show name based on library entries.\nPlease enter the show name.");
+
+        if((error = util_readUserInput(&userInput, &userInputLength)) != ERROR_NO_ERROR){
+            goto label_freeUserInput;
+        }
+
+        if((error = herder_addShow(remoteHost, remotePort, userInput, userInputLength)) != ERROR_NO_ERROR){
+            goto label_freeUserInput;
+        }
+        
+        free(episodeInfo->name);
+        free(userInput);
+
+        goto label_extractShowInfo;
+    }
+
+    if(batchImport){
+        goto label_freeUserInput;
+    }
+
+    UTIL_LOG_CONSOLE(LOG_INFO, "Are these values correct? Yes/No.");
+    UTIL_LOG_CONSOLE_(LOG_INFO, "\tShow:'%s'.", episodeInfo->showName);
+    UTIL_LOG_CONSOLE_(LOG_INFO, "\tSeason:'%" PRIdFAST16 "'.", episodeInfo->season);
+    UTIL_LOG_CONSOLE_(LOG_INFO, "\tEpisode:'%" PRIdFAST16 "'.", episodeInfo->episode);
+    UTIL_LOG_CONSOLE_(LOG_INFO, "\t\t'%s'.", episodeInfo->name);
+
+label_readUserInput:
+    if((error = util_readUserInput(&userInput, &userInputLength)) != ERROR_NO_ERROR){
+        goto label_freeUserInput;
+    }
+
+    util_toLowerChase(userInput);
+
+    if(userInputLength != 0 && strncmp("no", userInput, userInputLength) == 0){
+        // Show name.
+        UTIL_LOG_CONSOLE_(LOG_INFO, "Show name:'%s'. Press <Enter> to accept.", episodeInfo->showName);
+
+        char* showName;
+        if((error = util_readUserInput(&showName, &userInputLength)) != ERROR_NO_ERROR){
+            goto label_freeUserInput;
+        }
+
+        if(userInputLength != 0){
+            free(episodeInfo->showName);
+
+            episodeInfo->showName = showName;
+            episodeInfo->showNameLength = userInputLength;
+        }else{
+            free(showName);
+        }
+
+    label_seasonNumber:
+        // Season number.
+        UTIL_LOG_CONSOLE_(LOG_INFO, "Season:'%" PRIiFAST16 "'. Press <Enter> to accept.", episodeInfo->season);
+
+        char* season;
+        if((error = util_readUserInput(&season, &userInputLength)) != ERROR_NO_ERROR){
+            goto label_freeUserInput;
+        }
+
+        if(userInputLength != 0){
+            if((error = util_stringToInt(season, &episodeInfo->season)) != ERROR_NO_ERROR){
+                UTIL_LOG_CONSOLE_(LOG_ERR, "%s.", util_toErrorString(error));
+
+                free(season);
+
+                goto label_seasonNumber;
+            }
+        }
+
+        free(season);
+
+    label_episodeNumber:
+        // Episode number.
+        UTIL_LOG_CONSOLE_(LOG_INFO, "Episode:'%" PRIiFAST16 "'. Press <Enter> to accept.", episodeInfo->episode);
+
+        char* episode;
+        if((error = util_readUserInput(&episode, &userInputLength)) != ERROR_NO_ERROR){
+            goto label_freeUserInput;
+        }
+
+        if(userInputLength != 0){
+            if((error = util_stringToInt(episode, &episodeInfo->episode)) != ERROR_NO_ERROR){
+                UTIL_LOG_CONSOLE_(LOG_ERR, "%s.", util_toErrorString(error));
+
+                free(episode);
+
+                goto label_episodeNumber;
+            }
+        }
+
+        free(episode);
+
+        // Episode name.
+        UTIL_LOG_CONSOLE_(LOG_INFO, "Episode name:'%s'. Press <Enter> to accept.", episodeInfo->name);
+
+        char* episodeName;
+        if((error = util_readUserInput(&episodeName, &userInputLength)) != ERROR_NO_ERROR){
+            goto label_freeUserInput;
+        }
+
+        if(userInputLength != 0){
+            free(episodeInfo->name);
+
+            episodeInfo->name = episodeName;
+            episodeInfo->nameLength = userInputLength;
+        }
+    }else{
+        if(userInputLength != 0 || strncmp("yes", userInput, userInputLength) != 0){
+            UTIL_LOG_CONSOLE_(LOG_INFO, "'%s' is not a valid answer, please type Yes/No.", userInput);
+
+            free(userInput);
+
+            goto label_readUserInput;
+        }
+    }
+
+label_freeUserInput:
+    free(userInput);
+
+label_return:
+    return ERROR(error);
+}
+
+ERROR_CODE consoleClient_walkDirectory(LinkedList* list, const char* directory){
+    ERROR_CODE error = ERROR_NO_ERROR;
+
+    DIR* currentDirectory = opendir(directory);
+    if(currentDirectory == NULL){
+        error = ERROR_FAILED_TO_OPEN_DIRECTORY;
+
+        goto label_closeDir;
+    }
+
+    struct dirent* directoryEntry;
+
+    const uint_fast64_t directoryLength = strlen(directory);
+
+    while((directoryEntry = readdir(currentDirectory)) != NULL){
+        // Avoid reentering current and parent directory.
+        const uint_fast64_t currentEntryLength = strlen(directoryEntry->d_name);
+        if(strncmp(directoryEntry->d_name, ".", currentEntryLength) == 0 || strncmp(directoryEntry->d_name, "..", currentEntryLength) == 0){
+            continue;
+        }
+
+        if(directoryEntry->d_type == DT_DIR){                      
+            const uint_fast64_t directoryPathLength = directoryLength + currentEntryLength + 1;  
+
+            char* directoryPath;
+            directoryPath = alloca(sizeof(*directoryPath) * (directoryPathLength + 1));
+            strncpy(directoryPath, directory, directoryLength + 1);     
+
+            util_append(directoryPath + directoryLength, directoryPathLength - 1 - directoryLength, directoryEntry->d_name, currentEntryLength);        
+            directoryPath[directoryPathLength - 1] = '/';
+            directoryPath[directoryPathLength] = '\0';
+          
+            if((error = consoleClient_walkDirectory(list, directoryPath)) != ERROR_NO_ERROR){
+                goto label_closeDir;
+            }
+        }else{                                
+            const uint_fast64_t pathLength = directoryLength + currentEntryLength; 
+
+            char* path;
+            path = malloc(sizeof(*path) * (pathLength + 1));
+            strncpy(path, directory, directoryLength + 1);     
+
+            util_append(path + directoryLength, pathLength - directoryLength, directoryEntry->d_name, currentEntryLength);        
+            path[pathLength] = '\0';
+
+            EpisodeInfo* info = malloc(sizeof(*info));
+            mediaLibrary_initEpisodeInfo(info);
+            info->path = path;                  
+            info->pathLength = pathLength;
+            info->fileName = path + (pathLength - currentEntryLength);
+            info->fileNameLength = currentEntryLength;
+
+            if((error = linkedList_add(list, info)) !=ERROR_NO_ERROR){
+                goto label_closeDir;
+            }
+        }
+    }
+
+label_closeDir:
+    closedir(currentDirectory);
+        
     return ERROR(error);
 }

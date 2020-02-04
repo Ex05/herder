@@ -861,6 +861,28 @@ TEST_TEST_FUNCTION(util_stringToInt){
     return true;
 }
 
+TEST_TEST_FUNCTION(util_getFileExtension){
+    char a[] = "The_Big_Bang_Theory_s10e05_the_hot_tub_contamination.mkv";
+    char b[] = "The_Big_Bang_Theory_s10e05_the_hot_tub_contamination";
+    
+    char* fileExtension;
+    uint_fast64_t fileExtensionLength;
+
+    if(util_getFileExtension(&fileExtension, &fileExtensionLength, a, strlen(a)) != ERROR_NO_ERROR){
+        return false;
+    }
+
+    if(strncmp(fileExtension, "mkv", 3) != 0 && fileExtensionLength != 3){
+        return false;
+    }
+
+    if(util_getFileExtension(&fileExtension, &fileExtensionLength, b, strlen(b)) == ERROR_NO_ERROR){
+        return false;
+    }
+
+    return true;
+}
+
 // http.c
 TEST_TEST_FUNCTION(http_addHeaderField){
     #define BUFFER_SIZE 8192
@@ -1910,6 +1932,7 @@ int main(void){
         TEST(util_replaceAllChars);
         TEST(util_append);
         TEST(util_stringToInt);
+        TEST(util_getFileExtension);
                 
         TEST(util_getBaseDirectory);
         TEST(util_getFileName);
