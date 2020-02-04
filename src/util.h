@@ -121,6 +121,7 @@ typedef enum{
     ERROR_FAILED_TO_DELETE_DIRECTORY,
     ERROR_FAILED_TO_REMOVE_NODE,
     ERROR_NO_VALID_ARGUMENT,
+    ERROR_INVALID_FILE_EXTENSION,
 }ERROR_CODE;
 
 ERROR_CODE util_formatNumber(char*, uint_fast64_t*, const int_fast64_t);
@@ -308,7 +309,7 @@ ERROR_CODE util_stringToInt(const char*, int64_t*);
 
 ERROR_CODE util_getCurrentWorkingDirectory(char*, const uint_fast64_t);
 
-ERROR_CODE util_getFileExtension(char**, const char*, const uint_fast64_t);
+ERROR_CODE util_getFileExtension(char**, char*, const uint_fast64_t);
 
 #undef UTIL_MAX_ERROR_MSG_LENGTH
 
