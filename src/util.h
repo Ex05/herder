@@ -309,7 +309,7 @@ ERROR_CODE util_stringToInt(const char*, int64_t*);
 
 ERROR_CODE util_getCurrentWorkingDirectory(char*, const uint_fast64_t);
 
-ERROR_CODE util_getFileExtension(char**, char*, const uint_fast64_t);
+ERROR_CODE util_getFileExtension(char**, uint_fast64_t*, char*, const uint_fast64_t);
 
 #undef UTIL_MAX_ERROR_MSG_LENGTH
 

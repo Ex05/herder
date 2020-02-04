@@ -866,16 +866,17 @@ TEST_TEST_FUNCTION(util_getFileExtension){
     char b[] = "The_Big_Bang_Theory_s10e05_the_hot_tub_contamination";
     
     char* fileExtension;
+    uint_fast64_t fileExtensionLength;
 
-    if(util_getFileExtension(&fileExtension, a, strlen(a)) != ERROR_NO_ERROR){
+    if(util_getFileExtension(&fileExtension, &fileExtensionLength, a, strlen(a)) != ERROR_NO_ERROR){
         return false;
     }
 
-    if(strncmp(fileExtension, "mkv", 3) != 0){
+    if(strncmp(fileExtension, "mkv", 3) != 0 && fileExtensionLength != 3){
         return false;
     }
 
-    if(util_getFileExtension(&fileExtension, b, strlen(b)) == ERROR_NO_ERROR){
+    if(util_getFileExtension(&fileExtension, &fileExtensionLength, b, strlen(b)) == ERROR_NO_ERROR){
         return false;
     }
 

@@ -211,8 +211,14 @@ local SERVER_CONTEXT_HANDLER(server_pageAdd){
     char* fileExtension = (char*) request->data + readOffset;
     readOffset += fileExtensionLength;
 
-    Show* show;
     ERROR_CODE error;
+    if(showNameLength == 0){
+        error = ERROR_INVALID_CONTENT_LENGTH;
+
+        goto label_return;
+    }
+
+    Show* show;
     if((error = medialibrary_getShow(&server->library, &show, showName, showNameLength)) != ERROR_NO_ERROR){
         if((error = mediaLibrary_addShow(&server->library, &show, showName, showNameLength)) != ERROR_NO_ERROR){
             goto label_return;

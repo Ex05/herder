@@ -41,9 +41,11 @@ typedef struct{
     char* name;
     char* fileExtension;
     char* path;
+    char* fileName;
     uint_fast64_t pathLength;
     uint_fast64_t showNameLength;
     uint_fast64_t nameLength;
+    uint_fast64_t fileNameLength;
     uint_fast16_t fileExtensionLength;
     int_fast16_t season;
     int_fast16_t episode;

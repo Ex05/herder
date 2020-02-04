@@ -225,17 +225,8 @@ label_unMap:
     return ERROR(error);
 }
 
-ERROR_CODE herder_addEpisode(Property* remoteHost, Property* remotePort, Property* libraryDirectory,  char* filePath, const uint_fast64_t filePathLength){
+ERROR_CODE herder_addEpisode(Property* remoteHost, Property* remotePort, Property* libraryDirectory, EpisodeInfo* episodeInfo){
     ERROR_CODE error = ERROR_NO_ERROR;
-
-    EpisodeInfo* episodeInfo = alloca(sizeof(*episodeInfo));
-    if((error = mediaLibrary_initEpisodeInfo_(episodeInfo, filePath, filePathLength)) != ERROR_NO_ERROR){
-        goto label_freeEpisodeInfo;
-    }
-    
-    if((error = herder_extractShowInfo(remoteHost, remotePort, episodeInfo)) != ERROR_NO_ERROR){
-        goto label_freeEpisodeInfo;
-    }
 
     char* host = (char*) remoteHost->buffer;
     uint_fast16_t port = util_byteArrayTo_uint64(remotePort->buffer);
@@ -309,15 +300,11 @@ ERROR_CODE herder_addEpisode(Property* remoteHost, Property* remotePort, Propert
         goto label_freeRequest;
     }
 
-    const uint_fast64_t fileExtensionOffset = util_findLast(filePath, filePathLength, '.');
-    const uint_fast64_t fileExtensionLength = filePathLength - fileExtensionOffset;
-    const char* fileExtension = filePath + (filePathLength - fileExtensionLength);
-
     char* path;
     uint_fast64_t pathLength;
     HERDER_CONSTRUCT_FILE_PATH(&path, &pathLength, episodeInfo);
 
-    const uint_fast64_t fileDstLength = (libraryDirectory->entry->length - 1) + pathLength + fileExtensionLength;
+    const uint_fast64_t fileDstLength = (libraryDirectory->entry->length - 1) + pathLength + episodeInfo->fileExtensionLength + 1;
 
     char* fileDst = alloca(sizeof(*fileDst) * (fileDstLength + 1));
     uint_fast64_t writeOffset = 0;
@@ -328,19 +315,22 @@ ERROR_CODE herder_addEpisode(Property* remoteHost, Property* remotePort, Propert
     strncpy(fileDst + writeOffset, path, pathLength);
     writeOffset += pathLength;
 
-    strncpy(fileDst + writeOffset, fileExtension, fileExtensionLength);
-    writeOffset += fileExtensionLength;
+    fileDst[writeOffset] = '.';
+    writeOffset++;
+
+    strncpy(fileDst + writeOffset, episodeInfo->fileExtension, episodeInfo->fileExtensionLength);
+    writeOffset += episodeInfo->fileExtensionLength;
     fileDst[writeOffset] = '\0';
 
     if((error = util_createAllDirectories(fileDst, fileDstLength)) != ERROR_NO_ERROR){
         goto label_freeRequest;
     }
 
-    if((error = util_fileCopy(filePath, fileDst)) != ERROR_NO_ERROR){
+    if((error = util_fileCopy(episodeInfo->path, fileDst)) != ERROR_NO_ERROR){
         goto label_freeRequest;
     }
 
-    if(util_deleteFile(filePath) != ERROR_NO_ERROR){
+    if(util_deleteFile(episodeInfo->path) != ERROR_NO_ERROR){
         goto label_freeRequest;
     }
 
@@ -356,9 +346,6 @@ label_unMap:
     if(util_unMap(httpProcessingBuffer, HTTP_PROCESSING_BUFFER_SIZE) != ERROR_NO_ERROR){
         UTIL_LOG_ERROR(util_toErrorString(ERROR_FAILED_TO_UNMAP_MEMORY));
     }
-    
-label_freeEpisodeInfo:
-    mediaLibrary_freeEpisodeInfo(episodeInfo);
 
     return ERROR(error);
 }
@@ -386,7 +373,11 @@ ERROR_CODE herder_extractShowInfo(Property* remoteHost, Property* remotePort, Ep
 
     const char url[] = "/extractShowInfo";
 
-    if((error = util_getFileExtension(&(episodeInfo->fileExtension), episodeInfo->path, episodeInfo->pathLength)) != ERROR_NO_ERROR){
+    if((error = util_getFileExtension(&episodeInfo->fileExtension, &episodeInfo->fileExtensionLength, episodeInfo->path, episodeInfo->pathLength)) != ERROR_NO_ERROR){
+        if(error == ERROR_INVALID_STRING){
+            error = ERROR_INVALID_FILE_EXTENSION;
+        }
+
         goto label_unMap;
     }
 
@@ -1108,69 +1099,6 @@ label_unMap:
         UTIL_LOG_ERROR(util_toErrorString(ERROR_FAILED_TO_UNMAP_MEMORY));
     }
 
-    return ERROR(error);
-}
-
-ERROR_CODE herder_walkDirectory(LinkedList* list, const char* directory){
-    ERROR_CODE error = ERROR_NO_ERROR;
-
-    DIR* currentDirectory = opendir(directory);
-    if(currentDirectory == NULL){
-        error = ERROR_FAILED_TO_OPEN_DIRECTORY;
-
-        goto label_closeDir;
-    }
-
-    struct dirent* directoryEntry;
-
-    const uint_fast64_t directoryLength = strlen(directory);
-
-    while((directoryEntry = readdir(currentDirectory)) != NULL){
-        // Avoid reentering current and parent directory.
-        const uint_fast64_t currentEntryLength = strlen(directoryEntry->d_name);
-        if(strncmp(directoryEntry->d_name, ".", currentEntryLength) == 0 || strncmp(directoryEntry->d_name, "..", currentEntryLength) == 0){
-            continue;
-        }
-
-        if(directoryEntry->d_type == DT_DIR){                      
-            const uint_fast64_t directoryPathLength = directoryLength + currentEntryLength + 1;  
-
-            char* directoryPath;
-            directoryPath = alloca(sizeof(*directoryPath) * (directoryPathLength + 1));
-            strncpy(directoryPath, directory, directoryLength + 1);     
-
-            util_append(directoryPath + directoryLength, directoryPathLength - 1 - directoryLength, directoryEntry->d_name, currentEntryLength);        
-            directoryPath[directoryPathLength - 1] = '/';
-            directoryPath[directoryPathLength] = '\0';
-          
-            if((error = herder_walkDirectory(list, directoryPath)) != ERROR_NO_ERROR){
-                goto label_closeDir;
-            }
-        }else{                                
-            const uint_fast64_t pathLength = directoryLength + currentEntryLength; 
-
-            char* path;
-            path = malloc(sizeof(*path) * (pathLength + 1));
-            strncpy(path, directory, directoryLength + 1);     
-
-            util_append(path + directoryLength, pathLength - directoryLength, directoryEntry->d_name, currentEntryLength);        
-            path[pathLength] = '\0';
-
-            DirectoryEntry* dirEnt = malloc(sizeof(*dirEnt));
-            dirEnt->path = path;                  
-            dirEnt->pathLength = pathLength;
-            dirEnt->fileName = path + (pathLength - currentEntryLength);
-            dirEnt->fileNameLength = currentEntryLength;
-
-            if((error = linkedList_add(list, dirEnt)) !=ERROR_NO_ERROR){
-                goto label_closeDir;
-            }
-        }
-    }
-
-label_closeDir:
-    closedir(currentDirectory);
-        
     return ERROR(error);
 }
 
