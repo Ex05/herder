@@ -215,7 +215,7 @@ local ERROR_CODE consoleClient_extractShowInfo(Property*, Property*, EpisodeInfo
         }else{
             if(PROPERTY_IS_SET(importDirectory)){
                 // Import from importDirectory_setting.
-                if((error = consoleClient_import(remoteHost, remotePort, libraryDirectory, (char*) importDirectory->buffer), false) != ERROR_NO_ERROR){
+                if((error = consoleClient_import(remoteHost, remotePort, libraryDirectory, (char*) importDirectory->buffer, false)) != ERROR_NO_ERROR){
                     if(error != ERROR_DUPLICATE_ENTRY){
                         UTIL_LOG_CONSOLE_(LOG_ERR, "ERROR: Failed to import from directory: '%s'. [%s]", (char*) importDirectory->buffer, util_toErrorString(error));
                     }
@@ -239,7 +239,7 @@ local ERROR_CODE consoleClient_extractShowInfo(Property*, Property*, EpisodeInfo
         }else{
             if(PROPERTY_IS_SET(importDirectory)){
                 // Import from importDirectory_setting.
-                if((error = consoleClient_import(remoteHost, remotePort, libraryDirectory, (char*) importDirectory->buffer), true) != ERROR_NO_ERROR){
+                if((error = consoleClient_import(remoteHost, remotePort, libraryDirectory, (char*) importDirectory->buffer, true)) != ERROR_NO_ERROR){
                     if(error != ERROR_DUPLICATE_ENTRY){
                         UTIL_LOG_CONSOLE_(LOG_ERR, "ERROR: Failed to import from directory: '%s'. [%s]", (char*) importDirectory->buffer, util_toErrorString(error));
                     }
@@ -712,7 +712,7 @@ label_extractShowInfo:
     }
 
     if(batchImport){
-        goto label_freeUserInput;
+        goto label_return;
     }
 
     UTIL_LOG_CONSOLE(LOG_INFO, "Are these values correct? Yes/No.");
