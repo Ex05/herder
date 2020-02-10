@@ -60,7 +60,7 @@ inline ERROR_CODE cache_initCacheObject(CacheObject* cacheObject, uint8_t* data,
     return ERROR(ERROR_NO_ERROR);
 }
 
-inline ERROR_CODE cache_free(Cache* cache){
+inline void cache_free(Cache* cache){
     LinkedListIterator it;
     linkedList_initIterator(&it, &cache->elements);
 
@@ -79,8 +79,6 @@ inline ERROR_CODE cache_free(Cache* cache){
     sem_destroy(&cache->activeAcesses);
 
     pthread_mutex_destroy(&cache->lock);
-
-    return ERROR(ERROR_NO_ERROR);
 }
 
 inline ERROR_CODE cache_get(Cache* cache, CacheObject** cacheObject, char* symbolicFileLocation, const uint_fast64_t symbolicFileLocationLength){    

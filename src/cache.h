@@ -33,7 +33,7 @@ typedef struct{
 
 ERROR_CODE cache_init(Cache*, const uint_fast64_t, const uint_fast64_t);
 
-ERROR_CODE cache_free(Cache*);
+void cache_free(Cache*);
 
 ERROR_CODE cache_get(Cache*, CacheObject**, char*, const uint_fast64_t);
 
