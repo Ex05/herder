@@ -24,6 +24,7 @@
 #include <limits.h>
 #include <time.h>
 #include <pwd.h>
+#include <fcntl.h>
 
 /* void foo(char arg[__require 10])
     Require an array with atleast 10 elements.
@@ -122,6 +123,7 @@ typedef enum{
     ERROR_FAILED_TO_REMOVE_NODE,
     ERROR_NO_VALID_ARGUMENT,
     ERROR_INVALID_FILE_EXTENSION,
+    ERROR_FAILED_TO_RENAME_FILE,
 }ERROR_CODE;
 
 ERROR_CODE util_formatNumber(char*, uint_fast64_t*, const int_fast64_t);
@@ -310,6 +312,10 @@ ERROR_CODE util_stringToInt(const char*, int64_t*);
 ERROR_CODE util_getCurrentWorkingDirectory(char*, const uint_fast64_t);
 
 ERROR_CODE util_getFileExtension(char**, uint_fast64_t*, char*, const uint_fast64_t);
+
+ERROR_CODE util_renameFile(char*, char*);
+
+ERROR_CODE util_renameFileRelative(char*, char*, char*);
 
 #undef UTIL_MAX_ERROR_MSG_LENGTH
 

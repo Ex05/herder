@@ -120,6 +120,7 @@ local const char* UTIL_ERROR_CODE_MESSAGE_MAPPING_ARRAY[] = {
     "ERROR_FAILED_TO_REMOVE_NODE",
     "ERROR_NO_VALID_ARGUMENT",
     "ERROR_INVALID_FILE_EXTENSION",
+    "ERROR_FAILED_TO_RENAME_FILE",
 };
 
 inline const char* util_toErrorString(const ERROR_CODE errorCode){
@@ -693,7 +694,7 @@ inline ERROR_CODE util_getCurrentWorkingDirectory(char* dir, const uint_fast64_t
     return ERROR(ERROR_NO_ERROR);    
 }
 
-ERROR_CODE util_getFileExtension(char** extension, uint_fast64_t* fileExtensionLength,  char* fileName, const uint_fast64_t fileNameLength){
+inline ERROR_CODE util_getFileExtension(char** extension, uint_fast64_t* fileExtensionLength,  char* fileName, const uint_fast64_t fileNameLength){
     const int_fast64_t fileExtensionOffset = util_findLast(fileName, fileNameLength, '.');
 
     if(fileExtensionOffset == -1){
@@ -708,6 +709,28 @@ ERROR_CODE util_getFileExtension(char** extension, uint_fast64_t* fileExtensionL
 
 inline char* util_getFileName(char* filePath, const uint_fast64_t filePathLength){
     return filePath + (util_findLast(filePath, filePathLength, '/') + 1);
+}
+
+inline ERROR_CODE util_renameFile(char* file, char* newName){
+    if(rename(file, newName) != 0){
+        return ERROR(ERROR_FAILED_TO_RENAME_FILE);
+    }
+
+    return ERROR(ERROR_NO_ERROR);
+}
+
+inline ERROR_CODE util_renameFileRelative(char* dir, char* file, char* newName){
+    const int fd = open(dir, O_RDONLY | O_DIRECTORY);
+
+    if(fd == -1){
+        return ERROR_(ERROR_FAILED_TO_OPEN_DIRECTORY, "'%s'", strerror(errno));
+    }
+
+    if(renameat(fd, file, fd, newName) != 0){
+        return ERROR_(ERROR_FAILED_TO_RENAME_FILE, "'%s'", strerror(errno));
+    }
+
+    return ERROR(ERROR_NO_ERROR);
 }
 
 #endif

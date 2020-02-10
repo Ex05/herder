@@ -883,6 +883,102 @@ TEST_TEST_FUNCTION(util_getFileExtension){
     return true;
 }
 
+
+TEST_TEST_FUNCTION(util_renameFile){
+    #define TEST_FILE_NAME "/tmp/herder_util_test_renameFile_XXXXXX"
+    #define TEST_FILE_NEW_NAME "/tmp/herder_util_test_renameFile.xmpe"
+
+    char* filePath = malloc(sizeof(*filePath) * (strlen(TEST_FILE_NAME) + 1));
+    strcpy(filePath, TEST_FILE_NAME);
+    
+    char* newFileName = malloc(sizeof(*newFileName) * (strlen(TEST_FILE_NEW_NAME) + 1));
+    strcpy(newFileName, TEST_FILE_NEW_NAME);
+
+    #undef TEST_FILE_NAME
+    #undef TEST_FILE_NEW_NAME
+
+    const int fileDescriptor = mkstemp(filePath);
+
+    if(fileDescriptor < 1){
+        UTIL_LOG_ERROR_("Failed to create temporary file '%s' [%s].", filePath, strerror(errno));
+
+        return false;
+    }
+
+    if(util_renameFile(filePath, newFileName) != ERROR_NO_ERROR){
+        return false;
+    }
+
+    if(util_fileExists(filePath) || !util_fileExists(newFileName)){
+        return false;
+    }
+
+    if(util_deleteFile(newFileName) != ERROR_NO_ERROR){
+        return false;
+    }
+
+    free(filePath);
+    free(newFileName);
+
+    return true;
+}
+
+TEST_TEST_FUNCTION(util_renameFileRelative){
+    #define TEST_DIR_NAME "/tmp/"
+    #define TEST_FILE_NAME "herder_util_test_renameFileRelative_XXXXXX"
+    #define TEST_NEW_FILE_NAME "herder_util_test_renameFileRelative.xmpe"
+
+    char* dir = malloc(sizeof(*dir) * (strlen(TEST_DIR_NAME) + 1));
+    strcpy(dir, TEST_DIR_NAME);
+        
+    char* fileName = malloc(sizeof(*fileName) * (strlen(TEST_FILE_NAME) + 1));
+    strcpy(fileName, TEST_FILE_NAME);
+
+    char* filePath = malloc(sizeof(*filePath) * (strlen(TEST_DIR_NAME) + strlen(TEST_FILE_NAME) + 1));
+    strcpy(filePath, TEST_DIR_NAME);
+    strcpy(filePath + strlen(TEST_DIR_NAME), TEST_FILE_NAME);
+
+    char* newFileName = malloc(sizeof(*newFileName) * (strlen(TEST_NEW_FILE_NAME) + 1));
+    strcpy(newFileName, TEST_NEW_FILE_NAME);
+
+    char* newFilePath = malloc(sizeof(*newFilePath) * (strlen(TEST_DIR_NAME) + strlen(TEST_FILE_NAME) + 1));
+    strcpy(newFilePath, TEST_DIR_NAME);
+    strcpy(newFilePath + strlen(TEST_DIR_NAME), TEST_NEW_FILE_NAME);
+
+    #undef TEST_DIR_NAME
+    #undef TEST_FILE_NAME
+    #undef TEST_NEW_FILE_NAME
+
+    const int fileDescriptor = open(filePath, O_RDONLY | O_CREAT);
+
+    if(fileDescriptor < 1){
+        UTIL_LOG_ERROR_("Failed to create temporary file '%s' [%s].", filePath, strerror(errno));
+
+        return false;
+    }
+
+    if(util_renameFileRelative(dir, fileName, newFileName) != ERROR_NO_ERROR){
+        return false;
+    }
+
+    if(util_fileExists(fileName) || !util_fileExists(newFilePath)){
+        return false;
+    }
+
+    if(util_deleteFile(newFilePath) != ERROR_NO_ERROR){
+        return false;
+    }
+
+    free(dir);
+    free(fileName);
+    free(filePath);
+    free(newFileName);
+    free(newFilePath);
+
+    return true;
+}
+
+
 // http.c
 TEST_TEST_FUNCTION(http_addHeaderField){
     #define BUFFER_SIZE 8192
@@ -1108,7 +1204,9 @@ TEST_TEST_FUNCTION(cache_load){
         }
     }
     
-    util_deleteFile(filePath);
+    if(util_deleteFile(filePath) != ERROR_NO_ERROR){
+        return false;
+    }
 
     cache_free(&cache);
 
@@ -1933,9 +2031,11 @@ int main(void){
         TEST(util_append);
         TEST(util_stringToInt);
         TEST(util_getFileExtension);
-                
+
         TEST(util_getBaseDirectory);
         TEST(util_getFileName);
+        TEST(util_renameFile);
+        TEST(util_renameFileRelative);                
     TEST_SUIT_END();
 
     TEST_SUIT_BEGIN("argumentParser");
