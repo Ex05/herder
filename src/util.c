@@ -711,6 +711,19 @@ inline char* util_getFileName(char* filePath, const uint_fast64_t filePathLength
     return filePath + (util_findLast(filePath, filePathLength, '/') + 1);
 }
 
+inline ERROR_CODE util_getFileDirectory(char* dir, char* filePath, const uint_fast64_t filePathLength){
+    const uint_fast64_t dirLength = util_findLast(filePath, filePathLength, '/');
+
+    if(dirLength <= 0){
+        return ERROR_(ERROR_INVALID_STRING, "The path '%s' does not contain a directory.", filePath);
+    }
+
+    strncpy(dir, filePath, dirLength);
+    dir[dirLength] = '\0';
+
+    return ERROR(ERROR_NO_ERROR);
+}
+
 inline ERROR_CODE util_renameFile(char* file, char* newName){
     if(rename(file, newName) != 0){
         return ERROR(ERROR_FAILED_TO_RENAME_FILE);

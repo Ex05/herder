@@ -978,6 +978,21 @@ TEST_TEST_FUNCTION(util_renameFileRelative){
     return true;
 }
 
+TEST_TEST_FUNCTION(util_getFileDirectory){
+    char path[] = "/home/user/file.xmp";
+
+    char* dir = alloca(sizeof(*dir) * (strlen(path) + 1));
+
+    if(util_getFileDirectory(dir, path, strlen(path)) != ERROR_NO_ERROR){
+        return false;
+    }
+
+    if(strcmp(dir, "/home/user") != 0){
+        return false;
+    }
+
+    return true;
+}
 
 // http.c
 TEST_TEST_FUNCTION(http_addHeaderField){
@@ -2036,6 +2051,7 @@ int main(void){
         TEST(util_getFileName);
         TEST(util_renameFile);
         TEST(util_renameFileRelative);                
+        TEST(util_getFileDirectory);
     TEST_SUIT_END();
 
     TEST_SUIT_BEGIN("argumentParser");

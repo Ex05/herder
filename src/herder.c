@@ -594,371 +594,6 @@ label_unMap:
     return ERROR(error);
 }
 
-ERROR_CODE herder_renameEpisode(Property* remoteHost, Property* remotePort){
-    ERROR_CODE error = ERROR_NO_ERROR;
-
-    char* userInput;
-    int_fast64_t userInputLength;
-
-    char* host = (char*) remoteHost->buffer;
-    uint_fast16_t port = util_byteArrayTo_uint64(remotePort->buffer);
-
-    LinkedList shows;
-    if((error = herder_pullShowList(&shows, host, port)) != ERROR_NO_ERROR){
-        goto label_return;
-    }
-
-    if(shows.length == 0){
-        UTIL_LOG_CONSOLE(LOG_INFO, "Library is empty.");
-    }else{
-        LinkedListIterator it;
-        linkedList_initIterator(&it, &shows);
-
-        uint_fast64_t i = 0;
-        while(LINKED_LIST_ITERATOR_HAS_NEXT(&it)){
-            char* show = LINKED_LIST_ITERATOR_NEXT(&it);
-            
-            UTIL_LOG_CONSOLE_(LOG_INFO, "%02" PRIuFAST64 ":'%s'.", i, show);
-
-            i++;
-        }
-    }
-
-label_readUserInput:
-    UTIL_LOG_CONSOLE(LOG_INFO, "\nPlease select a show.");
-
-    if((error = util_readUserInput(&userInput, &userInputLength)) != ERROR_NO_ERROR){
-        goto label_return;
-    }
-
-    char* selectedShow = NULL;
-
-    int_fast64_t value;
-    if(util_stringToInt(userInput, &value) != ERROR_NO_ERROR){
-        selectedShow = userInput;
-    }
-
-    if(value + 1 > (int_fast64_t) shows.length || value < 0){
-        free(userInput);
-
-        UTIL_LOG_CONSOLE(LOG_ERR, "Invalid selection.");
-
-        goto label_readUserInput;
-    }
-
-    LinkedListIterator it;
-    linkedList_initIterator(&it, &shows);
-
-    int_fast64_t i = 0;
-    while(LINKED_LIST_ITERATOR_HAS_NEXT(&it)){
-        char* show = LINKED_LIST_ITERATOR_NEXT(&it);
-
-        if(value == i++ && selectedShow == NULL){
-            selectedShow = show;
-
-            break;
-        }
-
-        if(strncmp(userInput, show, userInputLength + 1) == 0){
-            selectedShow = show;
-
-            break;
-        }
-    }
-
-    if(selectedShow == NULL || selectedShow == userInput){
-        free(userInput);
-
-        UTIL_LOG_CONSOLE(LOG_ERR, "Invalid selection.");
-
-        goto label_readUserInput;
-    }
-
-    const uint_fast64_t showNameLength = strlen(selectedShow);
-    char* showName = alloca(sizeof(*showName) * (showNameLength + 1));
-    strncpy(showName, selectedShow, showNameLength + 1);
-
-    linkedList_initIterator(&it, &shows);
-    while(LINKED_LIST_ITERATOR_HAS_NEXT(&it)){
-        char* show = LINKED_LIST_ITERATOR_NEXT(&it);
-        
-        free(show);
-    }
-
-    free(userInput);
-
-    linkedList_free(&shows);
-
-    // Select season.
-    Show* show = alloca(sizeof(*show));
-    if((error = medialibrary_initShow(show, showName, showNameLength)) != ERROR_NO_ERROR){
-        goto label_return;
-    }
-
-    if((error = herder_pullShowInfo(remoteHost, remotePort, show)) != ERROR_NO_ERROR){
-        goto label_freeShow;
-    }
-
-    UTIL_LOG_CONSOLE(LOG_INFO, "Seasons:");
-
-    Season** seasons = alloca(sizeof(*seasons) * show->seasons.length);
-    mediaLibrary_sortSeasons(&seasons, &show->seasons);
-
-    uint_fast64_t j;
-    for(j = 0; j < show->seasons.length; j++){
-        UTIL_LOG_CONSOLE_(LOG_INFO, "\t%" PRIuFAST16 ".", seasons[j]->number);
-    }
-    
-    UTIL_LOG_CONSOLE(LOG_INFO, "\nPlease select a season.");
-
-label_selectSeason:
-    if((error = util_readUserInput(&userInput, &userInputLength)) != ERROR_NO_ERROR){
-        goto label_freeShow;
-    }
-
-    if(util_stringToInt(userInput, &value) != ERROR_NO_ERROR){
-        free(userInput);
-
-        goto label_selectSeason;
-    }
-
-    if(value < 1){
-        free(userInput);
-
-        UTIL_LOG_CONSOLE(LOG_INFO, "Invalid selection.");
-
-        goto label_selectSeason;
-    }
-
-    Season* selectedSeason = NULL;
-    for(j = 0; j < show->seasons.length; j++){
-       if((int_fast64_t) (seasons[j]->number) == value){
-           selectedSeason = seasons[j];
-
-           break;
-       }
-    }
-
-    free(userInput);
-
-    if(selectedSeason == NULL){
-        goto label_selectSeason;
-    }
-
-    UTIL_LOG_CONSOLE_(LOG_INFO, "Season:'%02" PRIuFAST16 "'.", selectedSeason->number);
-
-    // Select Episode.    
-    Episode** episodes = alloca(sizeof(*episodes) * selectedSeason->episodes.length);
-    mediaLibrary_sortEpisodes(&episodes, &selectedSeason->episodes);
-
-    for(j = 0; j < selectedSeason->episodes.length; j++){
-        UTIL_LOG_CONSOLE_(LOG_INFO, "\t%" PRIuFAST16 ": '%s'", episodes[j]->number, episodes[j]->name);
-    }
-
-    UTIL_LOG_CONSOLE(LOG_INFO, "\nPlease select an episode.");
-
-label_selectEpisode:
-    if((error = util_readUserInput(&userInput, &userInputLength)) != ERROR_NO_ERROR){
-        goto label_freeShow;
-    }
-
-    if(util_stringToInt(userInput, &value) != ERROR_NO_ERROR){
-        free(userInput);
-
-        goto label_selectEpisode;
-    }
-
-    if(value < 1){
-        free(userInput);
-
-        UTIL_LOG_CONSOLE(LOG_INFO, "Invalid selection.");
-
-        goto label_selectEpisode;
-    }
-
-    Episode* selectedEpisode = NULL;
-    for(j = 0; j < selectedSeason->episodes.length; j++){
-       if((int_fast64_t) (episodes[j]->number) == value){
-           selectedEpisode = episodes[j];
-
-           break;
-       }
-    }
-
-    free(userInput);
-
-    if(selectedEpisode == NULL){
-        goto label_selectSeason;
-    }
-
-label_enterNewName:
-    UTIL_LOG_CONSOLE(LOG_INFO, "\nPlease enter a new episode name.");
-
-    char* newEpisodeName;
-    int_fast64_t newEpisodeNameLength;
-
-    if((error = util_readUserInput(&newEpisodeName, &newEpisodeNameLength)) != ERROR_NO_ERROR){
-        goto label_freeShow;
-    }
-
-    UTIL_LOG_CONSOLE_(LOG_INFO, "\nShow:'%s', s%02" PRIuFAST16 "e%02" PRIuFAST16 " - '%s'", showName, selectedSeason->number, selectedEpisode->number, userInput);
-
-    UTIL_LOG_CONSOLE_(LOG_INFO, "\nRename episode to '%s'? Yes/No.", userInput);
-
-    util_toLowerChase(userInput);
-
-    if((error = util_readUserInput(&userInput, &userInputLength)) != ERROR_NO_ERROR){
-        free(userInput);
-
-        free(newEpisodeName);
-
-        goto label_freeShow;
-    }
-
-    UTIL_LOG_CONSOLE_(LOG_DEBUG, "Input:'%s' [%" PRIdFAST64 "]", userInput, userInputLength);
-
-    if(strncmp(userInput, "no", 3) == 0 || strncmp(userInput, "n", 2) == 0){
-        free(userInput);
-        free(newEpisodeName);
-
-        UTIL_LOG_CONSOLE(LOG_DEBUG, "NO");
-
-        goto label_enterNewName;
-    }else{
-        if(userInputLength != 0 && strncmp(userInput, "yes", 4) != 0 && strncmp(userInput, "y", 2) != 0){
-            UTIL_LOG_CONSOLE(LOG_DEBUG, "Invalid !!!");
-
-            goto label_enterNewName;
-        }else{
-            UTIL_LOG_CONSOLE(LOG_DEBUG, "yes");
-        }
-    }
-
-    // Send rename packet.
-    void* httpProcessingBuffer;
-    if((error = util_blockAlloc(&httpProcessingBuffer, HTTP_PROCESSING_BUFFER_SIZE)) != ERROR_NO_ERROR){
-        goto label_unMap;
-    }
-
-    int_fast32_t socketFD;
-    if((error = http_openConnection(&socketFD, host, port)) != ERROR_NO_ERROR){
-        goto label_unMap;
-    }
-
-    const char url[] = "/updateShowInfo";
-
-    HTTP_Request request;
-    if((error = http_initRequest(&request, url, strlen(url), httpProcessingBuffer, HTTP_PROCESSING_BUFFER_SIZE, HTTP_VERSION_1_1, REQUEST_TYPE_POST)) != ERROR_NO_ERROR){
-        goto label_freeRequest;
-    }
-
-    HTTP_ADD_HEADER_FIELD(request, Host, host);
-
-    // 1. Type:[ShowName, SeasonNumber, EpisodeInfo],
-    // 2. Old value/s.
-    // 3. New value/s.
-
-    request.data[request.dataLength] = UPDATE_INFO_PACKET_TYPE_UPDATE_EPISODE_INFO;
-    request.dataLength += sizeof(uint8_t);   
-
-    // Show_Name.
-    util_uint64ToByteArray(request.data + request.dataLength, show->nameLength);
-    request.dataLength += sizeof(uint64_t);   
-
-    memcpy(request.data + request.dataLength, show->name, show->nameLength + 1);
-    request.dataLength += show->nameLength + 1;
-
-    // Season_Number.
-    util_uint16ToByteArray(request.data + request.dataLength, selectedSeason->number);
-    request.dataLength += sizeof(uint16_t);   
-
-    // Episode_Number.
-    util_uint16ToByteArray(request.data + request.dataLength, selectedEpisode->number);
-    request.dataLength += sizeof(uint16_t);   
-
-    // New values
-
-    // Season_Number.
-    util_uint16ToByteArray(request.data + request.dataLength, selectedSeason->number);
-    request.dataLength += sizeof(uint16_t);   
-
-    // Episode_Number.
-    util_uint16ToByteArray(request.data + request.dataLength, selectedEpisode->number);
-    request.dataLength += sizeof(uint16_t);   
-
-    // Episode_Name.
-    util_uint64ToByteArray(request.data + request.dataLength, newEpisodeNameLength);
-    request.dataLength += sizeof(uint64_t);   
-
-    memcpy(request.data + request.dataLength, newEpisodeName, newEpisodeNameLength + 1);
-    request.dataLength += newEpisodeNameLength + 1;
-
-    HTTP_Response response;
-    http_initResponse(&response, httpProcessingBuffer, HTTP_PROCESSING_BUFFER_SIZE);
-    if((error = http_sendRequest(&request, &response, socketFD)) != ERROR_NO_ERROR){
-        goto label_freeResponse;
-    }
-
-    http_closeConnection(socketFD);
-
-    if(response.statusCode != _200_OK){
-        error = ERROR_INVALID_STATUS_CODE;
-
-        UTIL_LOG_CONSOLE_(LOG_ERR, "Server_status:'%s'.", http_getStatusMsg(response.statusCode));
-    }else{
-        if(response.dataLength != sizeof(uint64_t)){
-            error = ERROR_INVALID_CONTENT_LENGTH;
-        }else{
-            const uint_fast64_t returnCode = util_byteArrayTo_uint64(response.data);
-            if(returnCode != ERROR_NO_ERROR){
-               error = returnCode;
-            }
-        }
-    }
-
-label_freeRequest:
-    http_freeHTTP_Request(&request);
-
-label_freeResponse:
-    http_freeHTTP_Response(&response);
-
-label_unMap:
-    if(util_unMap(httpProcessingBuffer, HTTP_PROCESSING_BUFFER_SIZE) != ERROR_NO_ERROR){
-        UTIL_LOG_ERROR(util_toErrorString(ERROR_FAILED_TO_UNMAP_MEMORY));
-    }
-
-    free(userInput);
-
-    // Free show.1
-    LinkedListIterator seasonIterator;
-label_freeShow:
-    linkedList_initIterator(&seasonIterator, &show->seasons);
-
-    while(LINKED_LIST_ITERATOR_HAS_NEXT(&seasonIterator)){
-        Season* season = LINKED_LIST_ITERATOR_NEXT(&seasonIterator);
-
-        LinkedListIterator episodeIterator;
-        linkedList_initIterator(&episodeIterator, &season->episodes);
-
-        while(LINKED_LIST_ITERATOR_HAS_NEXT(&episodeIterator)){
-            Episode* episode = LINKED_LIST_ITERATOR_NEXT(&episodeIterator);
-
-            mediaLibrary_freeEpisode(episode);
-
-            free(episode);
-        }
-
-        mediaLibrary_freeSeason(season);
-    
-        free(season);
-    }
-
-    mediaLibrary_freeShow(show);
-
-label_return:
-    return ERROR(error);
-}
-
 /*  printf("#define HASH_MP4 %d\n", util_hashString(".mp4"));
     printf("#define HASH_MKV %d\n", util_hashString(".mkv"));
     printf("#define HASH_AVI %d\n", util_hashString(".avi")); */
@@ -1065,14 +700,30 @@ ERROR_CODE herder_pullShowInfo(Property* remoteHost, Property* remotePort, Show*
                     uint_fast64_t nameLength = util_byteArrayTo_uint64(response.data + readOffset);
                     readOffset += sizeof(uint64_t);
 
+                    // TODO: Remove memcpy into the stack. We can just point into the HTTP_PROCESSING_BUFFER since we malloc and memcpy in 'mediaLibrary_initEpisode' anyways. (jan - 2020.02.10)
+
                     // Episode_Name.
                     char* name = alloca(sizeof(*name) * (nameLength + 1));
                     memcpy(name, response.data + readOffset, nameLength + 1);
                     readOffset += nameLength + 1;
 
+                    // File_ExtensionLength.
+                    uint_fast16_t fileExtensionLength = util_byteArrayTo_uint16(response.data + readOffset);
+                    readOffset += sizeof(uint16_t);
+
+                    // File_Extension.
+                    char* fileExtension = alloca(sizeof(*fileExtension) * (fileExtensionLength + 1));
+                    memcpy(fileExtension, response.data + readOffset, fileExtensionLength + 1);
+                    readOffset += fileExtensionLength + 1;
+
                     Episode* episode;
-                    episode = malloc(sizeof(*episode));
-                    if((medialibrary_initEpisode(episode, episodeNumber, name, nameLength, "", 0)) != ERROR_NO_ERROR){
+                    if((episode = malloc(sizeof(*episode))) == NULL){
+                        error = ERROR_OUT_OF_MEMORY;
+
+                        goto label_freeRequest;
+                    }
+
+                    if((medialibrary_initEpisode(episode, episodeNumber, name, nameLength, fileExtension, fileExtensionLength)) != ERROR_NO_ERROR){
                         goto label_freeRequest;
                     }
 
@@ -1102,4 +753,85 @@ label_unMap:
     return ERROR(error);
 }
 
-#undef HTTP_PROCESSING_BUFFER_SIZE
+ERROR_CODE herder_renameEpisode(Property* remoteHost, Property* remotePort, Show* show, Season* season, Episode* episode, char* newEpisodeName, const uint_fast64_t newEpisodeNameLength){
+    ERROR_CODE error;
+
+    char* host = (char*) remoteHost->buffer;
+    uint_fast16_t port = util_byteArrayTo_uint64(remotePort->buffer);
+
+    void* httpProcessingBuffer;
+    if((error = util_blockAlloc(&httpProcessingBuffer, HTTP_PROCESSING_BUFFER_SIZE)) != ERROR_NO_ERROR){
+        goto label_unMap;
+    }
+
+    int_fast32_t socketFD;
+    if((error = http_openConnection(&socketFD, host, port)) != ERROR_NO_ERROR){
+        goto label_unMap;
+    }
+
+    const char url[] = "/renameEpisode";
+
+    HTTP_Request request;
+    if((error = http_initRequest(&request, url, strlen(url), httpProcessingBuffer, HTTP_PROCESSING_BUFFER_SIZE, HTTP_VERSION_1_1, REQUEST_TYPE_POST)) != ERROR_NO_ERROR){
+        goto label_freeRequest;
+    }
+
+    HTTP_ADD_HEADER_FIELD(request, Host, host);
+
+    // Show_Name.
+    util_uint64ToByteArray(request.data + request.dataLength, show->nameLength);
+    request.dataLength += sizeof(uint64_t);   
+
+    memcpy(request.data + request.dataLength, show->name, show->nameLength + 1);
+    request.dataLength += show->nameLength + 1;
+
+    // Season_Number.
+    util_uint16ToByteArray(request.data + request.dataLength, season->number);
+    request.dataLength += sizeof(uint16_t);   
+
+    // Episode_Number.
+    util_uint16ToByteArray(request.data + request.dataLength, episode->number);
+    request.dataLength += sizeof(uint16_t);   
+
+    // New Episode_Name.
+    util_uint64ToByteArray(request.data + request.dataLength, newEpisodeNameLength);
+    request.dataLength += sizeof(uint64_t);   
+
+    memcpy(request.data + request.dataLength, newEpisodeName, newEpisodeNameLength + 1);
+    request.dataLength += newEpisodeNameLength + 1;
+
+    HTTP_Response response;
+    http_initResponse(&response, httpProcessingBuffer, HTTP_PROCESSING_BUFFER_SIZE);
+    if((error = http_sendRequest(&request, &response, socketFD)) != ERROR_NO_ERROR){
+        goto label_freeResponse;
+    }
+
+    http_closeConnection(socketFD);
+
+    if(response.statusCode != _200_OK){
+        error = ERROR_INVALID_STATUS_CODE;
+
+        UTIL_LOG_CONSOLE_(LOG_ERR, "Server_status:'%s'.", http_getStatusMsg(response.statusCode));
+    }else{
+        if(response.dataLength != sizeof(uint64_t)){
+            error = ERROR_INVALID_CONTENT_LENGTH;
+        }else{
+            const uint_fast64_t returnCode = util_byteArrayTo_uint64(response.data);
+
+            error = returnCode;
+        }
+    }
+
+label_freeRequest:
+    http_freeHTTP_Request(&request);
+
+label_freeResponse:
+    http_freeHTTP_Response(&response);
+
+label_unMap:
+    if(util_unMap(httpProcessingBuffer, HTTP_PROCESSING_BUFFER_SIZE) != ERROR_NO_ERROR){
+        UTIL_LOG_ERROR(util_toErrorString(ERROR_FAILED_TO_UNMAP_MEMORY));
+    }
+
+    return ERROR(error);
+}

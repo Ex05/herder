@@ -24,6 +24,7 @@
 #define CONSOLE_CLIENT_USAGE_ARGUMENT_ADD_EPISODE "-a, --add, --addFile, --addEpisode <file>."
 #define CONSOLE_CLIENT_USAGE_ARGUMENT_IMPORT "-i, --import"
 #define CONSOLE_CLIENT_USAGE_ARGUMENT_BATCH_IMPORT "-b, --batch, --batchImport"
+#define CONSOLE_CLIENT_USAGE_ARGUMENT_RENAME "--rename"
 #define CONSOLE_CLIENT_USAGE_ARGUMENT_RENAME_EPISODE "--renameEpisode <old_name> <new_name>"
 #define CONSOLE_CLIENT_USAGE_ARGUMENT_REMOVE_EPISODE "--removeEpisode <name>"
 #define CONSOLE_CLIENT_USAGE_ARGUMENT_LIST_SHOWS "-l, --list"
@@ -56,6 +57,18 @@ local ERROR_CODE consoleClient_walkDirectory(LinkedList*, const char*);
 
 local ERROR_CODE consoleClient_extractShowInfo(Property*, Property*, EpisodeInfo*, const bool);
 
+local ERROR_CODE consoleClient_rename(Property*, Property*, Property*);
+
+local ERROR_CODE consoleClient_renameEpisode(Property*, Property*, char*, const uint_fast64_t, char*,  const uint_fast64_t);
+
+local ERROR_CODE consoleClient_selectShow(Property*, Property*, Show**);
+
+local ERROR_CODE consoleClient_selectSeason(Property*, Property*, Season**, Show*);
+
+local ERROR_CODE consoleClient_selectEpisode(Episode**, Season*);
+
+local ERROR_CODE consoleClient_selectYesNo(bool*);
+
 // TODO:(jan) Make custom entry point for the client build, so we won't have to use 'main'.
 #ifndef TEST_BUILD
 	int main(const int argc, const char** argv){
@@ -76,6 +89,7 @@ local ERROR_CODE consoleClient_extractShowInfo(Property*, Property*, EpisodeInfo
     ARGUMENT_PARSER_ADD_ARGUMENT(Add, 4, "-a", "-add", "--addFile", "--addEpisode");
     ARGUMENT_PARSER_ADD_ARGUMENT(Import, 2, "-i", "--import");
     ARGUMENT_PARSER_ADD_ARGUMENT(BatchImport, 3, "-b", "--batch", "--batchImport");
+    ARGUMENT_PARSER_ADD_ARGUMENT(Rename, 1, "--rename");
     ARGUMENT_PARSER_ADD_ARGUMENT(RenameEpisode, 1, "--renameEpisode");
     ARGUMENT_PARSER_ADD_ARGUMENT(RemoveEpisode, 1, "--removeEpisode");
     ARGUMENT_PARSER_ADD_ARGUMENT(ListShows, 3, "-l", "--list", "--listShows");
@@ -252,14 +266,32 @@ local ERROR_CODE consoleClient_extractShowInfo(Property*, Property*, EpisodeInfo
         goto label_freeProperties;
     }
 
+    // --rename.
+    if(argumentParser_contains(&parser, &argumentRename)){ 
+        if(ARGUMENT_PARSER_ARGUMENT_HAS_VALUE(argumentRename)){
+            UTIL_LOG_CONSOLE(LOG_INFO, "Invalid command. Usage: " CONSOLE_CLIENT_USAGE_ARGUMENT_RENAME);
+        }else{
+            if(CONSOLE_CLIENT_REMOTE_HOST_PROPERTIES_SET()){
+                ERROR_CODE error;
+                if((error = consoleClient_rename(remoteHost, remotePort, libraryDirectory)) != ERROR_NO_ERROR){
+                    UTIL_LOG_CONSOLE_(LOG_ERR, "Failed to rename Episode. '%s'", util_toErrorString(error));
+                }
+            }else{
+                UTIL_LOG_CONSOLE(LOG_ERR, util_toErrorString(ERROR_PROPERTY_NOT_SET));
+            }
+        }
+        
+        goto label_freeProperties;
+    }
+
     // --renameEpisode.
     if(argumentParser_contains(&parser, &argumentRenameEpisode)){ 
-        if(!ARGUMENT_PARSER_ARGUMENT_HAS_VALUE(argumentRenameEpisode)){
+        if(!ARGUMENT_PARSER_ARGUMENT_HAS_VALUE(argumentRenameEpisode) && argumentRenameEpisode.numArguments == 2){
             UTIL_LOG_CONSOLE(LOG_INFO, "Invalid command. Usage: " CONSOLE_CLIENT_USAGE_ARGUMENT_RENAME_EPISODE);
         }else{
             if(CONSOLE_CLIENT_REMOTE_HOST_PROPERTIES_SET()){
                 ERROR_CODE error;
-                if((error = herder_renameEpisode(remoteHost, remotePort)) != ERROR_NO_ERROR){
+                if((error = consoleClient_renameEpisode(remoteHost, remotePort, argumentRenameEpisode.arguments[1], strlen(argumentRenameEpisode.arguments[1]), argumentRenameEpisode.arguments[2], strlen(argumentRenameEpisode.arguments[2]))) != ERROR_NO_ERROR){
                     UTIL_LOG_CONSOLE_(LOG_ERR, "Failed to rename Episode. '%s'", util_toErrorString(error));
                 }
             }else{
@@ -880,5 +912,361 @@ ERROR_CODE consoleClient_walkDirectory(LinkedList* list, const char* directory){
 label_closeDir:
     closedir(currentDirectory);
         
+    return ERROR(error);
+}
+
+ERROR_CODE consoleClient_rename(Property* remoteHost, Property* remotePort, Property* libraryDirectory){
+    ERROR_CODE error = ERROR_NO_ERROR;
+
+    Show* selectedShow = NULL;
+    if((error = consoleClient_selectShow(remoteHost, remotePort, &selectedShow))){
+        goto label_return;
+    }
+
+    UTIL_LOG_CONSOLE_(LOG_DEBUG, "Selected show:'%s'.", selectedShow->name);
+
+    Season* selectedSeason = NULL;
+    if((error = consoleClient_selectSeason(remoteHost, remotePort, &selectedSeason, selectedShow))){
+        goto label_return;
+    }
+
+    UTIL_LOG_CONSOLE_(LOG_DEBUG, "Selected season:'%" PRIdFAST16 "'.", selectedSeason->number);
+
+    Episode* selectedEpisode = NULL;
+    if((error = consoleClient_selectEpisode(&selectedEpisode, selectedSeason) != ERROR_NO_ERROR)){
+        goto label_return;
+    }
+
+    UTIL_LOG_CONSOLE_(LOG_DEBUG, "Selected:[Episode:%" PRIdFAST16 " '%s'].", selectedEpisode->number, selectedEpisode->name);
+
+    UTIL_LOG_CONSOLE(LOG_INFO, "Please enter a new episode name.");
+    
+    char* newEpisodeName;
+    int_fast64_t newEpisodeNameLength;
+
+    if((error = util_readUserInput(&newEpisodeName, &newEpisodeNameLength)) != ERROR_NO_ERROR){
+        goto label_freeNewName;
+    }
+
+label_yesNo:
+    UTIL_LOG_CONSOLE_(LOG_INFO, "Rename '%s', s%02" PRIdFAST16 "e%02" PRIdFAST16 " - '%s' to '%s'? Yes/No.", selectedShow->name, selectedSeason->number, selectedEpisode->number, selectedEpisode->name, newEpisodeName);
+
+    bool renameEpisode;
+    if((error = consoleClient_selectYesNo(&renameEpisode) != ERROR_NO_ERROR)){
+        goto label_yesNo;
+    }
+
+    if(!renameEpisode){
+        goto label_freeNewName;
+    }
+
+    // Send rename packet.
+    if((error = herder_renameEpisode(remoteHost, remotePort, selectedShow, selectedSeason, selectedEpisode, newEpisodeName, newEpisodeNameLength)) != ERROR_NO_ERROR){
+        UTIL_LOG_CONSOLE_(LOG_ERR, "Server side error, failed to rename episode. [%s]", util_toErrorString(error));
+
+        goto label_freeNewName;
+    }
+
+    // To use the 'HERDER_CONSTRUCT_FILE_PATH' macro we need an to fill out an episode info struct.
+    EpisodeInfo info;
+    mediaLibrary_initEpisodeInfo(&info);
+    mediaLibrary_fillEpisodeInfo(selectedShow, selectedSeason, selectedEpisode, &info);
+
+    char* path;
+    uint_fast64_t pathLength;
+    HERDER_CONSTRUCT_FILE_PATH(&path, &pathLength, (&info));
+
+    const uint_fast64_t fileDstLength = (libraryDirectory->entry->length - 1) + pathLength + info.fileExtensionLength + 1;
+
+    char* filePath = alloca(sizeof(*filePath) * (fileDstLength + 1));
+    uint_fast64_t writeOffset = 0;
+
+    strncpy(filePath + writeOffset, (char*) libraryDirectory->buffer, libraryDirectory->entry->length - 1);
+    writeOffset += libraryDirectory->entry->length - 1;
+
+    strncpy(filePath + writeOffset, path, pathLength);
+    writeOffset += pathLength;
+
+    filePath[writeOffset] = '.';
+    writeOffset++;
+
+    strncpy(filePath + writeOffset, info.fileExtension, info.fileExtensionLength);
+    writeOffset += info.fileExtensionLength;
+    filePath[writeOffset] = '\0';
+
+    char* fileDirectory = alloca(sizeof(*fileDirectory) * fileDstLength + 1);
+    if((error = util_getFileDirectory(fileDirectory, filePath, fileDstLength)) != ERROR_NO_ERROR){
+        goto label_freeNewName;
+    }
+
+    char* oldFileName = util_getFileName(filePath, fileDstLength);
+
+    // Build new fileName.
+    const uint_fast64_t newFileNameLength = info.showNameLength + 2/*_*/ + (2 * UTIL_UINT16_STRING_LENGTH) + 3 /*'e'/'s'/'.'*/ + newEpisodeNameLength + info.fileExtensionLength;
+    char* newFileName = alloca(sizeof(*newFileName) * (newFileNameLength + 1));
+    
+    snprintf(newFileName, newFileNameLength, "%s_s%02" PRIdFAST16 "e%02" PRIdFAST16 "_%s.%s", info.showName, info.season, info.episode, newEpisodeName, info.fileExtension);
+
+    util_replaceAllChars(newFileName, ' ', '_');
+
+    // Rename file on disk.
+    if((error = util_renameFileRelative(fileDirectory, oldFileName, newFileName)) != ERROR_NO_ERROR){
+        goto label_freeNewName;
+    }
+
+label_freeNewName:
+    free(newEpisodeName);       
+
+    mediaLibrary_freeShow(selectedShow);
+    
+    free(selectedShow);
+
+label_return:
+    return ERROR(error);
+}
+
+local ERROR_CODE consoleClient_renameEpisode(Property* remoteHost, Property* remoteProperty, char* oldName, const uint_fast64_t oldNameLength, char* newName,  const uint_fast64_t newNameLength){
+    // ERROR_CODE error;
+
+
+    return ERROR(ERROR_ERROR);
+}
+
+local ERROR_CODE consoleClient_selectShow(Property* remoteHost, Property* remotePort, Show** selection){
+    ERROR_CODE error;
+
+    char* host = (char*) remoteHost->buffer;
+    uint_fast16_t port = util_byteArrayTo_uint64(remotePort->buffer);
+
+    // Pull show list.
+    LinkedList shows;
+    if((error = herder_pullShowList(&shows, host, port)) != ERROR_NO_ERROR){
+        if(error != ERROR_FAILED_TO_CONNECT){
+            goto label_freeShowList;
+        }else{
+            goto label_return;
+        }
+    }
+
+    if(shows.length == 0){
+        UTIL_LOG_CONSOLE(LOG_INFO, "Library is empty.");
+
+        error = ERROR_EMPTY_RESPONSE;
+
+        goto label_freeShowList;
+    }
+
+    // Print shows.
+    LinkedListIterator it;
+    linkedList_initIterator(&it, &shows);
+
+    int_fast64_t i = 0;
+    while(LINKED_LIST_ITERATOR_HAS_NEXT(&it)){
+        Show* show = LINKED_LIST_ITERATOR_NEXT(&it);
+        
+        UTIL_LOG_CONSOLE_(LOG_INFO, "%02" PRIuFAST64 ":'%s'.", i, show->name);
+        i++;
+    }
+
+    // Select show.
+    char* userInput;
+    int_fast64_t userInputLength;
+
+label_readUserInput:
+    UTIL_LOG_CONSOLE(LOG_INFO, "\nPlease select a show.");
+
+    if((error = util_readUserInput(&userInput, &userInputLength)) != ERROR_NO_ERROR){
+        goto label_return;
+    }
+
+    char* showSelection = NULL;
+
+    // Differentiate between selection via show name or via position in list.
+    // TODO: Add a check to see if there are shows with names like '1', '2', etc. (jan - 2020.02.08)
+    int_fast64_t numberSelection;
+    if(util_stringToInt(userInput, &numberSelection) != ERROR_NO_ERROR){
+        showSelection = userInput;
+    }
+
+    if(numberSelection + 1 > (int_fast64_t) shows.length || numberSelection < 0){
+        free(userInput);
+
+        UTIL_LOG_CONSOLE(LOG_ERR, "Invalid selection.");
+
+        goto label_readUserInput;
+    }else{
+        linkedList_initIterator(&it, &shows);
+
+        i = 0;
+        while(LINKED_LIST_ITERATOR_HAS_NEXT(&it)){
+            Show* show = LINKED_LIST_ITERATOR_NEXT(&it);
+
+            if(numberSelection == i++ && showSelection == NULL){
+                *selection = show;
+
+                break;
+            }
+
+            if(strncmp(userInput, show->name, userInputLength + 1) == 0){
+                *selection = show;
+
+                break;
+            }
+        }
+    }
+
+    if(*selection == NULL){
+        free(userInput);
+
+        UTIL_LOG_CONSOLE(LOG_ERR, "Invalid selection.");
+
+        goto label_readUserInput;
+    }
+
+    LinkedListIterator showIterator;
+label_freeShowList:
+    linkedList_initIterator(&showIterator, &shows);
+
+    while(LINKED_LIST_ITERATOR_HAS_NEXT(&showIterator)){
+        Show* show = LINKED_LIST_ITERATOR_NEXT(&showIterator);
+
+        if(show != *selection){
+            mediaLibrary_freeShow(show);
+
+            free(show);
+        }
+    }
+
+    linkedList_free(&shows);
+
+    free(userInput);
+
+label_return:
+    return ERROR(error);
+}
+
+local ERROR_CODE consoleClient_selectSeason(Property* remoteHost, Property* remotePort, Season** season, Show* show){
+    ERROR_CODE error;
+
+    if((error = herder_pullShowInfo(remoteHost, remotePort, show)) != ERROR_NO_ERROR){
+        goto label_return;
+    }
+
+    UTIL_LOG_CONSOLE(LOG_INFO, "Seasons:");
+
+    Season** seasons = alloca(sizeof(*seasons) * show->seasons.length);
+    mediaLibrary_sortSeasons(&seasons, &show->seasons);
+
+    uint_fast64_t j;
+    for(j = 0; j < show->seasons.length; j++){
+        UTIL_LOG_CONSOLE_(LOG_INFO, "\t%" PRIuFAST16 ".", seasons[j]->number);
+    }
+    
+    UTIL_LOG_CONSOLE(LOG_INFO, "Please select a season.");
+
+    char* userInput;
+    int_fast64_t userInputLength;
+    int_fast64_t selection;
+
+label_selectSeason:
+    if((error = util_readUserInput(&userInput, &userInputLength)) != ERROR_NO_ERROR){
+        goto label_return;
+    }
+
+    if(util_stringToInt(userInput, &selection) != ERROR_NO_ERROR){
+        free(userInput);
+
+        goto label_selectSeason;
+    }
+
+    if(selection < 1 || selection > (int_fast64_t) show->seasons.length){
+        free(userInput);
+
+        UTIL_LOG_CONSOLE(LOG_INFO, "Invalid selection.");
+
+        goto label_selectSeason;
+    }
+
+    *season = seasons[selection - 1];
+
+    free(userInput);  
+
+label_return:
+    return ERROR(error);
+}
+
+local ERROR_CODE consoleClient_selectEpisode(Episode** episode, Season* season){
+    ERROR_CODE error;
+
+    UTIL_LOG_CONSOLE(LOG_INFO, "Episodes:");
+
+    Episode** episodes = alloca(sizeof(*episodes) * season->episodes.length);
+    mediaLibrary_sortEpisodes(&episodes, &season->episodes);
+
+    uint_fast64_t j;
+    for(j = 0; j < season->episodes.length; j++){
+         UTIL_LOG_CONSOLE_(LOG_INFO, "\t%" PRIuFAST16 ":'%s'", episodes[j]->number, episodes[j]->name);
+    }
+    
+    UTIL_LOG_CONSOLE(LOG_INFO, "Please select an episode.");
+
+    char* userInput;
+    int_fast64_t userInputLength;
+    int_fast64_t selection;
+
+label_selectSeason:
+    if((error = util_readUserInput(&userInput, &userInputLength)) != ERROR_NO_ERROR){
+        goto label_return;
+    }
+
+    if(util_stringToInt(userInput, &selection) != ERROR_NO_ERROR){
+        free(userInput);
+
+        goto label_selectSeason;
+    }
+
+    if(selection < 1 || selection > (int_fast64_t) season->episodes.length){
+        free(userInput);
+
+        UTIL_LOG_CONSOLE(LOG_INFO, "Invalid selection.");
+
+        goto label_selectSeason;
+    }
+
+    *episode = episodes[selection - 1];
+
+    free(userInput);  
+
+label_return:
+    return ERROR(error);    
+}
+
+local ERROR_CODE consoleClient_selectYesNo(bool* selection){
+    ERROR_CODE error;
+
+    char* userInput;
+    int_fast64_t userInputLength;
+
+    if((error = util_readUserInput(&userInput, &userInputLength)) != ERROR_NO_ERROR){
+        goto label_freeUserInput;
+    }
+
+    util_toLowerChase(userInput);
+
+    if(strncmp(userInput, "no", 3) == 0 || strncmp(userInput, "n", 2) == 0){        
+        *selection = false;
+    }else{
+        if(userInputLength != 0 && strncmp(userInput, "yes", 4) != 0 && strncmp(userInput, "y", 2) != 0){
+            UTIL_LOG_CONSOLE(LOG_DEBUG, "Invalid selection, enter yes/no to continue.");
+
+            error = ERROR_INVALID_VALUE;
+        }else{
+            *selection = true;
+        }
+    }
+
+label_freeUserInput:
+    free(userInput);
+
     return ERROR(error);
 }

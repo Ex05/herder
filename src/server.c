@@ -416,6 +416,14 @@ local SERVER_CONTEXT_HANDLER(server_pageShowInfo){
                     // Episode_Name.
                     memcpy(response->data + response->dataLength, episode->name, episode->nameLength + 1);
                     response->dataLength += episode->nameLength + 1;
+
+                    // File_ExtensionLength.
+                    util_uint16ToByteArray(response->data + response->dataLength, episode->fileExtensionLength);
+                    response->dataLength += sizeof(uint16_t);
+
+                    // File_Extension.
+                    memcpy(response->data + response->dataLength, episode->fileExtension, episode->fileExtensionLength + 1);
+                    response->dataLength += episode->fileExtensionLength + 1;
                 }
             }
         }
@@ -431,7 +439,7 @@ local SERVER_CONTEXT_HANDLER(server_pageShowInfo){
     return ERROR(ERROR_NO_ERROR);
 }
 
-local SERVER_CONTEXT_HANDLER(server_pageUpdateShowInfo){
+local SERVER_CONTEXT_HANDLER(server_pageRenameEpisode){
      if(request->type != REQUEST_TYPE_POST){
         server_constructErrorPage(server, request, response, _405_METHOD_NOT_ALLOWED);
 
@@ -441,14 +449,6 @@ local SERVER_CONTEXT_HANDLER(server_pageUpdateShowInfo){
     ERROR_CODE error;
     
     uint_fast64_t readOffset = 0;
-
-    // TODO: Handle different packet types. (jan - 31.07.2019)
-
-    // Update packet type.
-    // const uint_fast64_t packetType = util_byteArrayTo_uint64(request->data + readOffset);
-    readOffset += sizeof(uint8_t);
-    
-    // Old values.
 
     // Show_name.
     const uint_fast64_t showNameLength = util_byteArrayTo_uint64(request->data + readOffset);
@@ -463,39 +463,33 @@ local SERVER_CONTEXT_HANDLER(server_pageUpdateShowInfo){
     }
 
     // Season_Number.
-    uint16_t oldSeasonNumber = util_byteArrayTo_uint16(response->data + response->dataLength);
+    uint16_t seasonNumber = util_byteArrayTo_uint16(request->data + readOffset);
     readOffset += sizeof(uint16_t);
 
     Season* season;
-    if((error = medialibrary_getSeason(show, &season, oldSeasonNumber)) != ERROR_NO_ERROR){
+    if((error = medialibrary_getSeason(show, &season, seasonNumber)) != ERROR_NO_ERROR){
         goto label_onError;
     }
 
     // Episode_Number.
-    uint16_t oldEpisodeNumber = util_byteArrayTo_uint16(response->data + response->dataLength);
+    uint16_t episodeNumber = util_byteArrayTo_uint16(request->data + readOffset);
     readOffset += sizeof(uint16_t);   
 
     Episode* episode;
-    if((mediaLibrary_getEpisode(season, &episode, oldEpisodeNumber)) != ERROR_NO_ERROR){
+    if((error = mediaLibrary_getEpisode(season, &episode, episodeNumber)) != ERROR_NO_ERROR){
         goto label_onError;
     }
 
-    // New values.
-
-    // Season_number
-    // uint16_t newSeasonNumber = util_byteArrayTo_uint16(response->data + response->dataLength);
-    readOffset += sizeof(uint16_t);
-
-    // Episode_Number.
-    // uint16_t newEpisodeNumber = util_byteArrayTo_uint16(response->data + response->dataLength);
-    readOffset += sizeof(uint16_t);   
-
-    // Episode_name.
-    const uint_fast64_t episodeNameLength = util_byteArrayTo_uint64(request->data + readOffset);
+    // New Episode_Name.
+    const uint_fast64_t newEpisodeNameLength = util_byteArrayTo_uint64(request->data + readOffset);
     readOffset += sizeof(uint64_t);
 
-    // const char* episodeName = (char*) (request->data + readOffset);
-    readOffset += episodeNameLength + 1;
+    char* newEpisodeName = (char*) (request->data + readOffset);
+    readOffset += newEpisodeNameLength + 1;
+
+    if((error = mediaLibrary_renameEpisode(&server->library, show, season, episode, newEpisodeName, newEpisodeNameLength)) != ERROR_NO_ERROR){
+        goto label_onError;
+    }
 
  label_onError:
     util_uint64ToByteArray(response->data + response->dataLength, error);
@@ -768,7 +762,7 @@ label_return:
 			server_addContext(&server, "/shows", server_pageShows);
             server_addContext(&server, "/extractShowInfo", server_pageExtractShowInfo);
             server_addContext(&server, "/showInfo", server_pageShowInfo);
-            server_addContext(&server, "/updateInfo", server_pageUpdateShowInfo);
+            server_addContext(&server, "/renameEpisode", server_pageRenameEpisode);
 
 			UTIL_LOG_INFO_("Starting server on port '%" PRIuFAST16 "'.", port);
 

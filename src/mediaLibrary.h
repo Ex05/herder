@@ -51,12 +51,6 @@ typedef struct{
     int_fast16_t episode;
 }EpisodeInfo;
 
-typedef enum{
-    UPDATE_INFO_PACKET_TYPE_UPDATE_SHOW_NAME = 0,
-    UPDATE_INFO_PACKET_TYPE_UPDATE_SEASON_NUMBER = 1,
-    UPDATE_INFO_PACKET_TYPE_UPDATE_EPISODE_INFO
-}UPDATE_INFO_PACKET_TYPE;
-
 ERROR_CODE mediaLibrary_init(MediaLibrary*, const char*, const uint_fast64_t);
 
 void mediaLibrary_free(MediaLibrary*);
@@ -91,6 +85,12 @@ ERROR_CODE mediaLibrary_sortSeasons(Season***, LinkedList*);
 
 ERROR_CODE mediaLibrary_sortEpisodes(Episode***, LinkedList*);
 
+void mediaLibrary_fillEpisodeInfo(Show*, Season*, Episode*, EpisodeInfo*);
+
+ERROR_CODE mediaLibrary_renameEpisode(MediaLibrary*, Show*, Season*, Episode*, char*, const uint_fast64_t);
+
+ERROR_CODE mediaLibrary_saveEpisodeToDisk(MediaLibrary*, Show*, Season*, Episode*);
+
 #endif
 
 /*
@@ -110,7 +110,9 @@ URL: '/showInfo'
             {
                 Number,
                 NameLength,
-                Name                
+                Name,
+                FileExtensionLength,
+                FileExtension                
             }
         }
 */
