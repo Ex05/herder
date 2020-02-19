@@ -299,7 +299,7 @@ inline void mediaLibrary_free(MediaLibrary* library){
 }
 
 inline ERROR_CODE mediaLibrary_extractEpisodeInfo(EpisodeInfo* info, LinkedList* shows, char* fileName, const uint_fast64_t fileNameLength){
-    // NOTE:(jan) All the strlen calls are needed, as each of the 'medialibrary_extract*' calls modify the file name.
+    // NOTE:(jan) All the strlen calls are needed, as each of the 'medialibrary_extract...' calls modify the file name.
     ERROR_CODE error = ERROR_NO_ERROR;
     if(mediaLibrary_extractSeasonNumber(info, fileName, strlen(fileName)) != ERROR_NO_ERROR){
         error = ERROR_INCOMPLETE;
@@ -758,7 +758,8 @@ ERROR_CODE medialibrary_removeEpisodeFrromLibraryFile(MediaLibrary* library, Sho
             goto label_return;
         }
 
-        if(fillZero == 8){
+    #define FILL_WITH_ZERO 8
+        if(fillZero == FILL_WITH_ZERO){
             // Overwrite entry.
             if(fseek(file, showNameOffset, SEEK_SET) != 0){
                 ERROR(error = ERROR_DISK_ERROR);
@@ -815,6 +816,8 @@ ERROR_CODE medialibrary_removeEpisodeFrromLibraryFile(MediaLibrary* library, Sho
 
             break;
         }
+
+        #undef FILL_WITH_ZERO
     }
 
 label_return:
@@ -971,8 +974,6 @@ ERROR_CODE medialibrary_removeShowFrromLibraryFile(MediaLibrary* library, const 
 
     strncpy(showPath + library->libraryFileLocationLength, noWhiteSpaceShowName, showLength + 2);
 
-    UTIL_LOG_CONSOLE_(LOG_DEBUG, "Show:'%s'.", showPath);
-
     return ERROR(util_deleteDirectory(showPath, false, false));
 }
 
@@ -1086,69 +1087,78 @@ ERROR_CODE mediaLibrary_addEpisode(MediaLibrary* library, Episode** episode, Sho
     }
 
     if(saveToDisk){
+        if((error = mediaLibrary_saveEpisodeToDisk(library, show, season, *episode)) != ERROR_NO_ERROR){
+            goto label_return;
+        }
+
         UTIL_LOG_DEBUG_("Added Episode:%02" PRIuFAST16 " '%s' of Season:%02" PRIuFAST16 " to '%s'.", (*episode)->number, (*episode)->name, season->number, show->name);
-
-
-        FILE* file = library->libraryFile;
-
-        if(fseek(file, 0, SEEK_END) != 0){
-            return ERROR_(ERROR_DISK_ERROR, "%s", strerror(errno));
-        }
-
-        int_fast8_t writeBuffer[sizeof(uint64_t)];
-
-        // Show_Name.
-        util_uint64ToByteArray(writeBuffer, show->nameLength);
-
-        if(fwrite(writeBuffer, sizeof(uint64_t), 1, file) != 1){
-            return ERROR_(ERROR_WRITE_ERROR, "Failed to write show name length to library file. '%s'.", strerror(errno));
-        }
-
-        if(fwrite(show->name, show->nameLength + 1, 1, file) != 1){
-            return ERROR_(ERROR_WRITE_ERROR, "Failed to write show name length to library file. '%s'.", strerror(errno));
-        }
-
-        // Season_Number.
-        util_uint16ToByteArray(writeBuffer, season->number);
-
-        if(fwrite(writeBuffer, sizeof(uint16_t), 1, file) != 1){            
-            return ERROR_(ERROR_WRITE_ERROR, "Failed to write season number to library file. '%s'.", strerror(errno));
-        }
-
-        // Episode_Number.
-        util_uint16ToByteArray(writeBuffer, (*episode)->number);
-        
-        if(fwrite(writeBuffer, sizeof(uint16_t), 1, file) != 1){            
-            return ERROR_(ERROR_WRITE_ERROR, "Failed to write episode number to library file. '%s'.", strerror(errno));
-        }
-
-        // Episode_Name.
-        util_uint64ToByteArray(writeBuffer, (*episode)->nameLength);
-
-        if(fwrite(writeBuffer, sizeof(uint64_t), 1, file) != 1){            
-            return ERROR_(ERROR_WRITE_ERROR, "Failed to write episode name length to library file. '%s'.", strerror(errno));
-        }
-
-        if(fwrite((*episode)->name, (*episode)->nameLength + 1, 1, file) != 1){            
-            return ERROR_(ERROR_WRITE_ERROR, "Failed to write episode name to library file. '%s'.", strerror(errno));
-        }
-
-        // FileExtension
-        util_uint16ToByteArray(writeBuffer, (*episode)->fileExtensionLength);
-
-        if(fwrite(writeBuffer, sizeof(uint16_t), 1, file) != 1){            
-            return ERROR_(ERROR_WRITE_ERROR, "Failed to write file extension length to library file. '%s'.", strerror(errno));
-        }
-
-        if(fwrite((*episode)->fileExtension, (*episode)->fileExtensionLength + 1, 1, file) != 1){            
-            return ERROR_(ERROR_WRITE_ERROR, "Failed to write file extension to library file. '%s'.", strerror(errno));
-        }
-
-        fflush(file);
     }
 
 label_return:
     return ERROR(error);
+}
+
+ERROR_CODE mediaLibrary_saveEpisodeToDisk(MediaLibrary* library, Show* show, Season* season, Episode* episode){
+    FILE* file = library->libraryFile;
+
+    if(fseek(file, 0, SEEK_END) != 0){
+        return ERROR_(ERROR_DISK_ERROR, "%s", strerror(errno));
+    }
+
+    int_fast8_t writeBuffer[sizeof(uint64_t)];
+
+    // Show_Name.
+    util_uint64ToByteArray(writeBuffer, show->nameLength);
+
+    if(fwrite(writeBuffer, sizeof(uint64_t), 1, file) != 1){
+        return ERROR_(ERROR_WRITE_ERROR, "Failed to write show name length to library file. '%s'.", strerror(errno));
+    }
+
+    if(fwrite(show->name, show->nameLength + 1, 1, file) != 1){
+        return ERROR_(ERROR_WRITE_ERROR, "Failed to write show name length to library file. '%s'.", strerror(errno));
+    }
+
+    // Season_Number.
+    util_uint16ToByteArray(writeBuffer, season->number);
+
+    if(fwrite(writeBuffer, sizeof(uint16_t), 1, file) != 1){            
+        return ERROR_(ERROR_WRITE_ERROR, "Failed to write season number to library file. '%s'.", strerror(errno));
+    }
+
+    // Episode_Number.
+    util_uint16ToByteArray(writeBuffer, episode->number);
+    
+    if(fwrite(writeBuffer, sizeof(uint16_t), 1, file) != 1){            
+        return ERROR_(ERROR_WRITE_ERROR, "Failed to write episode number to library file. '%s'.", strerror(errno));
+    }
+
+    // Episode_Name.
+    util_uint64ToByteArray(writeBuffer, episode->nameLength);
+
+    if(fwrite(writeBuffer, sizeof(uint64_t), 1, file) != 1){            
+        return ERROR_(ERROR_WRITE_ERROR, "Failed to write episode name length to library file. '%s'.", strerror(errno));
+    }
+
+    if(fwrite(episode->name, episode->nameLength + 1, 1, file) != 1){            
+        return ERROR_(ERROR_WRITE_ERROR, "Failed to write episode name to library file. '%s'.", strerror(errno));
+    }
+
+    // FileExtension
+    util_uint16ToByteArray(writeBuffer, episode->fileExtensionLength);
+
+    if(fwrite(writeBuffer, sizeof(uint16_t), 1, file) != 1){            
+        return ERROR_(ERROR_WRITE_ERROR, "Failed to write file extension length to library file. '%s'.", strerror(errno));
+    }
+
+    if(fwrite(episode->fileExtension, episode->fileExtensionLength + 1, 1, file) != 1){            
+        return ERROR_(ERROR_WRITE_ERROR, "Failed to write file extension to library file. '%s'.", strerror(errno));
+    }
+
+    if(fflush(file) != 0){
+        return ERROR_(ERROR_DISK_ERROR, "Failed to flush IO-Stream. '%s'.", strerror(errno));
+    }
+
+    return ERROR(ERROR_NO_ERROR);
 }
 
 inline ERROR_CODE mediaLibrary_getEpisode(Season* season, Episode** episode, const uint_fast16_t number){
@@ -1218,6 +1228,17 @@ inline ERROR_CODE mediaLibrary_initEpisodeInfo_(EpisodeInfo* info, char* filePat
     info->pathLength = filePathLength;
 
     return ERROR(ERROR_NO_ERROR);
+}
+
+inline void mediaLibrary_fillEpisodeInfo(Show* show, Season* season, Episode* episode, EpisodeInfo* info){
+    info->showName = show->name;
+    info->showNameLength = show->nameLength;
+    info->season = season->number;
+    info->episode = episode->number;
+    info->name = episode->name;
+    info->nameLength = episode->nameLength;
+    info->fileExtension = episode->fileExtension;
+    info->fileExtensionLength = episode->fileExtensionLength;
 }
 
 inline void mediaLibrary_freeEpisodeInfo(EpisodeInfo* info){
@@ -1407,6 +1428,33 @@ ERROR_CODE mediaLibrary_sortEpisodes(Episode** sortedEpisodes[], LinkedList* epi
     return ERROR(ERROR_NO_ERROR);
 }
 
+ERROR_CODE mediaLibrary_renameEpisode(MediaLibrary* library, Show* show, Season* season, Episode* episode, char* newEpisodeName, const uint_fast64_t newEpisodeNameLength){
+    ERROR_CODE error;
+
+    // Remove old episdoe from disk.
+    if((error = medialibrary_removeEpisodeFrromLibraryFile(library, show, season, episode)) != ERROR_NO_ERROR){
+        goto label_return;
+    }
+
+    // Update in memory representation.
+    free(episode->name);
+
+    episode->name = malloc(sizeof(*episode->name * (newEpisodeNameLength + 1)));
+    if(episode->name == NULL){
+        return ERROR(ERROR_OUT_OF_MEMORY);
+    }
+
+    memcpy(episode->name, newEpisodeName, newEpisodeNameLength + 1);
+    episode->nameLength = newEpisodeNameLength;
+
+    // Readd entry with new name to library file on disk.
+    if((error = mediaLibrary_saveEpisodeToDisk(library, show, season, episode)) != ERROR_NO_ERROR){
+        goto label_return;
+    }
+
+label_return:
+    return ERROR(error);
+}
 
 #undef PROPERTY_LIBRARY_DIRECTORY_NAME
 #undef PROPERTY_IMPORT_DIRECTORY_NAME    

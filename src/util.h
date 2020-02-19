@@ -317,6 +317,8 @@ ERROR_CODE util_renameFile(char*, char*);
 
 ERROR_CODE util_renameFileRelative(char*, char*, char*);
 
+ERROR_CODE util_getFileDirectory(char*, char*, const uint_fast64_t);
+
 #undef UTIL_MAX_ERROR_MSG_LENGTH
 
 #endif
