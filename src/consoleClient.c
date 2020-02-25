@@ -986,12 +986,7 @@ label_yesNo:
 
     strncpy(filePath + writeOffset, path, pathLength);
     writeOffset += pathLength;
-
-    filePath[writeOffset] = '.';
-    writeOffset++;
-
-    strncpy(filePath + writeOffset, info.fileExtension, info.fileExtensionLength);
-    writeOffset += info.fileExtensionLength;
+    
     filePath[writeOffset] = '\0';
 
     char* fileDirectory = alloca(sizeof(*fileDirectory) * fileDstLength + 1);

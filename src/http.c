@@ -12,7 +12,9 @@
 
 inline ERROR_CODE http_initRequest(HTTP_Request* request, const char* url, const uint_fast64_t urlLength, void* buffer, const uint_fast64_t bufferSize, const char version[] , const HTTP_RequestType requestType){
     ERROR_CODE error;
-    error = http_initRequest_(request, buffer, bufferSize, requestType);
+    if((error = http_initRequest_(request, buffer, bufferSize, requestType)) != ERROR_NO_ERROR){
+        return ERROR(error);
+    }
 
     http_setHTTP_Version((HTTP_Response*)(request), version);
 
@@ -38,7 +40,7 @@ inline ERROR_CODE http_initRequest_(HTTP_Request* request, void* buffer, const u
     error = linkedList_init(&request->headerFields);
 
     request->type = requestType;
-
+    
     return ERROR(error);
 }
 

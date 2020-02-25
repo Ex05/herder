@@ -315,11 +315,6 @@ ERROR_CODE herder_addEpisode(Property* remoteHost, Property* remotePort, Propert
     strncpy(fileDst + writeOffset, path, pathLength);
     writeOffset += pathLength;
 
-    fileDst[writeOffset] = '.';
-    writeOffset++;
-
-    strncpy(fileDst + writeOffset, episodeInfo->fileExtension, episodeInfo->fileExtensionLength);
-    writeOffset += episodeInfo->fileExtensionLength;
     fileDst[writeOffset] = '\0';
 
     if((error = util_createAllDirectories(fileDst, fileDstLength)) != ERROR_NO_ERROR){
@@ -551,7 +546,7 @@ ERROR_CODE herder_add(Property* remoteHost, Property* remotePort, Property* libr
     uint_fast64_t pathLength;
     HERDER_CONSTRUCT_FILE_PATH(&path, &pathLength, episodeInfo);
 
-    const uint_fast64_t fileDstLength = (libraryDirectory->entry->length - 1) + pathLength + episodeInfo->fileExtensionLength;
+    const uint_fast64_t fileDstLength = (libraryDirectory->entry->length - 1) + pathLength;
 
     char* fileDst = alloca(sizeof(*fileDst) * (fileDstLength + 1));
     uint_fast64_t writeOffset = 0;
@@ -561,9 +556,7 @@ ERROR_CODE herder_add(Property* remoteHost, Property* remotePort, Property* libr
 
     strncpy(fileDst + writeOffset, path, pathLength);
     writeOffset += pathLength;
-
-    strncpy(fileDst + writeOffset, episodeInfo->fileExtension, episodeInfo->fileExtensionLength);
-    writeOffset += episodeInfo->fileExtensionLength;
+    
     fileDst[writeOffset] = '\0';
 
     if((error = util_createAllDirectories(fileDst, fileDstLength)) != ERROR_NO_ERROR){

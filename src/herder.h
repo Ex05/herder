@@ -7,10 +7,10 @@
     char* _noWhiteSpaceShowName = alloca(sizeof(*_noWhiteSpaceShowName) * ((episodeInfo)->showNameLength + 1)); \
     strncpy(_noWhiteSpaceShowName, (episodeInfo)->showName, (episodeInfo)->showNameLength + 1); \
     util_replaceAllChars(_noWhiteSpaceShowName, ' ', '_'); \
-    *stringLength = ((episodeInfo)->showNameLength * 3) + ((episodeInfo)->nameLength) + (3/*" - "*/ + 7/*"Season_"*/ + 2/*"/"*/) + (UTIL_UINT16_STRING_LENGTH * 3); \
+    *stringLength = ((episodeInfo)->showNameLength * 3) + ((episodeInfo)->nameLength) + (3/*" - "*/ + 7/*"Season_"*/ + 2/*"/"*/) + (UTIL_UINT16_STRING_LENGTH * 3) + 1/*.*/ + (episodeInfo)->fileExtensionLength; \
      \
     *(path) = alloca(sizeof(**(path)) * (*stringLength + 1)); \
-    *stringLength = snprintf(*path, *stringLength, "%s/%s - Season_%02" PRIdFAST16 "/%s_s%02" PRIdFAST16 "e%02" PRIdFAST16 "_%s", _noWhiteSpaceShowName, _noWhiteSpaceShowName, (episodeInfo)->season, _noWhiteSpaceShowName, (episodeInfo)->season, (episodeInfo)->episode, (episodeInfo)->name); \
+    *stringLength = snprintf(*path, *stringLength, "%s/%s - Season_%02" PRIdFAST16 "/%s_s%02" PRIdFAST16 "e%02" PRIdFAST16 "_%s.%s", _noWhiteSpaceShowName, _noWhiteSpaceShowName, (episodeInfo)->season, _noWhiteSpaceShowName, (episodeInfo)->season, (episodeInfo)->episode, (episodeInfo)->name, (episodeInfo)->fileExtension); \
      \
     util_replaceAllChars(*path + (*stringLength - ((episodeInfo)->showNameLength + (2 * UTIL_UINT16_STRING_LENGTH) + (episodeInfo)->nameLength + 4)), ' ', '_')
 

@@ -49,6 +49,10 @@ typedef TEST_TEST_FUNCTION(testFunction);
 #define TEST_NO_SETUP(name) __TEST_NO_SETUP__(); \
     TEST(name)
 
+#define TEST_SUCCESS true
+
+#define TEST_FAILURE(format, ...) UTIL_LOG_ERROR_(format, __VA_ARGS__), false
+
 static ArrayList testSuits;
 
 typedef struct testSuit{
@@ -213,14 +217,13 @@ TEST_TEST_FUNCTION(arraylist_iteration){
         buf[i++] = ARRAY_LIST_ITERATOR_NEXT(&it, uint8_t);
     }
 
-    bool ret = true;
     if(buf[0] != 0 || buf[1] != 1 || buf[2] != 2 || buf[3] != 3){
-        ret = false;
+        return TEST_FAILURE("%s", "Failed to iterate over array list.");
     }
 
     arrayList_free(&list);
 
-    return ret;
+    return TEST_SUCCESS;
 }
 
 TEST_TEST_FUNCTION(arraylist_fixedSizedHeapList){
@@ -242,12 +245,11 @@ TEST_TEST_FUNCTION(arraylist_fixedSizedHeapList){
         buf[i++] = ARRAY_LIST_ITERATOR_NEXT(&it, uint8_t);
     }
 
-    bool ret = true;
     if(buf[0] != 0 || buf[1] != 1 || buf[2] != 2 || buf[3] != 3){
-        ret = false;
+        return TEST_FAILURE("%s", "Failed to create fix sized heap list.");
     }
 
-    return ret;
+    return TEST_SUCCESS;
 }
 
 TEST_TEST_FUNCTION(arraylist_get){
@@ -259,16 +261,18 @@ TEST_TEST_FUNCTION(arraylist_get){
     ARRAY_LIST_ADD(&list, 2, uint8_t);
     ARRAY_LIST_ADD(&list, 3, uint8_t);
 
-    bool ret = false;
-    if(ARRAY_LIST_GET(&list, 1, uint8_t) == 1){
-        ret = true;
+    uint8_t ret;
+    if((ret = ARRAY_LIST_GET(&list, 1, uint8_t)) != 1){
+        return TEST_FAILURE("Return value '%" PRIu8 " != '%" PRIu8  "'.", ret, 1);
     }
 
-    return ret;
+    return TEST_SUCCESS;
 }
 
 // arguemntParser.c
 TEST_TEST_FUNCTION(argumentParser_parse){
+    ERROR_CODE error;
+
     ArgumentParser parser;
     argumentParser_init(&parser);
 
@@ -278,15 +282,11 @@ TEST_TEST_FUNCTION(argumentParser_parse){
 
     ARGUMENT_PARSER_ADD_ARGUMENT(Test_0, 2, "-t", "--test");
     ARGUMENT_PARSER_ADD_ARGUMENT(Import_0, 1, "-i");
-
-    bool ret = true;
     
     const char* argc_0[] = {"./test", "-t", "-t"};
     __UTIL_SUPPRESS_NEXT_ERROR_OF_TYPE__(ERROR_DUPLICATE_ENTRY);
-    if(argumentParser_parse(&parser, UTIL_ARRAY_LENGTH(argc_0), argc_0) != ERROR_DUPLICATE_ENTRY){
-        ret = false;
-
-        goto label_free;
+    if((error = argumentParser_parse(&parser, UTIL_ARRAY_LENGTH(argc_0), argc_0)) != ERROR_DUPLICATE_ENTRY){
+        return TEST_FAILURE("'arguemntParser_parse' did not fail with '%s'. '%s'.", "ERROR_DUPLICATE_ENTRY", util_toErrorString(error));
     }
 
     argumentParser_free(&parser);
@@ -298,9 +298,7 @@ TEST_TEST_FUNCTION(argumentParser_parse){
 
     const char* argc_1[] = {"./test", "-i"};
     if(argumentParser_parse(&parser, UTIL_ARRAY_LENGTH(argc_1), argc_1) != ERROR_NO_ERROR){
-        ret = false;
-
-        goto label_free;
+        return TEST_FAILURE("Failed to parse arguments. '%s'.", util_toErrorString(error));
     }
 
     argumentParser_free(&parser);
@@ -312,41 +310,28 @@ TEST_TEST_FUNCTION(argumentParser_parse){
 
     const char* argc_2[] = {"./test", "-v", "-i", "test", "12", "--test", "abbab", "---Tester", "12"};
     if(argumentParser_parse(&parser, UTIL_ARRAY_LENGTH(argc_2), argc_2) != ERROR_NO_ERROR){
-        UTIL_LOG_ERROR("Failed to parse command line arguments.");
-
-        ret = false;
-
-        goto label_free;
+        return TEST_FAILURE("Failed to parse arguments. '%s'.", util_toErrorString(error));
     }
 
     if(!argumentParser_contains(&parser, &argumentTest_2)){
-        ret = false;
-
-        goto label_free;
+      return TEST_FAILURE("Failed to parse argument: '%s'.", argumentTest_2.arguments[0]);
     }else{
         if(!ARGUMENT_PARSER_ARGUMENT_HAS_VALUE(argumentTest_2)){
-            ret = false;
-
-            goto label_free;
+            return TEST_FAILURE("Failed to parse argument: '%s'.", argumentTest_2.arguments[0]);
         }
     }
 
     if(!argumentParser_contains(&parser, &argumentImport_2)){
-        ret = false;
-
-        goto label_free;
+        return TEST_FAILURE("Failed to parse argument: '%s'.", argumentImport_2.arguments[0]);
     }else{
         if(!ARGUMENT_PARSER_ARGUMENT_HAS_VALUE(argumentImport_2)){
-            ret = false;
-
-            goto label_free;
+            return TEST_FAILURE("Failed to parse argument: '%s'.", argumentImport_2.arguments[0]);
         }
     }
 
-label_free:
     argumentParser_free(&parser);
 
-    return ret;
+    return TEST_SUCCESS;
 }
 
 // linkedList.c
@@ -389,12 +374,11 @@ TEST_TEST_FUNCTION_(linkedList_iteration, LinkedList, list){
         buf[i++] = *(uint8_t*) LINKED_LIST_ITERATOR_NEXT(&it);
     }
 
-    bool ret = true;
     if(buf[0] != 3 || buf[1] != 2 || buf[2] != 1 || buf[3] != 0){
-        ret = false;
+        return TEST_FAILURE("%s", "Failed to iterate over linked list.");
     }
 
-    return ret;
+    return TEST_SUCCESS;
 }
 
 TEST_TEST_FUNCTION_(linkedList_remove, LinkedList, list){
@@ -421,16 +405,15 @@ TEST_TEST_FUNCTION_(linkedList_remove, LinkedList, list){
         buf[i++] = *(uint8_t*) LINKED_LIST_ITERATOR_NEXT(&it);
     }
 
-    bool ret = true;
     if(buf[0] != 3 || buf[1] != 2){
-        ret = false;
+        return TEST_FAILURE("%s", "Failed to remove link from linked list.");
     }
 
     if(list->length != 2){
-        ret = false;
+        return TEST_FAILURE("linked list length '%" PRIuFAST64 "' != '%d'.", list->length, 2);
     }
 
-    return ret;
+    return TEST_SUCCESS;
 }
 
 // util.c
@@ -460,13 +443,15 @@ TEST_TEST_FUNCTION(util_byteArrayTo_uint16){
         ERROR: Your system architectures endianes is not supported at the moment.    
     #endif
 
-        if(util_byteArrayTo_uint16(buf) != val){
-            return false;
+        uint16_t ret;
+        if((ret = util_byteArrayTo_uint16(buf)) != val){
+            return TEST_FAILURE("Return value '%" PRIu16 " != '%" PRIu16  "'.", ret, val);
         }
     }
 
-    return true;
+    return TEST_SUCCESS;
 }
+
 TEST_TEST_FUNCTION(util_byteArrayTo_uint32){
     const uint32_t testData[] = {
         0,
@@ -498,12 +483,13 @@ TEST_TEST_FUNCTION(util_byteArrayTo_uint32){
         ERROR: Your system architectures endianes is not supported at the moment.    
     #endif
 
-        if(util_byteArrayTo_uint32(buf) != val){
-            return false;
+        uint32_t ret;
+        if((ret = util_byteArrayTo_uint32(buf)) != val){
+            return TEST_FAILURE("Return value '%" PRIu32 " != '%" PRIu32  "'.", ret, val);
         }
     }
 
-    return true;
+    return TEST_SUCCESS;
 }
 
 TEST_TEST_FUNCTION(util_byteArrayTo_uint64){
@@ -546,12 +532,13 @@ TEST_TEST_FUNCTION(util_byteArrayTo_uint64){
         ERROR: Your system architectures endianes is not supported at the moment.    
     #endif
 
-        if(util_byteArrayTo_uint64(buf) != val){
-            return false;
+        uint64_t ret;
+        if((ret = util_byteArrayTo_uint64(buf)) != val){
+            return TEST_FAILURE("Return value '%" PRIu64 " != '%" PRIu64  "'.", ret, val);
         }
     }
 
-    return true;
+    return TEST_SUCCESS;
 }
 
 TEST_TEST_FUNCTION(util_uint16ToByteArray){
@@ -569,12 +556,13 @@ TEST_TEST_FUNCTION(util_uint16ToByteArray){
     for(i = 0; i < sizeof(testData) / sizeof(testData[0]); i++){
         const uint16_t val = testData[i];
     
-        if(util_byteArrayTo_uint16(util_uint16ToByteArray(buf, val)) != val){
-            return false;
+        uint16_t ret;
+        if((ret = util_byteArrayTo_uint16(util_uint16ToByteArray(buf, val))) != val){
+            return TEST_FAILURE("Return value '%" PRIu16 " != '%" PRIu16  "'.", ret, val);
         }
     }
 
-    return true;
+    return TEST_SUCCESS;
 }
 
 TEST_TEST_FUNCTION(util_uint32ToByteArray){
@@ -592,12 +580,13 @@ TEST_TEST_FUNCTION(util_uint32ToByteArray){
     for(i = 0; i < sizeof(testData) / sizeof(testData[0]); i++){
         const uint32_t val = testData[i];
     
-        if(util_byteArrayTo_uint32(util_uint32ToByteArray(buf, val)) != val){
-            return false;
+        uint32_t ret;
+        if((ret = util_byteArrayTo_uint32(util_uint32ToByteArray(buf, val))) != val){
+            return TEST_FAILURE("Return value '%" PRIu32 " != '%" PRIu32  "'.", ret, val);
         }
     }
 
-    return true;
+    return TEST_SUCCESS;
 }
 
 TEST_TEST_FUNCTION(util_uint64ToByteArray){
@@ -616,22 +605,23 @@ TEST_TEST_FUNCTION(util_uint64ToByteArray){
     for(i = 0; i < sizeof(testData) / sizeof(testData[0]); i++){
         const uint64_t val = testData[i];
     
-        if(util_byteArrayTo_uint64(util_uint64ToByteArray(buf, val)) != val){
-            return false;
+        uint64_t ret;
+        if((ret = util_byteArrayTo_uint64(util_uint64ToByteArray(buf, val))) != val){
+            return TEST_FAILURE("Return value '%" PRIu64 " != '%" PRIu64  "'.", ret, val);
         }
     }
 
-    return true;
+    return TEST_SUCCESS;
 }
 
 TEST_TEST_FUNCTION(util_findFirst){
     const char s[] = "abcdef012ghi~jklno~p345~qrs";
 
     if(util_findFirst(s, strlen(s), '~') != 12){
-        return false;
+        return TEST_FAILURE("Failed to find fisrt char: '~' in string:'%s'.", s);
     }
 
-    return true;
+    return TEST_SUCCESS;
 }
 
 TEST_TEST_FUNCTION(util_findFirst_s){
@@ -640,10 +630,10 @@ TEST_TEST_FUNCTION(util_findFirst_s){
     const int_fast64_t offset = util_findFirst_s(a, strlen(a), "--", 2);
 
     if(offset != 8){
-        return false;
+        return TEST_FAILURE("Failed to find fisrt string: '--' in string:'%s'.", a);
     }
 
-    return true;
+    return TEST_SUCCESS;
 }
 
 TEST_TEST_FUNCTION(util_findLast){
@@ -651,17 +641,20 @@ TEST_TEST_FUNCTION(util_findLast){
     const char b[] = "01234567";
 
     if(util_findLast(a, strlen(a), '.') != 7){
-        return false;
+        return TEST_FAILURE("Failed to find last char:'.' in string:'%s'.", a);
     }
 
-    if(util_findLast(b, strlen(b), '.') != -1){
-        return false;
+    int_fast64_t ret;
+    if((ret = util_findLast(b, strlen(b), '.')) != -1){
+        return TEST_FAILURE("Return value '%" PRIdFAST64 " != -1'.", ret);
     }
 
-    return true;
+    return TEST_SUCCESS;
 }
 
 TEST_TEST_FUNCTION(util_replace){
+    ERROR_CODE error;
+
     char s[] = "--$errorCode--$errorCode--";
     char a[64] = {0};
 
@@ -669,32 +662,36 @@ TEST_TEST_FUNCTION(util_replace){
     
     memcpy(a, s, stringLength + 1);
 
-    util_replace(a, 64, &stringLength, "$errorCode", strlen("$errorCode"), "404", strlen("404"));
+    if((error = util_replace(a, 64, &stringLength, "$errorCode", strlen("$errorCode"), "404", strlen("404"))) != ERROR_NO_ERROR){
+        return TEST_FAILURE("Failed to replace char in string:'%s'. '%s'.", a, util_toErrorString(error));
+    }
     
     if(strcmp(a, "--404--404--") != 0){
-        return false;
+        return TEST_FAILURE("Return value '%s' != '--404--404--'.", a);
     }
 
-    return true;
+    return TEST_SUCCESS;
 }
 
 TEST_TEST_FUNCTION(util_getBaseDirectory){
+    ERROR_CODE error;
+
     // Test_1.
     {
         char url[] = "/";
 
         char* baseDirectory;
         uint_fast64_t baseDirectoryLength;
-        if(util_getBaseDirectory(&baseDirectory, &baseDirectoryLength, url, strlen(url)) != ERROR_NO_ERROR){
-            return false;
+        if((error = util_getBaseDirectory(&baseDirectory, &baseDirectoryLength, url, strlen(url))) != ERROR_NO_ERROR){
+            return TEST_FAILURE("Failed to get base directory of path: '%s'. '%s'.", url, util_toErrorString(error));
         }
 
         if(baseDirectoryLength != 1){
-            return false;
+            return TEST_FAILURE("Base directory length '%" PRIdFAST64 "' != '%d'", baseDirectoryLength, 1);
         }
 
         if(strncmp(url, baseDirectory, baseDirectoryLength) != 0){
-            return false;
+            return TEST_FAILURE("'util_getBaseDirectory' '%s' != '%s'.", url, baseDirectory);
         }
     }
 
@@ -704,16 +701,16 @@ TEST_TEST_FUNCTION(util_getBaseDirectory){
         
         char* baseDirectory;
         uint_fast64_t baseDirectoryLength;
-        if(util_getBaseDirectory(&baseDirectory, &baseDirectoryLength, url, strlen(url)) != ERROR_NO_ERROR){
-            return false;
+        if((error = util_getBaseDirectory(&baseDirectory, &baseDirectoryLength, url, strlen(url))) != ERROR_NO_ERROR){
+            return TEST_FAILURE("Failed to get base directory of path: '%s'. '%s'.", url, util_toErrorString(error));
         }
 
         if(baseDirectoryLength != 16){
-            return false;
+            return TEST_FAILURE("Base directory length '%" PRIdFAST64 "' != '%d'", baseDirectoryLength, 16);
         }
 
         if(strncmp(url, baseDirectory, baseDirectoryLength) != 0){
-            return false;
+            return TEST_FAILURE("'util_getBaseDirectory' '%s' != '%s'.", baseDirectory, "/img");
         }
     }
 
@@ -723,20 +720,20 @@ TEST_TEST_FUNCTION(util_getBaseDirectory){
 
         char* baseDirectory;
         uint_fast64_t baseDirectoryLength;
-        if(util_getBaseDirectory(&baseDirectory, &baseDirectoryLength, url, strlen(url)) != ERROR_NO_ERROR){
-            return false;
+        if((error = util_getBaseDirectory(&baseDirectory, &baseDirectoryLength, url, strlen(url))) != ERROR_NO_ERROR){
+            return TEST_FAILURE("Failed to get base directory of path: '%s'. '%s'.", url, util_toErrorString(error));
         }
 
         if(baseDirectoryLength != 4){
-            return false;
+            return TEST_FAILURE("Base directory length '%" PRIdFAST64 "' != '%d'", baseDirectoryLength, 4);
         }
 
         if(strncmp("/img", baseDirectory, baseDirectoryLength) != 0){
-            return false;
+            return TEST_FAILURE("'util_getBaseDirectory' '%s' != '%s'.", baseDirectory, "/img");
         }
     }
 
-    return true;
+    return TEST_SUCCESS;
 }
 
 TEST_TEST_FUNCTION(util_trim){
@@ -745,10 +742,10 @@ TEST_TEST_FUNCTION(util_trim){
     util_trim(s, strlen(s));
 
     if(strcmp(s, "123_457 8910") != 0){
-        return false;
+        return TEST_FAILURE("'util_trim' '%s' != '%s'.", s, "123_457 8910");
     }
 
-    return true;
+    return TEST_SUCCESS;
 }
 
 TEST_TEST_FUNCTION(util_getFileName){
@@ -757,10 +754,10 @@ TEST_TEST_FUNCTION(util_getFileName){
     const char* fileName = util_getFileName(filePath, strlen(filePath));
 
     if(strcmp(fileName, "video_001.mkv") != 0){
-        return false;
+        return TEST_FAILURE("'util_getFileName' '%s' != '%s'.", fileName, "video_001.mkv");
     }
 
-    return true;
+    return TEST_SUCCESS;
 }
 
 TEST_TEST_FUNCTION(util_formatNumber){
@@ -790,11 +787,11 @@ TEST_TEST_FUNCTION(util_formatNumber){
         util_formatNumber(s, &stringLength, numbers[i]);
 
         if(strncmp(s, strings[i], strlen(strings[i])) != 0){
-            return false;
+            return TEST_FAILURE("'util_formatNumber' '%s' != '%s'.", s, strings[i]);
         }
     }
 
-    return true;
+    return TEST_SUCCESS;
 }
 
 TEST_TEST_FUNCTION(util_toLowerChase){
@@ -803,10 +800,10 @@ TEST_TEST_FUNCTION(util_toLowerChase){
     util_toLowerChase(s);
 
     if(strncmp(s, "abcdefg0123", strlen(s)) != 0){
-        return false;
+        return TEST_FAILURE("'util_toLowerChase' '%s' != '%s'.", s, "abcdefg0123");
     }
 
-    return true;
+    return TEST_SUCCESS;
 }
 
 TEST_TEST_FUNCTION(util_replaceAllChars){
@@ -817,10 +814,10 @@ TEST_TEST_FUNCTION(util_replaceAllChars){
     const char b[] = "000000000000";
 
     if(strncmp(a, b, strlen(b)) != 0){
-        return false;
+        return TEST_FAILURE("'util_replaceAllChars' '%s' != '%s'.", a, b);
     }
 
-    return true;
+    return TEST_SUCCESS;
 }
 
 TEST_TEST_FUNCTION(util_append){
@@ -830,61 +827,67 @@ TEST_TEST_FUNCTION(util_append){
     util_append(a, strlen(a), b, strlen(b));
 
     if(strncmp(a, "1234567890", 11) != 0){
-        return false;
+        return TEST_FAILURE("'util_append' '%s' != '%s'.", a, "1234567890");
     }
 
-    return true;
+    return TEST_SUCCESS;
 }
 
 TEST_TEST_FUNCTION(util_stringToInt){
+    ERROR_CODE error;
+
     const char a[] = "27";
     const char b[] = "a88b";
 
     int_fast64_t value;
-    if(util_stringToInt(a, &value) != ERROR_NO_ERROR){
-        return false;
+    if((error = util_stringToInt(a, &value)) != ERROR_NO_ERROR){
+        return TEST_FAILURE("Failed to convert value: '%s' to integer. '%s'.", a, util_toErrorString(error));
     }
 
     if(value != 27){
-        return false;
+        return TEST_FAILURE("Value '%" PRIdFAST64 "' != '%d'.", value, 27);
     }
 
-    __UTIL_SUPPRESS_NEXT_ERROR_OF_TYPE__(ERROR_INVALID_STRING);
-    if(util_stringToInt(b, &value) != ERROR_INVALID_STRING){
-        return false;
+     __UTIL_SUPPRESS_NEXT_ERROR_OF_TYPE__(ERROR_INVALID_STRING);
+    if((error = util_stringToInt(b, &value)) != ERROR_INVALID_STRING){
+        return TEST_FAILURE("'util_stringToInt' did not fail as expected with: '%s'. '%s'.","ERROR_INVALID_STRING", util_toErrorString(error));
     }
 
     if(value != 0){
-        return false;
+        return TEST_FAILURE("Value '%" PRIdFAST64 "' != '%d'.", value, 0);
     }
 
-    return true;
+    return TEST_SUCCESS;
 }
 
 TEST_TEST_FUNCTION(util_getFileExtension){
+    ERROR_CODE error;
+
     char a[] = "The_Big_Bang_Theory_s10e05_the_hot_tub_contamination.mkv";
     char b[] = "The_Big_Bang_Theory_s10e05_the_hot_tub_contamination";
     
     char* fileExtension;
     uint_fast64_t fileExtensionLength;
 
-    if(util_getFileExtension(&fileExtension, &fileExtensionLength, a, strlen(a)) != ERROR_NO_ERROR){
-        return false;
+    if((error = util_getFileExtension(&fileExtension, &fileExtensionLength, a, strlen(a))) != ERROR_NO_ERROR){
+        return TEST_FAILURE("Failed to extract file extension from file: '%s'. '%s'.", a, util_toErrorString(error));
     }
 
     if(strncmp(fileExtension, "mkv", 3) != 0 && fileExtensionLength != 3){
-        return false;
+        return TEST_FAILURE("File extension '%s' != '%s'.", fileExtension, "mkv");
     }
 
-    if(util_getFileExtension(&fileExtension, &fileExtensionLength, b, strlen(b)) == ERROR_NO_ERROR){
-        return false;
+    __UTIL_SUPPRESS_NEXT_ERROR_OF_TYPE__(ERROR_INVALID_STRING);
+    if((error = util_getFileExtension(&fileExtension, &fileExtensionLength, b, strlen(b))) == ERROR_NO_ERROR){
+        return TEST_FAILURE("'util_getFileExtension' did not fail as expected with 'ERROR_INVALID_STRING' function returned '%s'", util_toErrorString(error));
     }
 
-    return true;
+    return TEST_SUCCESS;
 }
 
-
 TEST_TEST_FUNCTION(util_renameFile){
+    ERROR_CODE error;
+
     #define TEST_FILE_NAME "/tmp/herder_util_test_renameFile_XXXXXX"
     #define TEST_FILE_NEW_NAME "/tmp/herder_util_test_renameFile.xmpe"
 
@@ -898,32 +901,35 @@ TEST_TEST_FUNCTION(util_renameFile){
     #undef TEST_FILE_NEW_NAME
 
     const int fileDescriptor = mkstemp(filePath);
-
     if(fileDescriptor < 1){
-        UTIL_LOG_ERROR_("Failed to create temporary file '%s' [%s].", filePath, strerror(errno));
-
-        return false;
+        return TEST_FAILURE("Failed to create temporary file '%s' [%s].", filePath, strerror(errno));
     }
 
-    if(util_renameFile(filePath, newFileName) != ERROR_NO_ERROR){
-        return false;
+    if((error = util_renameFile(filePath, newFileName)) != ERROR_NO_ERROR){
+        return TEST_FAILURE("Failed to rename file: '%s'. '%s'.", filePath, util_toErrorString(error));
     }
 
-    if(util_fileExists(filePath) || !util_fileExists(newFileName)){
-        return false;
+    if(util_fileExists(filePath)){
+        return TEST_FAILURE("Failed to rename file to:'%s'.", filePath);
+    } 
+    
+    if(!util_fileExists(newFileName)){
+        return TEST_FAILURE("Failed to rename file to:'%s'.", newFileName);
     }
 
     if(util_deleteFile(newFileName) != ERROR_NO_ERROR){
-        return false;
+        return TEST_FAILURE("Failed to delete file:'%s'.", newFileName);
     }
 
     free(filePath);
     free(newFileName);
 
-    return true;
+    return TEST_SUCCESS;
 }
 
 TEST_TEST_FUNCTION(util_renameFileRelative){
+    ERROR_CODE error;
+
     #define TEST_DIR_NAME "/tmp/"
     #define TEST_FILE_NAME "herder_util_test_renameFileRelative_XXXXXX"
     #define TEST_NEW_FILE_NAME "herder_util_test_renameFileRelative.xmpe"
@@ -952,21 +958,23 @@ TEST_TEST_FUNCTION(util_renameFileRelative){
     const int fileDescriptor = open(filePath, O_RDONLY | O_CREAT);
 
     if(fileDescriptor < 1){
-        UTIL_LOG_ERROR_("Failed to create temporary file '%s' [%s].", filePath, strerror(errno));
-
-        return false;
+        return TEST_FAILURE("Failed to create temporary file '%s' [%s].", filePath, strerror(errno));
     }
 
-    if(util_renameFileRelative(dir, fileName, newFileName) != ERROR_NO_ERROR){
-        return false;
+    if((error = util_renameFileRelative(dir, fileName, newFileName)) != ERROR_NO_ERROR){
+        return TEST_FAILURE("Failed to rename file:'%s'. '%s'.", fileName, util_toErrorString(error));
     }
 
-    if(util_fileExists(fileName) || !util_fileExists(newFilePath)){
-        return false;
+    if(util_fileExists(fileName)){
+        return TEST_FAILURE("Failed to rename file:'%s'.", fileName);
+    } 
+    
+    if(!util_fileExists(newFilePath)){
+        return TEST_FAILURE("Failed to rename file to:'%s'.", newFilePath);
     }
 
     if(util_deleteFile(newFilePath) != ERROR_NO_ERROR){
-        return false;
+        return TEST_FAILURE("Failed to delete file:'%s'.", newFilePath);
     }
 
     free(dir);
@@ -975,23 +983,25 @@ TEST_TEST_FUNCTION(util_renameFileRelative){
     free(newFileName);
     free(newFilePath);
 
-    return true;
+    return TEST_SUCCESS;
 }
 
 TEST_TEST_FUNCTION(util_getFileDirectory){
+    ERROR_CODE error;
+
     char path[] = "/home/user/file.xmp";
 
     char* dir = alloca(sizeof(*dir) * (strlen(path) + 1));
 
-    if(util_getFileDirectory(dir, path, strlen(path)) != ERROR_NO_ERROR){
-        return false;
+    if((error = util_getFileDirectory(dir, path, strlen(path))) != ERROR_NO_ERROR){
+        return TEST_FAILURE("Failed to extract files directory from path: '%s'. '%s'.", path, util_toErrorString(error));
     }
 
     if(strcmp(dir, "/home/user") != 0){
-        return false;
+        return TEST_FAILURE("File directory '%s' != '%s'.", dir, "/home/user");
     }
 
-    return true;
+    return TEST_SUCCESS;
 }
 
 // http.c
@@ -1000,7 +1010,7 @@ TEST_TEST_FUNCTION(http_addHeaderField){
 
     void* buffer;
     if(util_blockAlloc(&buffer, BUFFER_SIZE) != ERROR_NO_ERROR){
-        goto label_free;
+        return TEST_FAILURE("Failed to allocate buffer of size %d bytes.", BUFFER_SIZE);
     }
 
     HTTP_Request request;
@@ -1011,22 +1021,20 @@ TEST_TEST_FUNCTION(http_addHeaderField){
    
     const HTTP_HeaderField* headerFieldConnection = http_getHeaderField(&request, "Connection");
     
-    bool ret = false;
     if(headerFieldConnection == NULL){
-        goto label_free;
+        return TEST_FAILURE("Failed to retrieve headeer field: '%s'.", "Connection");
     }
 
-    if(strncmp("close", headerFieldConnection->value, headerFieldConnection->valueLength) == 0){
-        ret = true;
+    if(strncmp("close", headerFieldConnection->value, headerFieldConnection->valueLength) != 0){
+        return TEST_FAILURE("Header field value '%s' != '%s'.", headerFieldConnection->value, "close");
     }
 
-label_free:
     http_freeHTTP_Request(&request);
 
     util_unMap(buffer, BUFFER_SIZE);
     #undef BUFFER_SIZE
 
-    return ret;
+    return TEST_SUCCESS;
 }
 
 // que.c
@@ -1042,22 +1050,22 @@ TEST_TEST_FUNCTION(que_deAndEnque){
     que_enque(&que, &b);
     que_enque(&que, &c);
 
-    bool ret = true;
-    if(*((int*)que_deque(&que)) != 0){
-        ret = false;
+    int value;
+    if((value = *((int*)que_deque(&que))) != 0){
+        return TEST_FAILURE("'que_deque' '%d' != '%d'.", value, 0);
     }
 
-    if(*((int*)que_deque(&que)) != 1){
-        ret = false;
+    if((value = *((int*)que_deque(&que))) != 1){
+        return TEST_FAILURE("'que_deque' '%d' != '%d'.", value, 1);
     }
 
-    if(*((int*)que_deque(&que)) != 2){
-        ret = false;
+    if((value = *((int*)que_deque(&que))) != 2){
+        return TEST_FAILURE("'que_deque' '%d' != '%d'.", value, 2);
     }
 
     que_clear(&que);
 
-    return ret;
+    return TEST_SUCCESS;
 }
 
 TEST_TEST_FUNCTION(que_clear){
@@ -1074,12 +1082,11 @@ TEST_TEST_FUNCTION(que_clear){
 
     que_clear(&que);
 
-    bool ret = true;
     if(que_deque(&que) != NULL){
-        ret = false;
+        return TEST_FAILURE("Failed to clear que, 'que_deque' did not return: '%s'", "NULL");
     }
 
-    return ret;
+    return TEST_SUCCESS;
 }
 
 // threadPool.c
@@ -1108,16 +1115,13 @@ TEST_TEST_FUNCTION(threadPool_run){
     ThreadPool threadPool;
     threadPool_init(&threadPool, 4);
 
-    if(pthread_mutex_init(&counterLock, NULL)){
-        UTIL_LOG_ERROR("Failed to initialise 'pthread_mutex'.");   
-     
-        return false;
+    ERROR_CODE error;
+    if((error = pthread_mutex_init(&counterLock, NULL)) != 0){
+        return TEST_FAILURE("Failed to initialise 'pthread_mutex'. '%d'", error);
     }
 
-    if(sem_init(&threadSync, 0, 0)){
-        UTIL_LOG_ERROR("Failed to initialise 'semaphore'.");
-
-        return false;
+    if((error = sem_init(&threadSync, 0, 0)) != 0){
+        return TEST_FAILURE("Failed to initialise 'semaphore'. '%d'", error);
     }
 
     threadPool_run(&threadPool, test_threadPoolRunner, NULL);
@@ -1130,9 +1134,8 @@ TEST_TEST_FUNCTION(threadPool_run){
         sem_wait(&threadSync);
     }
 
-    bool ret = false;
-    if(counter == 40){
-        ret = true;
+    if(counter != 40){
+        return TEST_FAILURE("Counter value '%" PRIdFAST64 "' != '%d'.", counter, 40);
     }
 
     pthread_mutex_destroy(&counterLock);
@@ -1141,11 +1144,13 @@ TEST_TEST_FUNCTION(threadPool_run){
 
     threadPool_free(&threadPool);
 
-    return ret;
+    return TEST_SUCCESS;
 }
 
 // cache.c
 TEST_TEST_FUNCTION(cache_load){
+    ERROR_CODE error;
+
     #define TEST_FILE_NAME "/tmp/herder_cache_test_file_XXXXXX"
 
     // TODO:(jan) Replace with temporary file.
@@ -1155,12 +1160,8 @@ TEST_TEST_FUNCTION(cache_load){
     #undef TEST_FILE_NAME
 
     int fileDescriptor = mkstemp(filePath);
-
-
     if(fileDescriptor < 1){
-        UTIL_LOG_ERROR_("Failed to create temporary file '%s' [%s].", filePath, strerror(errno));
-
-        return false;
+       return TEST_FAILURE("Failed to create temporary file '%s' [%s].", filePath, strerror(errno));
     }
 
     uint8_t* buffer = malloc(sizeof(*buffer) * 256);
@@ -1170,62 +1171,55 @@ TEST_TEST_FUNCTION(cache_load){
     memset(buffer + 192, 32, 64);
 
     if(write(fileDescriptor, buffer, 256) != 256){
-        UTIL_LOG_ERROR("Failed to write media library file version.");
-
-        return false;
+        return TEST_FAILURE("Failed to write media library file version. Expected to write %d bytes.", 256);
     }
 
     free(buffer);
     
     Cache cache;
-    cache_init(&cache, 2, MB(8));
+    if((error = cache_init(&cache, 2, MB(8))) != ERROR_NO_ERROR){
+        return TEST_FAILURE("Failed to initialise cache. '%s'", util_toErrorString(error));
+    }
 
     char symbolicFileLocation[] = "/herderTestFile";
 
     CacheObject* cacheObject;
-    cache_load(&cache, &cacheObject, filePath, strlen(filePath), symbolicFileLocation, strlen(symbolicFileLocation));
+    if((error = cache_load(&cache, &cacheObject, filePath, strlen(filePath), symbolicFileLocation, strlen(symbolicFileLocation))) != ERROR_NO_ERROR){
+        return TEST_FAILURE("Failed to load cache object. '%s'", util_toErrorString(error));
+    }
 
-    bool ret = true;
     if(cacheObject->size != 256){
-        ret = false;
+        return TEST_FAILURE("Cache object size %" PRIdFAST64 " != %d", cacheObject->size, 256);
     }
 
     uint_fast16_t i;
     for(i = 0; i < 256; i++){
         if(i < 64){
             if(cacheObject->data[i] != 8){
-                ret = false;
-
-                break;
+                return TEST_FAILURE("failed to readcache object data '%d' != '%d'", cacheObject->data[i], 8);
             }
         }else if(i < 128){
             if(cacheObject->data[i] != 16){
-                ret = false;
-
-                break;
+                return TEST_FAILURE("failed to readcache object data '%d' != '%d'", cacheObject->data[i], 16);
             }
         }else if(i < 192){
             if(cacheObject->data[i] != 8){
-                ret = false;
-
-                break;
+                return TEST_FAILURE("failed to readcache object data '%d' != '%d'", cacheObject->data[i], 8);
             }
         }else if(i < 256){
             if(cacheObject->data[i] != 32){
-                ret = false;
-
-                break;
+                return TEST_FAILURE("failed to readcache object data '%d' != '%d'", cacheObject->data[i], 32);
             }
         }
     }
     
-    if(util_deleteFile(filePath) != ERROR_NO_ERROR){
-        return false;
+    if((error = util_deleteFile(filePath)) != ERROR_NO_ERROR){
+        return TEST_FAILURE("Failed to delete test file: '%s'. '%s'.", filePath, util_toErrorString(error));
     }
 
     cache_free(&cache);
 
-    return ret;
+    return TEST_SUCCESS;
 }
 
 // propertyFile.c
@@ -1290,6 +1284,8 @@ TEST_TEST_SUIT_DESTRUCT_FUNCTION(propertyFile, propertyFile){
 }
 
 TEST_TEST_FUNCTION(propertyFile_create){
+    ERROR_CODE error;
+
     char currentDir[PATH_MAX];
     util_getCurrentWorkingDirectory(currentDir, PATH_MAX);
 
@@ -1302,30 +1298,25 @@ TEST_TEST_FUNCTION(propertyFile_create){
     
     if(util_fileExists(propertyFilePath)){
         if(!util_deleteFile(propertyFilePath)){
-            UTIL_LOG_ERROR_("Failed to delete old file '%s'.\n", propertyFilePath);       
-
-            return false;
+            return TEST_FAILURE("Failed to delete old file '%s'.\n", propertyFilePath);
         }
     }
 
-    if(propertyFile_create(propertyFilePath, propertyFilePathLength) != ERROR_NO_ERROR){
-        UTIL_LOG_ERROR_("Failed to create property file '%s'.\n", propertyFilePath);                
- 
-        return false;
+    if((error = propertyFile_create(propertyFilePath, propertyFilePathLength)) != ERROR_NO_ERROR){
+        return TEST_FAILURE("Failed to create property file '%s'. '%s'", propertyFilePath, util_toErrorString(error));
     }
 
     util_deleteFile(propertyFilePath);
 
-    return true;
+    return TEST_SUCCESS;
 }
 
 TEST_TEST_FUNCTION_(propertyFile_add, PropertyFile, propertyFile){
-    bool ret = true;
-    Property* testProperty;
-    if(propertyFile_addProperty(propertyFile, &testProperty, "testProperty", sizeof(uint64_t)) != ERROR_NO_ERROR){
-        ret =  false;
+    ERROR_CODE error;
 
-        goto label_return;
+    Property* testProperty;
+    if((error = propertyFile_addProperty(propertyFile, &testProperty, "testProperty", sizeof(uint64_t))) != ERROR_NO_ERROR){
+        return TEST_FAILURE("Failed to add property:'testProperty'. '%s'.", util_toErrorString(error));
     }
 
     int8_t* buffer = alloca(sizeof(uint16_t));
@@ -1338,19 +1329,18 @@ TEST_TEST_FUNCTION_(propertyFile_add, PropertyFile, propertyFile){
 
     Property* retrievedProperty;
     if(propertyFile_getProperty(propertyFile, &retrievedProperty, "testProperty") != ERROR_NO_ERROR){
-        UTIL_LOG_ERROR("Failed to retrieve property: 'testProperty'.");
-
-        ret =  false;
-    }else{
-        propertyFile_freeProperty(retrievedProperty);
-        free(retrievedProperty);
+       return TEST_FAILURE("Failed to retrieve property 'testProperty'. '%s'.", util_toErrorString(error));
     }
 
-label_return:
-    return ret;
+    propertyFile_freeProperty(retrievedProperty);
+    free(retrievedProperty);
+
+    return TEST_SUCCESS;
 }    
 
 TEST_TEST_FUNCTION_(propertyFile_remove, PropertyFile, propertyFile){
+    ERROR_CODE error;
+
     Property* testProperty;
     propertyFile_addProperty(propertyFile, &testProperty, "testProperty", sizeof(uint64_t));
 
@@ -1359,9 +1349,8 @@ TEST_TEST_FUNCTION_(propertyFile_remove, PropertyFile, propertyFile){
 
     propertyFile_setBuffer(testProperty, buffer);
 
-    bool ret = true;
-    if(propertyFile_removeProperty(testProperty) != ERROR_NO_ERROR){
-        ret = false;
+    if((error = propertyFile_removeProperty(testProperty)) != ERROR_NO_ERROR){
+        return TEST_FAILURE("Failed to remove property 'testProperty'. '%s'.", util_toErrorString(error));
     }
 
     propertyFile_freeProperty(testProperty);
@@ -1369,27 +1358,24 @@ TEST_TEST_FUNCTION_(propertyFile_remove, PropertyFile, propertyFile){
 
     Property* retrievedProperty;
     __UTIL_SUPPRESS_NEXT_ERROR_OF_TYPE__(ERROR_ENTRY_NOT_FOUND);
-    if(propertyFile_getProperty(propertyFile, &retrievedProperty, "testProperty") != ERROR_ENTRY_NOT_FOUND){
-        UTIL_LOG_ERROR("Failed to remove property: 'testProperty'.");
-
+    if((error = propertyFile_getProperty(propertyFile, &retrievedProperty, "testProperty")) != ERROR_ENTRY_NOT_FOUND){
         propertyFile_freeProperty(retrievedProperty);
         free(retrievedProperty);
 
-        ret =  false;
+        return TEST_FAILURE("'propertyFile_getProperty' did not fail as expected with 'ERROR_ENTRY_NOT_FOUND' function returned '%s'", util_toErrorString(error));
     }
 
-    return ret;
+    return TEST_SUCCESS;
 }    
 
 // herder.c
 TEST_TEST_FUNCTION(herder_constructFilePath){
-    bool ret = false;
-
     EpisodeInfo info;
     mediaLibrary_initEpisodeInfo(&info);
 
     char showName[] = "American Dad";
     char episodeName[] = "The last Smith";
+    char fileExtension[] = "mkv";
 
     info.showName = showName;
     info.showNameLength = strlen(showName);
@@ -1400,15 +1386,18 @@ TEST_TEST_FUNCTION(herder_constructFilePath){
     info.season = 2;
     info.episode = 14;
 
+    info.fileExtension = fileExtension;
+    info.fileExtensionLength = strlen(fileExtension);
+
     char* path;
     uint_fast64_t pathLength;
     HERDER_CONSTRUCT_FILE_PATH(&path, &pathLength, &info);
 
-    if(strcmp(path, "American_Dad/American_Dad - Season_02/American_Dad_s02e14_The_last_Smith") == 0){
-        ret = true;
+    if(strcmp(path, "American_Dad/American_Dad - Season_02/American_Dad_s02e14_The_last_Smith.mkv") != 0){
+       return TEST_FAILURE("'%s' does not equal '%s'.", path, "American_Dad/American_Dad - Season_02/American_Dad_s02e14_The_last_Smith.mkv");
     }
 
-    return ret;
+    return TEST_SUCCESS;
 }
 
 // mediaLibrary.c
@@ -1465,99 +1454,107 @@ TEST_TEST_SUIT_DESTRUCT_FUNCTION(mediaLibrary, library){
     return ERROR(error);
 }
 
-TEST_TEST_FUNCTION_(mediaLibrary_getShow, MediaLibrary, library){            
+TEST_TEST_FUNCTION_(mediaLibrary_getShow, MediaLibrary, library){           
+    ERROR_CODE error;
+
     char showName[] = "American Dad";
     const uint_fast64_t showNameLength = strlen(showName);
 
     Show* show;
     __UTIL_SUPPRESS_NEXT_ERROR_OF_TYPE__(ERROR_ENTRY_NOT_FOUND);
-    if(medialibrary_getShow(library, &show, showName, showNameLength) == ERROR_NO_ERROR){
-        return false;
+    if((error = medialibrary_getShow(library, &show, showName, showNameLength)) != ERROR_ENTRY_NOT_FOUND){
+        return TEST_FAILURE("'medialibrary_getShow' did not fail as expected with 'ERROR_ENTRY_NOT_FOUND' function returned '%s'", util_toErrorString(error));
     }
 
-    if(mediaLibrary_addShow(library, &show, showName, showNameLength) != ERROR_NO_ERROR){
-        return false;
+    if((error = mediaLibrary_addShow(library, &show, showName, showNameLength)) != ERROR_NO_ERROR){
+        return TEST_FAILURE("Failed to add show: '%s'. '%s'.", showName, util_toErrorString(error));
     }
 
-    if(medialibrary_getShow(library, &show, showName, showNameLength) != ERROR_NO_ERROR){
-        return false;
+    if((error = medialibrary_getShow(library, &show, showName, showNameLength)) != ERROR_NO_ERROR){
+        return TEST_FAILURE("Failed to retrieve show '%s' from media library. '%s'.", showName, util_toErrorString(error));
     }
 
-    return true;
+    return TEST_SUCCESS;
 }
 
-TEST_TEST_FUNCTION_(mediaLibrary_getSeason, MediaLibrary, library){    
+TEST_TEST_FUNCTION_(mediaLibrary_getSeason, MediaLibrary, library){
+    ERROR_CODE error;
+
     char showName[] = "American Dad";
     const uint_fast64_t showNameLength = strlen(showName);
 
     Show* americanDad;
-    if(mediaLibrary_addShow(library, &americanDad, showName, showNameLength) != ERROR_NO_ERROR){
-        return false;
+    if((error = mediaLibrary_addShow(library, &americanDad, showName, showNameLength)) != ERROR_NO_ERROR){
+        return TEST_FAILURE("Failed to add show: '%s'. '%s'.", showName, util_toErrorString(error));
     }
 
     Season* season_1;
     __UTIL_SUPPRESS_NEXT_ERROR_OF_TYPE__(ERROR_ENTRY_NOT_FOUND);
-    if(medialibrary_getSeason(americanDad, &season_1, 1) != ERROR_ENTRY_NOT_FOUND){
-        return false;
+    if((error = medialibrary_getSeason(americanDad, &season_1, 1)) != ERROR_ENTRY_NOT_FOUND){
+        return TEST_FAILURE("'mediaLiobrary_getSeason' did not fail as expected with 'ERROR_ENTRY_NOT_FOUND' function returned '%s'", util_toErrorString(error));
     }
 
-    if(mediaLibrary_addSeason(library, &season_1, americanDad, 1) != ERROR_NO_ERROR){
-        return false;
+    if((error = mediaLibrary_addSeason(library, &season_1, americanDad, 1)) != ERROR_NO_ERROR){
+        return TEST_FAILURE("Failed to add season 01 to '%s'. '%s'.", showName, util_toErrorString(error));
     }
 
-    if(medialibrary_getSeason(americanDad, &season_1, 1) != ERROR_NO_ERROR){
-        return false;
+    if((error = medialibrary_getSeason(americanDad, &season_1, 1)) != ERROR_NO_ERROR){
+        return TEST_FAILURE("Failed to retrieve season '%d' from media library. '%s'.", 1, util_toErrorString(error));
     }
 
-    return true;
+    return TEST_SUCCESS;
 }
 
 TEST_TEST_FUNCTION_(mediaLibrary_addEpisode, MediaLibrary, library){
+    ERROR_CODE error;
+
     char showName[] = "American Dad";
     const uint_fast64_t showNameLength = strlen(showName);
 
     Show* americanDad;
-    if(mediaLibrary_addShow(library, &americanDad, showName, showNameLength) != ERROR_NO_ERROR){
-        return false;
+    if((error = mediaLibrary_addShow(library, &americanDad, showName, showNameLength)) != ERROR_NO_ERROR){
+        return TEST_FAILURE("Failed to add show: '%s'. '%s'.", showName, util_toErrorString(error));
     }
 
     Season* season_01;
     if(mediaLibrary_addSeason(library, &season_01, americanDad, 1) != ERROR_NO_ERROR){
-        return false;
+        return TEST_FAILURE("Failed to add season 01 to '%s'. '%s'.", showName, util_toErrorString(error));
     }
 
     Episode* episode;
     __UTIL_SUPPRESS_NEXT_ERROR_OF_TYPE__(ERROR_ENTRY_NOT_FOUND);
-    if(mediaLibrary_getEpisode(season_01, &episode, 15) != ERROR_ENTRY_NOT_FOUND){
-        return false;
+    if((error = mediaLibrary_getEpisode(season_01, &episode, 15)) != ERROR_ENTRY_NOT_FOUND){
+        return TEST_FAILURE("'mediaLiobrary_getEpisode' did not fail as expected with 'ERROR_ENTRY_NOT_FOUND' function returned '%s'", util_toErrorString(error));
     }
 
-    char episdoeName[] = "Threat Levels";
-    const uint_fast64_t episodeNameLength = strlen(episdoeName);
+    char episodeName[] = "Threat Levels";
+    const uint_fast64_t episodeNameLength = strlen(episodeName);
 
-    if(mediaLibrary_addEpisode(library, &episode, americanDad, season_01, 15, episdoeName, episodeNameLength, ".mkv", 4, true) != ERROR_NO_ERROR){
-        return false;
+    if(mediaLibrary_addEpisode(library, &episode, americanDad, season_01, 15, episodeName, episodeNameLength, ".mkv", 4, true) != ERROR_NO_ERROR){
+        return TEST_FAILURE("Failed to add episode '%s' to media library. '%s'.", episodeName, util_toErrorString(error));
     }
 
     if(mediaLibrary_getEpisode(season_01, &episode, 15) != ERROR_NO_ERROR){
-        return false;
+        return TEST_FAILURE("Failed to retrieve episode '%s' from media library. '%s'.", episodeName, util_toErrorString(error));
     }
 
-    return true;
+    return TEST_SUCCESS;
 }
 
 TEST_TEST_FUNCTION_(medialibrary_removeEpisode, MediaLibrary, library){
+    ERROR_CODE error;
+
     const char showName[] = "Enen no Shouboutai";
     const uint_fast64_t showNameLength = strlen(showName);
 
     Show* show;
-    if(mediaLibrary_addShow(library, &show, showName, showNameLength) != ERROR_NO_ERROR){
-        return false;
+    if((error = mediaLibrary_addShow(library, &show, showName, showNameLength)) != ERROR_NO_ERROR){
+        return TEST_FAILURE("Failed to add show: '%s'. '%s'.", showName, util_toErrorString(error));
     }
 
     Season* season_01;
     if(mediaLibrary_addSeason(library, &season_01, show, 1) != ERROR_NO_ERROR){
-        return false;
+        return TEST_FAILURE("Failed to add season 01 to '%s'. '%s'.", showName, util_toErrorString(error));
     }
 
     const char episodeName[] = "Shinra Kusakabe Enlists";
@@ -1565,11 +1562,11 @@ TEST_TEST_FUNCTION_(medialibrary_removeEpisode, MediaLibrary, library){
 
     Episode* episode_01;
     if(mediaLibrary_addEpisode(library, &episode_01, show, season_01, 1, episodeName, episodeNameLength, ".mkv", 4, true) != ERROR_NO_ERROR){
-        return false;
+        return TEST_FAILURE("Failed to add episode '%s' to media library. '%s'.", episodeName, util_toErrorString(error));
     }
 
     if(medialibrary_removeEpisode(library, show, season_01, episode_01, true) != ERROR_NO_ERROR){
-        return false;
+        return TEST_FAILURE("Failed to remove episode '%s' from media library. '%s'.", episodeName, util_toErrorString(error));
     }
 
     LinkedListIterator it;
@@ -1578,47 +1575,53 @@ TEST_TEST_FUNCTION_(medialibrary_removeEpisode, MediaLibrary, library){
     while(LINKED_LIST_ITERATOR_HAS_NEXT(&it)){
         Episode* episode = LINKED_LIST_ITERATOR_NEXT(&it);
 
-        if(episode->number == 1 && strncmp(episode->name, episodeName, episodeNameLength + 1) == 0){
-            return false;
+        if(episode->number == 1){
+            return TEST_FAILURE("Failed to remove episode '%d'.", 1);
+        }
+        
+        if(strncmp(episode->name, episodeName, episodeNameLength + 1) == 0){
+            return TEST_FAILURE("Failed to remove episode '%s' from media library. '%s'.", episodeName, util_toErrorString(error));
         }
     }
 
-    return true;
+    return TEST_SUCCESS;
 }
 
 TEST_TEST_FUNCTION_(medialibrary_removeEpisodeFrromLibraryFile, MediaLibrary, library){
+    ERROR_CODE error;
+    
     const char showName[] = "Enen no Shouboutai";
     const uint_fast64_t showNameLength = strlen(showName);
 
     Show* show;
-    if(mediaLibrary_addShow(library, &show, showName, showNameLength) != ERROR_NO_ERROR){
-        return false;
+    if((error = mediaLibrary_addShow(library, &show, showName, showNameLength)) != ERROR_NO_ERROR){             
+        return TEST_FAILURE("Failed to add show:'%s'. '%s'.", showName, util_toErrorString(error));
     }
 
     Season* season_01;
-    if(mediaLibrary_addSeason(library, &season_01, show, 1) != ERROR_NO_ERROR){
-        return false;
+    if((error = mediaLibrary_addSeason(library, &season_01, show, 1)) != ERROR_NO_ERROR){
+        return TEST_FAILURE("Failed to add season 01 to '%s'. '%s'.", showName, util_toErrorString(error));
     }
 
     const char episodeName[] = "Shinra Kusakabe Enlists";
     const uint_fast64_t episodeNameLength = strlen(episodeName);
 
     Episode* episode_01;
-    if(mediaLibrary_addEpisode(library, &episode_01, show, season_01, 1, episodeName, episodeNameLength, ".mkv", 4, true) != ERROR_NO_ERROR){
-        return false;
+    if((error = mediaLibrary_addEpisode(library, &episode_01, show, season_01, 1, episodeName, episodeNameLength, ".mkv", 4, true)) != ERROR_NO_ERROR){
+        return TEST_FAILURE("Failed to add episode '%s' to media library. '%s'.", episodeName, util_toErrorString(error));
     }
 
     if(medialibrary_removeEpisodeFrromLibraryFile(library, show, season_01, episode_01) != ERROR_NO_ERROR){
-        return false;
+        return TEST_FAILURE("Failed to remove episode '%s' from library file. '%s'.", episode_01->name, util_toErrorString(error));
     } 
 
     // TODO: Reload library and check if episode was removed. (jan - 2019.08.08)
 
-    return true;
+    return TEST_SUCCESS;
 }
 
 TEST_TEST_FUNCTION(mediaLibrary_extractShowName){
-    bool ret = true;
+    ERROR_CODE error;
 
     LinkedList shows;
     linkedList_init(&shows);
@@ -1644,20 +1647,16 @@ TEST_TEST_FUNCTION(mediaLibrary_extractShowName){
     EpisodeInfo info = {0};
 
     char fileName_0[] = "American_Dad_Rogers_Spot";
-    if(mediaLibrary_extractShowName(&info, &shows, fileName_0, strlen(fileName_0)) != ERROR_NO_ERROR){
-        ret =  false;
-
-        goto label_freeEpisodeInfo;
+    if((error = mediaLibrary_extractShowName(&info, &shows, fileName_0, strlen(fileName_0))) != ERROR_NO_ERROR){
+         return TEST_FAILURE("Failed to extract show name from string:'%s'. '%s'.", fileName_0, util_toErrorString(error));
     }
 
     if(strncmp(info.showName, americanDad.name, americanDad.nameLength + 1) != 0){
-        ret = false;
-
-        goto label_freeEpisodeInfo;
+        return TEST_FAILURE("Extracted value '%s' != '%s'.", info.name, americanDad.name);
     }
 
     if(strncmp(fileName_0, "Rogers_Spot", strlen("Rogers_Spot") + 1) != 0){
-        ret = false;
+        return TEST_FAILURE("Extracted value '%s' != '%s'.", fileName_0, "Rogers_Spot");
     }
 
     mediaLibrary_freeEpisodeInfo(&info);
@@ -1666,19 +1665,15 @@ TEST_TEST_FUNCTION(mediaLibrary_extractShowName){
 
     char fileName_1[] = "Family_Guy_s01e01_Death_Has_a_Shadow.avi";
     if(mediaLibrary_extractShowName(&info, &shows, fileName_1, strlen(fileName_1)) != ERROR_NO_ERROR){
-        ret =  false;
-
-        goto label_freeEpisodeInfo;
+      return TEST_FAILURE("Failed to extract show name from string:'%s'. '%s'.", fileName_1, util_toErrorString(error));
     }
 
     if(strncmp(info.showName, familyGuy.name, familyGuy.nameLength + 1) != 0){
-        ret = false;
-
-        goto label_freeEpisodeInfo;
+        return TEST_FAILURE("Extracted value '%s' != '%s'.", info.name, familyGuy.name);
     }
 
     if(strncmp(fileName_1, "s01e01_Death_Has_a_Shadow.avi", strlen("s01e01_Death_Has_a_Shadow.avi") + 1) != 0){
-        ret = false;
+       return TEST_FAILURE("Extracted value '%s' != '%s'.", fileName_0, "s01e01_Death_Has_a_Shadow.avi");
     }
 
     mediaLibrary_freeEpisodeInfo(&info);
@@ -1688,73 +1683,50 @@ TEST_TEST_FUNCTION(mediaLibrary_extractShowName){
     char fileName_2[] = "s01e01_Death_Has_a_Shadow.avi";
     __UTIL_SUPPRESS_NEXT_ERROR_OF_TYPE__(ERROR_INCOMPLETE);
     if(mediaLibrary_extractShowName(&info, &shows, fileName_2, strlen(fileName_2)) != ERROR_INCOMPLETE){
-        ret =  false;
-
-        goto label_freeEpisodeInfo;
+         return TEST_FAILURE("Extracting a show name from string:'%s' did not fail as expected. '%s'.", fileName_2, util_toErrorString(error));
     }
 
     mediaLibrary_freeEpisodeInfo(&info);
 
-    goto label_freeShows;
-
-label_freeEpisodeInfo:
-    mediaLibrary_freeEpisodeInfo(&info);
-
-label_freeShows:
     linkedList_free(&shows);
 
-    return ret;
+    return TEST_SUCCESS;
 }
 
 TEST_TEST_FUNCTION(mediaLibrary_extractPrefixedNumber){
-    bool ret = true;
+    ERROR_CODE error;
 
     char a[] = "American_Dad_s01e02_Threat_Levels.mkv";
 
     int_fast16_t val;
-    if(mediaLibrary_extractPrefixedNumber(a, strlen(a), &val, 's') != ERROR_NO_ERROR){
-        ret = false;
-
-        goto label_return;
+    if((error = mediaLibrary_extractPrefixedNumber(a, strlen(a), &val, 's')) != ERROR_NO_ERROR){
+        return TEST_FAILURE("Failed to extract prefixed number from string:'%s'. '%s'.", a, util_toErrorString(error));
     }
 
     if(val != 1){
-        ret = false;
-
-        goto label_return;
+        return TEST_FAILURE("Extracted value '%" PRIdFAST16 "' != '%d'.", val, 1);
     }
 
     if(strncmp(a, "American_Dad_e02_Threat_Levels.mkv", strlen("American_Dad_e02_Threat_Levels.mkv") != 0)){
-        ret = false;
-
-        goto label_return;
+        return TEST_FAILURE("'%" PRIdFAST16 "' != '%d'.", val, 2);
     }
 
-    if(mediaLibrary_extractPrefixedNumber(a, strlen(a), &val, 'e') != ERROR_NO_ERROR){
-        ret = false;
-
-        goto label_return;
+    if((error = mediaLibrary_extractPrefixedNumber(a, strlen(a), &val, 'e')) != ERROR_NO_ERROR){
+        return TEST_FAILURE("Failed to extract prefixed number from string:'%s'. '%s'.", a, util_toErrorString(error));
     }
 
     if(val != 2){
-        ret = false;
-
-        goto label_return;
+        return TEST_FAILURE("Extracted value '%" PRIdFAST16 "' != '%d'.", val, 2);
     }
 
     if(strncmp(a, "American_Dad__Threat_Levels.mkv", strlen("American_Dad__Threat_Levels.mkv") != 0)){
-        ret = false;
-
-        goto label_return;
+        return TEST_FAILURE("'%s' != '%s'.", a, "American_Dad__Threat_Levels.mkv");
     }
 
-label_return:
-    return ret;
+    return TEST_SUCCESS;
 }
 
 TEST_TEST_FUNCTION(mediaLibrary_extractEpisodeInfo){
-    bool ret = true;
-
     char a[] = "American_Dad_s01e01_Threat_Levels.mkv"; 
 
     LinkedList shows;
@@ -1770,19 +1742,27 @@ TEST_TEST_FUNCTION(mediaLibrary_extractEpisodeInfo){
     EpisodeInfo info;
     mediaLibrary_initEpisodeInfo(&info);
 
-    if(mediaLibrary_extractEpisodeInfo(&info, &shows, a, strlen(a)) != ERROR_NO_ERROR){
-        ret = false;
-
-        goto label_free;
+    ERROR_CODE error;
+    if((error = mediaLibrary_extractEpisodeInfo(&info, &shows, a, strlen(a))) != ERROR_NO_ERROR){
+        return TEST_FAILURE("Failed to extract episode info. '%s'.", util_toErrorString(error));
     }
 
-    if(info.season != 1 || info.episode != 1 || strncmp(showName, info.showName, strlen(showName)) || strncmp("Threat Levels", info.name, strlen("Threat Levels"))){
-        ret = false;
+    if(info.season != 1){
+        return TEST_FAILURE("Failed to extract season number '%" PRIdFAST16 "' != '%d'.", info.season, 1);
+    } 
 
-        goto label_free;
+    if(info.episode != 1){
+        return TEST_FAILURE("Failed to extract episode number '%" PRIdFAST16 "' != '%d'.", info.episode, 1);
     }
 
-label_free:
+    if(strncmp(showName, info.showName, strlen(showName))){
+        return TEST_FAILURE("Failed to extract show name '%s' != '%s'.", info.showName, showName);
+    }
+        
+    if(strncmp("Threat Levels", info.name, strlen("Threat Levels"))){
+        return TEST_FAILURE("Failed to extract episode name '%s' != '%s'.", info.name, "Threat Levels");
+    }
+
     mediaLibrary_freeEpisodeInfo(&info);
 
     linkedList_free(&americanDad.seasons);
@@ -1791,12 +1771,10 @@ label_free:
 
     linkedList_free(&shows);
 
-    return ret;
+    return TEST_SUCCESS;
 }
 
 TEST_TEST_FUNCTION(mediaLibrary_sortEpisodes){
-    bool ret = true;
-
     LinkedList unsortedEpisdoes;
     linkedList_init(&unsortedEpisdoes);
 
@@ -1827,9 +1805,7 @@ TEST_TEST_FUNCTION(mediaLibrary_sortEpisodes){
     uint_fast64_t i;
     for(i = 0; i < 5; i++){
         if(episodes[i]->number != i + 1){
-            ret = false;
-
-            break;
+            return TEST_FAILURE("Failed to sort episode;'%" PRIiFAST64 "'", i + 1);
         }
     }
 
@@ -1841,7 +1817,7 @@ TEST_TEST_FUNCTION(mediaLibrary_sortEpisodes){
 
     linkedList_free(&unsortedEpisdoes);
 
-    return ret;
+    return TEST_SUCCESS;
 }
 
 // server.c
@@ -1955,7 +1931,7 @@ label_free:
 }
 
 TEST_TEST_FUNCTION(server_send){
-    bool ret = true;    
+    ERROR_CODE error;
 
     ThreadPool threadPool;
     threadPool_init(&threadPool, 1);
@@ -1966,22 +1942,24 @@ TEST_TEST_FUNCTION(server_send){
 
     #define BUFFER_SIZE 8096
     void* requestBuffer;
-    if(util_blockAlloc(&requestBuffer, BUFFER_SIZE) != ERROR_NO_ERROR){
-        goto label_free;
+    if((error = util_blockAlloc(&requestBuffer, BUFFER_SIZE)) != ERROR_NO_ERROR){
+        return TEST_FAILURE("ERROR:'%s'.", util_toErrorString(error));
     }
 
     const char url[] = "/test";
     const uint_fast64_t urlLength = strlen(url);
 
     HTTP_Request request;
-    http_initRequest(&request, url, urlLength, requestBuffer, BUFFER_SIZE, HTTP_VERSION_1_1, REQUEST_TYPE_GET);
+    if((error = http_initRequest(&request, url, urlLength, requestBuffer, BUFFER_SIZE, HTTP_VERSION_1_1, REQUEST_TYPE_GET)) != ERROR_NO_ERROR){
+        return TEST_FAILURE("ERROR:'%s'.", util_toErrorString(error));
+    }
 
     const char connection[] = "close";
     HTTP_ADD_HEADER_FIELD(request, Connection, connection);
    
     void* responseBuffer;
-    if(util_blockAlloc(&responseBuffer, BUFFER_SIZE) != ERROR_NO_ERROR){
-        goto label_free;
+    if((error = util_blockAlloc(&responseBuffer, BUFFER_SIZE)) != ERROR_NO_ERROR){
+        return TEST_FAILURE("ERROR:'%s'.", util_toErrorString(error));
     }
 
     HTTP_Response response;
@@ -1989,12 +1967,11 @@ TEST_TEST_FUNCTION(server_send){
 
     int_fast32_t socketFD;
     if(http_openConnection(&socketFD, "localhost", 8888) != ERROR_NO_ERROR){
-        goto label_free;
+        return TEST_FAILURE("Failed to open connection to '%s:%d'.", "localhost", 8888);
     }
 
     http_sendRequest(&request, &response, socketFD);
     
-label_free:
     http_closeConnection(socketFD);
 
     http_freeHTTP_Request(&request);
@@ -2007,7 +1984,7 @@ label_free:
     util_unMap(requestBuffer, BUFFER_SIZE);
     #undef BUFFER_SIZE
 
-    return ret;
+    return TEST_SUCCESS;
 }
 
 // main
@@ -2097,12 +2074,12 @@ int main(void){
         TEST(herder_constructFilePath);
     TEST_SUIT_END();
 
-    // TEST_SUIT_BEGIN("server");
+/*     TEST_SUIT_BEGIN("server");
         // Note:(jan) Running the server in valgrind takes to long, probably due to the 'accept' call having to be interrupted in the server loop.
-        // TEST(server_addContext);
+        TEST(server_addContext);
         // Note:(jan) No need to run this, as this was not meant to be an automated test, and needed console output in 'http.c' that is no longer present to be useful.
-        //TEST(server_send);
-    // TEST_SUIT_END();
+        TEST(server_send);
+    TEST_SUIT_END(); */
 
     TEST_END();
 }
