@@ -976,7 +976,7 @@ label_yesNo:
     uint_fast64_t pathLength;
     HERDER_CONSTRUCT_FILE_PATH(&path, &pathLength, (&info));
 
-    const uint_fast64_t fileDstLength = (libraryDirectory->entry->length - 1) + pathLength + info.fileExtensionLength + 1;
+    const uint_fast64_t fileDstLength = (libraryDirectory->entry->length - 1) + pathLength + 1;
 
     char* filePath = alloca(sizeof(*filePath) * (fileDstLength + 1));
     uint_fast64_t writeOffset = 0;
@@ -1174,19 +1174,29 @@ label_selectSeason:
         goto label_selectSeason;
     }
 
-    if(selection < 1 || selection > (int_fast64_t) show->seasons.length){
-        free(userInput);
-
-        UTIL_LOG_CONSOLE(LOG_INFO, "Invalid selection.");
-
-        goto label_selectSeason;
+    if(selection <= 0 || (uint_fast16_t) selection > UINT_FAST16_MAX){
+        goto label_invalidUserInput;
     }
 
-    *season = seasons[selection - 1];
+    uint_fast64_t i;
+    for(i = 0; i < show->seasons.length; i++){
+        if(seasons[i]->number == (uint_fast16_t) selection){
+            *season = seasons[i];
 
-    free(userInput);  
+            goto label_return;
+        }
+    }
+
+label_invalidUserInput:
+    free(userInput);
+
+    UTIL_LOG_CONSOLE(LOG_INFO, "Invalid selection.");
+
+    goto label_selectSeason;
 
 label_return:
+    free(userInput);  
+
     return ERROR(error);
 }
 
@@ -1220,19 +1230,29 @@ label_selectSeason:
         goto label_selectSeason;
     }
 
-    if(selection < 1 || selection > (int_fast64_t) season->episodes.length){
-        free(userInput);
-
-        UTIL_LOG_CONSOLE(LOG_INFO, "Invalid selection.");
-
-        goto label_selectSeason;
+    if(selection <= 0 || (uint_fast16_t) selection > UINT_FAST16_MAX){
+        goto label_invalidUserInput;
     }
 
-    *episode = episodes[selection - 1];
+    uint_fast64_t i;
+    for(i = 0; i < season->episodes.length; i++){
+        if(episodes[i]->number == (uint_fast16_t) selection){
+            *episode = episodes[i];
 
-    free(userInput);  
+            goto label_return;
+        }
+    }
+
+label_invalidUserInput:
+    free(userInput);
+
+    UTIL_LOG_CONSOLE(LOG_INFO, "Invalid selection.");
+
+    goto label_selectSeason;
 
 label_return:
+    free(userInput);  
+
     return ERROR(error);    
 }
 
