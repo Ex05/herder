@@ -10,6 +10,8 @@ char ARGUMENT_PARSER_ARGUMENT_PRESENT_FLAG = {0};
 
 local ERROR_CODE argumentParser_initArgument(Argument*, const uint_fast8_t);
 
+local bool argumentParser_isArgument(const char*);
+
 inline ERROR_CODE argumentParser_init(ArgumentParser* parser){
     int_fast32_t error;
 
@@ -23,10 +25,10 @@ inline ERROR_CODE argumentParser_init(ArgumentParser* parser){
 }
 
 inline ERROR_CODE argumentParser_initArgument(Argument* argument, const uint_fast8_t numArguments){
-    argument->numArguments = numArguments;
-    argument->value = NULL;
-    argument->valueLength = 0;
+    memset(argument, 0, sizeof(*argument));
 
+    argument->numArguments = numArguments;
+    
     argument->arguments = malloc(sizeof(*argument->arguments) * numArguments);
     if(argument->arguments == NULL){
        return ERROR(ERROR_OUT_OF_MEMORY);
@@ -65,15 +67,13 @@ ERROR_CODE argumentParser_addArgument(ArgumentParser* parser, Argument* argument
 }
 
 inline ERROR_CODE argumentParser_parse(ArgumentParser* parser, const int numArguments, const char** arguments){
-    ERROR_CODE error = ERROR_NO_VALID_ARGUMENT;
-
     if(numArguments <= 1){
-        goto label_return;
+        return ERROR(ERROR_NO_VALID_ARGUMENT);
     }
 
     LinkedListIterator it;
     register int i;
-    for(i = 0; i < numArguments; i++){
+    for(i = 0; i < numArguments; i++){        
         linkedList_initIterator(&it, &parser->arguments);
         while(LINKED_LIST_ITERATOR_HAS_NEXT(&it)){
             Argument* argument = LINKED_LIST_ITERATOR_NEXT(&it);
@@ -81,43 +81,80 @@ inline ERROR_CODE argumentParser_parse(ArgumentParser* parser, const int numArgu
             register uint_fast8_t j;
             for(j = 0; j < argument->numArguments; j++){
                 if(strcmp(arguments[i], argument->arguments[j]) == 0){
-                    if(i + 1 < numArguments){
-                        if(argument->value != NULL){
-                            if(argument->value != &ARGUMENT_PARSER_ARGUMENT_PRESENT_FLAG){
-                                error = ERROR_DUPLICATE_ENTRY;
-                    
-                                goto label_return;
-                            }
-                        }else{
-                            error = ERROR_NO_ERROR;
+                    if(argument->numValues != 0){
+                        return ERROR(ERROR_DUPLICATE_ENTRY);
+                    }
 
-                            argument->value = arguments[i + 1];
-                            argument->valueLength = strlen(argument->value);
-                        }
+                    void* values = realloc(argument->values, sizeof(*argument->values) * (argument->numValues + 1));
+
+                    if(values == NULL){
+                        return ERROR(ERROR_OUT_OF_MEMORY);
+                    }
+
+                    argument->values = values;
+
+                    void* valueLengths = realloc(argument->valueLengths, sizeof(*argument->valueLengths) * (argument->numValues + 1));
+
+                    if(valueLengths == NULL){
+                        return ERROR(ERROR_OUT_OF_MEMORY);
+                    }
+
+                    argument->valueLengths = valueLengths;
+
+                    argument->numValues += 1;
+
+                    // No more arguments.
+                    if(i + 1 >= numArguments){
+                        argument->values[argument->numValues - 1] = &ARGUMENT_PARSER_ARGUMENT_PRESENT_FLAG;
+                        argument->valueLengths[argument->numValues - 1] = 0;
+
                     }else{
-                         if(argument->value != NULL){
-                            if(argument->value != &ARGUMENT_PARSER_ARGUMENT_PRESENT_FLAG){
-                                error = ERROR_DUPLICATE_ENTRY;
-                    
-                                goto label_return;
-                            }
-                         }else{
-                            error = ERROR_NO_ERROR;
+                        // As long as we have arguments.
+                        while(i + 1 < numArguments){
+                            // If the next argument is actually not an argument.
+                            if(!argumentParser_isArgument(arguments[i + 1])){
+                                argument->values[argument->numValues - 1] = arguments[i + 1];
+                                argument->valueLengths[argument->numValues - 1] = strlen(arguments[i + 1]);
 
-                            argument->value = &ARGUMENT_PARSER_ARGUMENT_PRESENT_FLAG;
+                                i += 1;
+
+                                // Continue if we have more than one value to an argument, e.g. '--rename "/home/29a" "/home/ex05"'
+                                if(i + 1 < numArguments && !argumentParser_isArgument(arguments[i + 1])){
+                                    void* values = realloc(argument->values, sizeof(*argument->values) * (argument->numValues + 1));
+
+                                    if(values == NULL){
+                                        return ERROR(ERROR_OUT_OF_MEMORY);
+                                    }
+
+                                    argument->values = values;
+
+                                    void* valueLengths = realloc(argument->valueLengths, sizeof(*argument->valueLengths) * (argument->numValues + 1));
+
+                                    if(valueLengths == NULL){
+                                        return ERROR(ERROR_OUT_OF_MEMORY);
+                                    }
+
+                                    argument->valueLengths = valueLengths;
+
+                                    argument->numValues += 1;
+                                }else{
+                                    break;
+                                }
+                            }else{
+                                argument->values[argument->numValues - 1] = &ARGUMENT_PARSER_ARGUMENT_PRESENT_FLAG;
+                                argument->valueLengths[argument->numValues - 1] = 0;
+
+                                break;
+                            }
                         }
                     }
-                }                
-            }              
+            
+                }
+            }
         }
     }
 
-label_return:
-    if(error == ERROR_DUPLICATE_ENTRY){
-        return ERROR_(error, "Duplicate argument.'%s'", arguments[i]);
-    }else{
-        return ERROR(error);
-    }
+    return ERROR(ERROR_NO_ERROR);
 }
 
 inline bool argumentParser_contains(ArgumentParser* parser, Argument* argument){
@@ -127,12 +164,16 @@ inline bool argumentParser_contains(ArgumentParser* parser, Argument* argument){
     while(LINKED_LIST_ITERATOR_HAS_NEXT(&it)){
         const Argument* _argument = LINKED_LIST_ITERATOR_NEXT(&it);
 
-        if(argument == _argument && (_argument->value == &ARGUMENT_PARSER_ARGUMENT_PRESENT_FLAG || _argument->value != NULL)){
+    if(argument == _argument && (_argument->values != NULL || _argument->values[0] == &ARGUMENT_PARSER_ARGUMENT_PRESENT_FLAG)){
             return true;
         }
     }
 
     return false;
+}
+
+inline bool argumentParser_isArgument(const char* s){
+    return s[0] == '-' || (s[0] == '-' && s[1] == '-');
 }
 
 void argumentParser_free(ArgumentParser* parser){
@@ -148,6 +189,8 @@ void argumentParser_free(ArgumentParser* parser){
         }
 
         free(argument->arguments);
+        free(argument->values);
+        free(argument->valueLengths);
     }
 
     linkedList_free(&parser->arguments);

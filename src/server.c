@@ -651,13 +651,13 @@ label_return:
 
         // --setServerRootDirectory
         if(argumentParser_contains(&parser, &argumentSetServerRootDirectory)){
-           if(!ARGUMENT_PARSER_ARGUMENT_HAS_VALUE(argumentSetServerRootDirectory)){
+           if(argumentSetServerRootDirectory.numValues != 1){
                 UTIL_LOG_CONSOLE(LOG_INFO, "Invalid command. Usage: " SERVER_USAGE_ARGUMENT_SET_SERVER_ROOT_DIRECTORY);
             }else{
-                if((error = propertyFile_createAndSetDirectoryProperty(&properties, serverRootDirectory, SERVER_PROPERTY_SERVER_ROOT_DIRECTORY_NAME, argumentSetServerRootDirectory.value, argumentSetServerRootDirectory.valueLength)) != ERROR_NO_ERROR){
+                if((error = propertyFile_createAndSetDirectoryProperty(&properties, serverRootDirectory, SERVER_PROPERTY_SERVER_ROOT_DIRECTORY_NAME, argumentSetServerRootDirectory.values[0], argumentSetServerRootDirectory.valueLengths[0])) != ERROR_NO_ERROR){
                     UTIL_LOG_CONSOLE(LOG_ERR, util_toErrorString(error));
                 }else{
-                    UTIL_LOG_CONSOLE_(LOG_INFO, "Successfully set '%s' to '%s'", SERVER_PROPERTY_SERVER_ROOT_DIRECTORY_NAME, argumentSetServerRootDirectory.value);
+                    UTIL_LOG_CONSOLE_(LOG_INFO, "Successfully set '%s' to '%s'", SERVER_PROPERTY_SERVER_ROOT_DIRECTORY_NAME, argumentSetServerRootDirectory.values[0]);
                 }
 
                 goto label_free;
@@ -666,12 +666,12 @@ label_return:
 
         // --setServerExternalPort
         if(argumentParser_contains(&parser, &argumentSetServerExternalPort)){
-	        if(!ARGUMENT_PARSER_ARGUMENT_HAS_VALUE(argumentSetServerExternalPort)){
+	        if(argumentSetServerExternalPort.numValues != 1){
                 UTIL_LOG_CONSOLE(LOG_INFO, "Invalid command. Usage: " PROPERTY_SERVER_EXTERNAL_PORT_NAME);
             }else{
                 int64_t port;
                 ERROR_CODE error;
-                if((error = util_stringToInt(argumentSetServerExternalPort.value, &port)) != ERROR_NO_ERROR){
+                if((error = util_stringToInt(argumentSetServerExternalPort.values[0], &port)) != ERROR_NO_ERROR){
                     UTIL_LOG_CONSOLE_(LOG_ERR, "Port value must be in range of 0-%" PRIu16 ". '%s'.", UINT16_MAX, util_toErrorString(ERROR_INVALID_VALUE));
 
                     goto label_free;
@@ -686,7 +686,7 @@ label_return:
                 if((error = propertyFile_createAndSetUINT16Property(&properties, serverExternalPort, PROPERTY_SERVER_EXTERNAL_PORT_NAME, port)) != ERROR_NO_ERROR){
                     UTIL_LOG_CONSOLE(LOG_ERR, util_toErrorString(error));
                 }else{
-                    UTIL_LOG_CONSOLE_(LOG_INFO, "Successfully set '%s' to '%s'", PROPERTY_SERVER_EXTERNAL_PORT_NAME, argumentSetServerExternalPort.value);
+                    UTIL_LOG_CONSOLE_(LOG_INFO, "Successfully set '%s' to '%s'", PROPERTY_SERVER_EXTERNAL_PORT_NAME, argumentSetServerExternalPort.values[0]);
                 }
 
                 goto label_free;
@@ -695,7 +695,7 @@ label_return:
 
         // --showSettings
         if(argumentParser_contains(&parser, &argumentShowSettings)){
-  		    if(ARGUMENT_PARSER_ARGUMENT_HAS_VALUE(argumentShowSettings)){
+  		    if(argumentShowSettings.numValues != 0){
                 UTIL_LOG_CONSOLE(LOG_INFO, "Invalid command. Usage --showSettings.");
             }else{
                 UTIL_LOG_CONSOLE_(LOG_INFO, "ServerRootDirectory: '%s'.", PROPERTY_IS_SET(serverRootDirectory) ? (char*) serverRootDirectory->buffer : "NULL");

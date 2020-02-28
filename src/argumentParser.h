@@ -9,16 +9,15 @@
     TODO:(jan); Add preprocessor macros for other compiler.
 #endif
 
-#define ARGUMENT_PARSER_ARGUMENT_HAS_VALUE(name) (name.value != &ARGUMENT_PARSER_ARGUMENT_PRESENT_FLAG)
-
 #define ARGUMENT_PARSER_ADD_ARGUMENT(name, numArguments, ...) Argument argument ## name; \
 argumentParser_addArgument(&parser, &argument ## name, numArguments, __VA_ARGS__)
 
 typedef struct{
     char** arguments;
     uint_fast8_t numArguments;   
-    const char* value;
-    uint_fast64_t valueLength;
+    const char** values;
+    uint_fast64_t* valueLengths;
+    uint_fast64_t numValues;
 }Argument;
 
 typedef struct{

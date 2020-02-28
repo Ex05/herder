@@ -157,15 +157,15 @@ local ERROR_CODE consoleClient_selectYesNo(bool*);
 
     // --addShow.
     if(argumentParser_contains(&parser, &argumentAddShow)){ 
-        if(!ARGUMENT_PARSER_ARGUMENT_HAS_VALUE(argumentAddShow)){
+        if(argumentAddShow.numValues != 1){
             UTIL_LOG_CONSOLE(LOG_INFO, "Invalid command. Usage: " CONSOLE_CLIENT_USAGE_ARGUMENT_ADD_SHOW);
         }else{
             if(CONSOLE_CLIENT_REMOTE_HOST_PROPERTIES_SET()){
                 ERROR_CODE error;
-                if((error = herder_addShow(remoteHost, remotePort, argumentAddShow.value, argumentAddShow.valueLength)) != ERROR_NO_ERROR){
-                    UTIL_LOG_CONSOLE_(LOG_ERR, "Failed to add show '%s' to the library. '%s'", argumentAddShow.value,  util_toErrorString(error));
+                if((error = herder_addShow(remoteHost, remotePort, argumentAddShow.values[0], argumentAddShow.valueLengths[0])) != ERROR_NO_ERROR){
+                    UTIL_LOG_CONSOLE_(LOG_ERR, "Failed to add show '%s' to the library. '%s'", argumentAddShow.values[0],  util_toErrorString(error));
                 }else{
-                    UTIL_LOG_CONSOLE_(LOG_INFO, "Successfully added show '%s' to the library.", argumentAddShow.value);
+                    UTIL_LOG_CONSOLE_(LOG_INFO, "Successfully added show '%s' to the library.", argumentAddShow.values[0]);
                 }
             }else{
                 UTIL_LOG_CONSOLE(LOG_ERR, util_toErrorString(ERROR_PROPERTY_NOT_SET));
@@ -177,15 +177,15 @@ local ERROR_CODE consoleClient_selectYesNo(bool*);
 
     // --removeShow.
     if(argumentParser_contains(&parser, &argumentRemoveShow)){ 
-        if(!ARGUMENT_PARSER_ARGUMENT_HAS_VALUE(argumentRemoveShow)){
+        if(argumentRemoveShow.numValues != 1){
             UTIL_LOG_CONSOLE(LOG_INFO, "Invalid command. Usage: " CONSOLE_CLIENT_USAGE_ARGUMENT_REMOVE_SHOW);
         }else{
              if(CONSOLE_CLIENT_REMOTE_HOST_PROPERTIES_SET()){
                  ERROR_CODE error;
-                if((error = herder_removeShow(remoteHost, remotePort, argumentRemoveShow.value, argumentRemoveShow.valueLength)) != ERROR_NO_ERROR){
+                if((error = herder_removeShow(remoteHost, remotePort, argumentRemoveShow.values[0], argumentRemoveShow.valueLengths[0])) != ERROR_NO_ERROR){
                     UTIL_LOG_CONSOLE_(LOG_ERR, "Failed to remove show. '%s'", util_toErrorString(error));
                 }else{
-                    UTIL_LOG_CONSOLE_(LOG_INFO, "Successfully removed show '%s' from the library.", argumentRemoveShow.value);
+                    UTIL_LOG_CONSOLE_(LOG_INFO, "Successfully removed show '%s' from the library.", argumentRemoveShow.values[0]);
                 }
             }else{
                 UTIL_LOG_CONSOLE(LOG_ERR, util_toErrorString(ERROR_PROPERTY_NOT_SET));
@@ -197,12 +197,12 @@ local ERROR_CODE consoleClient_selectYesNo(bool*);
 
     // --addEpisode.
     if(argumentParser_contains(&parser, &argumentAdd)){ 
-        if(!ARGUMENT_PARSER_ARGUMENT_HAS_VALUE(argumentAdd)){
+        if(argumentAdd.numValues != 1){
             UTIL_LOG_CONSOLE(LOG_INFO, "Invalid command. Usage: " CONSOLE_CLIENT_USAGE_ARGUMENT_ADD_EPISODE);
         }else{
             if(CONSOLE_CLIENT_REMOTE_HOST_PROPERTIES_SET() && (propertyFile_propertySet(libraryDirectory, CONSOLE_CLIENT_PROPERTY_LIBRARY_DIRECTORY_NAME) == ERROR_NO_ERROR)){
-                if(!util_fileExists(argumentAdd.value) || util_isDirectory(argumentAdd.value)){
-                    UTIL_LOG_CONSOLE_(LOG_INFO, "ERROR: '%s' is not a falid file.", argumentAdd.value);
+                if(!util_fileExists(argumentAdd.values[0]) || util_isDirectory(argumentAdd.values[0])){
+                    UTIL_LOG_CONSOLE_(LOG_INFO, "ERROR: '%s' is not a falid file.", argumentAdd.values[0]);
                 }else{             
                     // if((error = herder_addEpisode(remoteHost, remotePort, libraryDirectory, argumentAdd.value, argumentAdd.valueLength)) != ERROR_NO_ERROR){
                     //        UTIL_LOG_CONSOLE_(LOG_ERR, "Failed to add '%s' to library. [%s]", argumentAdd.value,  util_toErrorString(error));
@@ -221,21 +221,25 @@ local ERROR_CODE consoleClient_selectYesNo(bool*);
     // --import.
     if(argumentParser_contains(&parser, &argumentImport)){ 
         ERROR_CODE error;
-        if(ARGUMENT_PARSER_ARGUMENT_HAS_VALUE((argumentImport))){
+        if(argumentImport.numValues == 0){
             // Import from path.
-            if((error = consoleClient_import(remoteHost, remotePort, libraryDirectory, argumentImport.value, false)) != ERROR_NO_ERROR){
-                UTIL_LOG_CONSOLE_(LOG_ERR, "ERROR: Failed to import from directory: '%s'. [%s]", argumentImport.value, util_toErrorString(error));
+            if((error = consoleClient_import(remoteHost, remotePort, libraryDirectory, argumentImport.values[0], false)) != ERROR_NO_ERROR){
+                UTIL_LOG_CONSOLE_(LOG_ERR, "ERROR: Failed to import from directory: '%s'. [%s]", argumentImport.values[0], util_toErrorString(error));
             }
         }else{
-            if(PROPERTY_IS_SET(importDirectory)){
-                // Import from importDirectory_setting.
-                if((error = consoleClient_import(remoteHost, remotePort, libraryDirectory, (char*) importDirectory->buffer, false)) != ERROR_NO_ERROR){
-                    if(error != ERROR_DUPLICATE_ENTRY){
-                        UTIL_LOG_CONSOLE_(LOG_ERR, "ERROR: Failed to import from directory: '%s'. [%s]", (char*) importDirectory->buffer, util_toErrorString(error));
+            if(argumentImport.numValues != 1){
+                if(PROPERTY_IS_SET(importDirectory)){
+                    // Import from importDirectory_setting.
+                    if((error = consoleClient_import(remoteHost, remotePort, libraryDirectory, (char*) importDirectory->buffer, false)) != ERROR_NO_ERROR){
+                        if(error != ERROR_DUPLICATE_ENTRY){
+                            UTIL_LOG_CONSOLE_(LOG_ERR, "ERROR: Failed to import from directory: '%s'. [%s]", (char*) importDirectory->buffer, util_toErrorString(error));
+                        }
                     }
+                }else{
+                    UTIL_LOG_CONSOLE(LOG_ERR, "Import directory not set, Use '--setImportDirectory <path>' to set an import directory, or specify the directory to import from when running '-i, --import optional:<path>'.");
                 }
             }else{
-                UTIL_LOG_CONSOLE(LOG_ERR, "Import directory not set, Use '--setImportDirectory <path>' to set an import directory, or specify the directory to import from when running '-i, --import optional:<path>'.");
+                UTIL_LOG_CONSOLE(LOG_INFO, "Invalid command. Usage: " CONSOLE_CLIENT_USAGE_ARGUMENT_IMPORT);
             }
         }
         
@@ -245,21 +249,25 @@ local ERROR_CODE consoleClient_selectYesNo(bool*);
     // --batch.
     if(argumentParser_contains(&parser, &argumentBatchImport)){ 
         ERROR_CODE error;
-        if(ARGUMENT_PARSER_ARGUMENT_HAS_VALUE((argumentBatchImport))){
+        if(argumentBatchImport.numValues == 0){
             // Import from path.
-            if((error = consoleClient_import(remoteHost, remotePort, libraryDirectory, argumentBatchImport.value, true)) != ERROR_NO_ERROR){
-                UTIL_LOG_CONSOLE_(LOG_ERR, "ERROR: Failed to import from directory: '%s'. [%s]", argumentBatchImport.value, util_toErrorString(error));
+            if((error = consoleClient_import(remoteHost, remotePort, libraryDirectory, argumentBatchImport.values[0], true)) != ERROR_NO_ERROR){
+                UTIL_LOG_CONSOLE_(LOG_ERR, "ERROR: Failed to import from directory: '%s'. [%s]", argumentBatchImport.values[0], util_toErrorString(error));
             }
         }else{
-            if(PROPERTY_IS_SET(importDirectory)){
-                // Import from importDirectory_setting.
-                if((error = consoleClient_import(remoteHost, remotePort, libraryDirectory, (char*) importDirectory->buffer, true)) != ERROR_NO_ERROR){
-                    if(error != ERROR_DUPLICATE_ENTRY){
-                        UTIL_LOG_CONSOLE_(LOG_ERR, "ERROR: Failed to import from directory: '%s'. [%s]", (char*) importDirectory->buffer, util_toErrorString(error));
+            if(argumentBatchImport.numValues != 1){
+                if(PROPERTY_IS_SET(importDirectory)){
+                    // Import from importDirectory_setting.
+                    if((error = consoleClient_import(remoteHost, remotePort, libraryDirectory, (char*) importDirectory->buffer, true)) != ERROR_NO_ERROR){
+                        if(error != ERROR_DUPLICATE_ENTRY){
+                            UTIL_LOG_CONSOLE_(LOG_ERR, "ERROR: Failed to import from directory: '%s'. [%s]", (char*) importDirectory->buffer, util_toErrorString(error));
+                        }
                     }
+                }else{
+                    UTIL_LOG_CONSOLE(LOG_ERR, "Import directory not set, Use '--setImportDirectory <path>' to set an import directory, or specify the directory to import from when running '-i, --import optional:<path>'.");
                 }
             }else{
-                UTIL_LOG_CONSOLE(LOG_ERR, "Import directory not set, Use '--setImportDirectory <path>' to set an import directory, or specify the directory to import from when running '-i, --import optional:<path>'.");
+                UTIL_LOG_CONSOLE(LOG_INFO, "Invalid command. Usage: " CONSOLE_CLIENT_USAGE_ARGUMENT_BATCH_IMPORT);
             }
         }
         
@@ -268,7 +276,7 @@ local ERROR_CODE consoleClient_selectYesNo(bool*);
 
     // --rename.
     if(argumentParser_contains(&parser, &argumentRename)){ 
-        if(ARGUMENT_PARSER_ARGUMENT_HAS_VALUE(argumentRename)){
+        if(argumentRename.numValues != 0){
             UTIL_LOG_CONSOLE(LOG_INFO, "Invalid command. Usage: " CONSOLE_CLIENT_USAGE_ARGUMENT_RENAME);
         }else{
             if(CONSOLE_CLIENT_REMOTE_HOST_PROPERTIES_SET()){
@@ -286,10 +294,12 @@ local ERROR_CODE consoleClient_selectYesNo(bool*);
 
     // --renameEpisode.
     if(argumentParser_contains(&parser, &argumentRenameEpisode)){ 
-        if(!ARGUMENT_PARSER_ARGUMENT_HAS_VALUE(argumentRenameEpisode) && argumentRenameEpisode.numArguments == 2){
+        if(argumentRenameEpisode.numArguments != 2){
             UTIL_LOG_CONSOLE(LOG_INFO, "Invalid command. Usage: " CONSOLE_CLIENT_USAGE_ARGUMENT_RENAME_EPISODE);
         }else{
             if(CONSOLE_CLIENT_REMOTE_HOST_PROPERTIES_SET()){
+                UTIL_LOG_CONSOLE_(LOG_DEBUG, "NumArguments: '%" PRIuFAST8 "'.", argumentRenameEpisode.numArguments);
+
                 ERROR_CODE error;
                 if((error = consoleClient_renameEpisode(remoteHost, remotePort, argumentRenameEpisode.arguments[1], strlen(argumentRenameEpisode.arguments[1]), argumentRenameEpisode.arguments[2], strlen(argumentRenameEpisode.arguments[2]))) != ERROR_NO_ERROR){
                     UTIL_LOG_CONSOLE_(LOG_ERR, "Failed to rename Episode. '%s'", util_toErrorString(error));
@@ -304,7 +314,7 @@ local ERROR_CODE consoleClient_selectYesNo(bool*);
 
     // --removeEpisode.
     if(argumentParser_contains(&parser, &argumentRemoveEpisode)){ 
-        if(!ARGUMENT_PARSER_ARGUMENT_HAS_VALUE(argumentRemoveEpisode)){
+        if((argumentRemoveEpisode.numValues != 1)){
             UTIL_LOG_CONSOLE(LOG_INFO, "Invalid command. Usage: " CONSOLE_CLIENT_USAGE_ARGUMENT_REMOVE_EPISODE);
         }else{
             if(CONSOLE_CLIENT_REMOTE_HOST_PROPERTIES_SET()){
@@ -319,7 +329,7 @@ local ERROR_CODE consoleClient_selectYesNo(bool*);
 
     // --listShows.
     if(argumentParser_contains(&parser, &argumentListShows)){ 
-        if(ARGUMENT_PARSER_ARGUMENT_HAS_VALUE(argumentListShows)){
+        if(argumentListShows.numValues != 0){
             UTIL_LOG_CONSOLE(LOG_INFO, "Invalid command. Usage: " CONSOLE_CLIENT_USAGE_ARGUMENT_LIST_SHOWS);
         }else{
             if(CONSOLE_CLIENT_REMOTE_HOST_PROPERTIES_SET()){
@@ -337,7 +347,7 @@ local ERROR_CODE consoleClient_selectYesNo(bool*);
 
     // --listAll.
     if(argumentParser_contains(&parser, &argumentListAll)){ 
-        if(ARGUMENT_PARSER_ARGUMENT_HAS_VALUE(argumentListAll)){
+        if(argumentListAll.numValues != 0){
             UTIL_LOG_CONSOLE(LOG_INFO, "Invalid command. Usage: " CONSOLE_CLIENT_USAGE_ARGUMENT_LIST_ALL_SHOWS);
         }else{
             if(CONSOLE_CLIENT_REMOTE_HOST_PROPERTIES_SET()){
@@ -355,12 +365,12 @@ local ERROR_CODE consoleClient_selectYesNo(bool*);
 
     // --showInfo.
     if(argumentParser_contains(&parser, &argumentShowInfo)){
-        if(!ARGUMENT_PARSER_ARGUMENT_HAS_VALUE(argumentShowInfo)){
+        if(argumentShowInfo.numValues != 1){
             UTIL_LOG_CONSOLE(LOG_INFO, "Invalid command. Usage: " CONSOLE_CLIENT_USAGE_ARGUMENT_SHOW_INFO);
         }else{
              if(CONSOLE_CLIENT_REMOTE_HOST_PROPERTIES_SET()){
-                 if((error = consoleClient_printShowInfo(remoteHost, remotePort, argumentShowInfo.value, argumentShowInfo.valueLength))){
-                    UTIL_LOG_CONSOLE_(LOG_ERR, "Failed to print show info for '%s': '%s'.", argumentShowInfo.value, util_toErrorString(error));
+                 if((error = consoleClient_printShowInfo(remoteHost, remotePort, argumentShowInfo.values[0], argumentShowInfo.valueLengths[0]))){
+                    UTIL_LOG_CONSOLE_(LOG_ERR, "Failed to print show info for '%s': '%s'.", argumentShowInfo.values[0], util_toErrorString(error));
 
                     goto label_freeProperties;
                  }
@@ -374,13 +384,13 @@ local ERROR_CODE consoleClient_selectYesNo(bool*);
 
     // --setImportDirectory.
     if(argumentParser_contains(&parser, &argumentSetImportDirectory)){
-        if(!ARGUMENT_PARSER_ARGUMENT_HAS_VALUE(argumentSetImportDirectory)){
+        if(argumentSetImportDirectory.numValues != 1){
             UTIL_LOG_CONSOLE(LOG_INFO, "Invalid command. Usage: " CONSOLE_CLIENT_USAGE_ARGUMENT_SET_IMPORT_DIRECTORY);
         }else{
-            if((error = propertyFile_createAndSetDirectoryProperty(&properties, importDirectory, CONSOLE_CLIENT_PROPERTY_IMPORT_DIRECTORY_NAME, argumentSetImportDirectory.value, argumentSetImportDirectory.valueLength)) != ERROR_NO_ERROR){
+            if((error = propertyFile_createAndSetDirectoryProperty(&properties, importDirectory, CONSOLE_CLIENT_PROPERTY_IMPORT_DIRECTORY_NAME, argumentSetImportDirectory.values[0], argumentSetImportDirectory.valueLengths[0])) != ERROR_NO_ERROR){
                 UTIL_LOG_CONSOLE(LOG_ERR, util_toErrorString(error));
             }else{
-                UTIL_LOG_CONSOLE_(LOG_INFO, "Successfully set '%s' to '%s'", CONSOLE_CLIENT_PROPERTY_IMPORT_DIRECTORY_NAME, argumentSetImportDirectory.value);
+                UTIL_LOG_CONSOLE_(LOG_INFO, "Successfully set '%s' to '%s'", CONSOLE_CLIENT_PROPERTY_IMPORT_DIRECTORY_NAME, argumentSetImportDirectory.values[0]);
             }
         }
 
@@ -389,13 +399,13 @@ local ERROR_CODE consoleClient_selectYesNo(bool*);
 
     // --setLibraryDirectory.
     if(argumentParser_contains(&parser, &argumentSetLibraryDirectory)){
-        if(!ARGUMENT_PARSER_ARGUMENT_HAS_VALUE(argumentSetLibraryDirectory)){
+        if(argumentSetLibraryDirectory.numValues != 1){
             UTIL_LOG_CONSOLE(LOG_INFO, "Invalid command. Usage: " CONSOLE_CLIENT_USAGE_ARGUMENT_SET_LIBRARY_DIRECTORY);
         }else{
-            if((error = propertyFile_createAndSetDirectoryProperty(&properties, libraryDirectory, CONSOLE_CLIENT_PROPERTY_LIBRARY_DIRECTORY_NAME, argumentSetLibraryDirectory.value, argumentSetLibraryDirectory.valueLength)) != ERROR_NO_ERROR){
+            if((error = propertyFile_createAndSetDirectoryProperty(&properties, libraryDirectory, CONSOLE_CLIENT_PROPERTY_LIBRARY_DIRECTORY_NAME, argumentSetLibraryDirectory.values[0], argumentSetLibraryDirectory.valueLengths[0])) != ERROR_NO_ERROR){
                 UTIL_LOG_CONSOLE(LOG_ERR, util_toErrorString(error));
             }else{
-                UTIL_LOG_CONSOLE_(LOG_INFO, "Successfully set '%s' to '%s'", CONSOLE_CLIENT_PROPERTY_LIBRARY_DIRECTORY_NAME, argumentSetLibraryDirectory.value);
+                UTIL_LOG_CONSOLE_(LOG_INFO, "Successfully set '%s' to '%s'", CONSOLE_CLIENT_PROPERTY_LIBRARY_DIRECTORY_NAME, argumentSetLibraryDirectory.values[0]);
             }
         }
 
@@ -404,13 +414,13 @@ local ERROR_CODE consoleClient_selectYesNo(bool*);
 
     // --setRemoteHost.
     if(argumentParser_contains(&parser, &argumentSetRemoteHost)){ 
-        if(!ARGUMENT_PARSER_ARGUMENT_HAS_VALUE(argumentSetRemoteHost)){
+        if(argumentSetRemoteHost.numValues != 1){
             UTIL_LOG_CONSOLE(LOG_INFO, "Invalid command. Usage: " CONSOLE_CLIENT_USAGE_ARGUMENT_SET_REMOTE_HOST);
         }else{
-            if((error = propertyFile_createAndSetStringProperty(&properties, libraryDirectory, CONSOLE_CLIENT_PROPERTY_REMOTE_HOST_NAME, argumentSetRemoteHost.value, argumentSetRemoteHost.valueLength)) != ERROR_NO_ERROR){
+            if((error = propertyFile_createAndSetStringProperty(&properties, libraryDirectory, CONSOLE_CLIENT_PROPERTY_REMOTE_HOST_NAME, argumentSetRemoteHost.values[0], argumentSetRemoteHost.valueLengths[0])) != ERROR_NO_ERROR){
                 UTIL_LOG_CONSOLE(LOG_ERR, util_toErrorString(error));
             }else{
-                UTIL_LOG_CONSOLE_(LOG_INFO, "Successfully set '%s' to '%s'", CONSOLE_CLIENT_PROPERTY_REMOTE_HOST_NAME, argumentSetRemoteHost.value);
+                UTIL_LOG_CONSOLE_(LOG_INFO, "Successfully set '%s' to '%s'", CONSOLE_CLIENT_PROPERTY_REMOTE_HOST_NAME, argumentSetRemoteHost.values[0]);
             }
         }
         
@@ -419,12 +429,12 @@ local ERROR_CODE consoleClient_selectYesNo(bool*);
 
     // --setRemotePort.
     if(argumentParser_contains(&parser, &argumentSetRemoteHostPort)){ 
-       if(!ARGUMENT_PARSER_ARGUMENT_HAS_VALUE(argumentSetRemoteHostPort)){
+       if(argumentSetRemoteHostPort.numValues != 1){
             UTIL_LOG_CONSOLE(LOG_INFO, "Invalid command. Usage: " CONSOLE_CLIENT_USAGE_ARGUMENT_SET_REMOTE_HOST);
         }else{
             int64_t port;
             ERROR_CODE error;
-            if((error = util_stringToInt(argumentSetRemoteHostPort.value, &port)) != ERROR_NO_ERROR){
+            if((error = util_stringToInt(argumentSetRemoteHostPort.values[0], &port)) != ERROR_NO_ERROR){
                 UTIL_LOG_CONSOLE_(LOG_ERR, "Port value must be in range of 0-%" PRIu16 ". '%s'.", UINT16_MAX, util_toErrorString(ERROR_INVALID_VALUE));
 
                 goto label_freeProperties;
@@ -439,7 +449,7 @@ local ERROR_CODE consoleClient_selectYesNo(bool*);
             if((error = propertyFile_createAndSetUINT16Property(&properties, libraryDirectory, CONSOLE_CLIENT_PROPERTY_REMOTE_PORT_NAME, port)) != ERROR_NO_ERROR){
                 UTIL_LOG_CONSOLE(LOG_ERR, util_toErrorString(error));
             }else{
-                UTIL_LOG_CONSOLE_(LOG_INFO, "Successfully set '%s' to '%s'", CONSOLE_CLIENT_PROPERTY_REMOTE_PORT_NAME, argumentSetRemoteHostPort.value);
+                UTIL_LOG_CONSOLE_(LOG_INFO, "Successfully set '%s' to '%s'", CONSOLE_CLIENT_PROPERTY_REMOTE_PORT_NAME, argumentSetRemoteHostPort.values[0]);
             }
         }
         
@@ -448,7 +458,7 @@ local ERROR_CODE consoleClient_selectYesNo(bool*);
 
     // --showSettings.
     if(argumentParser_contains(&parser, &argumentShowSettings)){ 
-        if(ARGUMENT_PARSER_ARGUMENT_HAS_VALUE(argumentShowSettings)){
+        if(argumentShowSettings.numValues != 0){
             UTIL_LOG_CONSOLE(LOG_INFO, "Invalid command. Usage: " CONSOLE_CLIENT_USAGE_ARGUMENT_SHOW_SETTINGS);
         }else{
             UTIL_LOG_CONSOLE_(LOG_INFO, "ImportDirectory: %s.", PROPERTY_IS_SET(importDirectory) ? (char*) importDirectory->buffer : "NULL");
@@ -1020,11 +1030,23 @@ label_return:
     return ERROR(error);
 }
 
-local ERROR_CODE consoleClient_renameEpisode(Property* remoteHost, Property* remoteProperty, char* oldName, const uint_fast64_t oldNameLength, char* newName,  const uint_fast64_t newNameLength){
-    // ERROR_CODE error;
+local ERROR_CODE consoleClient_renameEpisode(Property* remoteHost, Property* remotePort, char* oldName, const uint_fast64_t oldNameLength, char* newName,  const uint_fast64_t newNameLength){
+    ERROR_CODE error;
 
+    EpisodeInfo info;
+    if((error = mediaLibrary_initEpisodeInfo_(&info, oldName, oldNameLength)) != ERROR_NO_ERROR){
+        goto label_return;
+    }
 
-    return ERROR(ERROR_ERROR);
+    // if((error = herder_extractShowInfo(remoteHost, remotePort, &info)) != ERROR_NO_ERROR){
+    //     goto label_freeInfo;
+    // }
+
+// label_freeInfo:
+    mediaLibrary_freeEpisodeInfo(&info);
+
+label_return:
+    return ERROR(ERROR_NO_ERROR);
 }
 
 local ERROR_CODE consoleClient_selectShow(Property* remoteHost, Property* remotePort, Show** selection){
