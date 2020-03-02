@@ -81,7 +81,7 @@ inline ERROR_CODE argumentParser_parse(ArgumentParser* parser, const int numArgu
             register uint_fast8_t j;
             for(j = 0; j < argument->numArguments; j++){
                 if(strcmp(arguments[i], argument->arguments[j]) == 0){
-                    if(argument->numValues != 0){
+                    if(argument->numValues != 0 || (argument->values != NULL && argument->values[0] == &ARGUMENT_PARSER_ARGUMENT_PRESENT_FLAG)){
                         return ERROR(ERROR_DUPLICATE_ENTRY);
                     }
 
@@ -101,20 +101,19 @@ inline ERROR_CODE argumentParser_parse(ArgumentParser* parser, const int numArgu
 
                     argument->valueLengths = valueLengths;
 
-                    argument->numValues += 1;
-
                     // No more arguments.
                     if(i + 1 >= numArguments){
-                        argument->values[argument->numValues - 1] = &ARGUMENT_PARSER_ARGUMENT_PRESENT_FLAG;
-                        argument->valueLengths[argument->numValues - 1] = 0;
+                        argument->values[argument->numValues] = &ARGUMENT_PARSER_ARGUMENT_PRESENT_FLAG;
+                        argument->valueLengths[argument->numValues] = 0;
 
                     }else{
                         // As long as we have arguments.
                         while(i + 1 < numArguments){
                             // If the next argument is actually not an argument.
                             if(!argumentParser_isArgument(arguments[i + 1])){
-                                argument->values[argument->numValues - 1] = arguments[i + 1];
-                                argument->valueLengths[argument->numValues - 1] = strlen(arguments[i + 1]);
+                                argument->values[argument->numValues] = arguments[i + 1];
+                                argument->valueLengths[argument->numValues] = strlen(arguments[i + 1]);
+                                argument->numValues += 1;
 
                                 i += 1;
 
@@ -127,7 +126,7 @@ inline ERROR_CODE argumentParser_parse(ArgumentParser* parser, const int numArgu
                                     }
 
                                     argument->values = values;
-
+                                    
                                     void* valueLengths = realloc(argument->valueLengths, sizeof(*argument->valueLengths) * (argument->numValues + 1));
 
                                     if(valueLengths == NULL){
@@ -135,20 +134,17 @@ inline ERROR_CODE argumentParser_parse(ArgumentParser* parser, const int numArgu
                                     }
 
                                     argument->valueLengths = valueLengths;
-
-                                    argument->numValues += 1;
                                 }else{
                                     break;
                                 }
                             }else{
-                                argument->values[argument->numValues - 1] = &ARGUMENT_PARSER_ARGUMENT_PRESENT_FLAG;
-                                argument->valueLengths[argument->numValues - 1] = 0;
+                                argument->values[argument->numValues] = &ARGUMENT_PARSER_ARGUMENT_PRESENT_FLAG;
+                                argument->valueLengths[argument->numValues] = 0;
 
                                 break;
                             }
                         }
                     }
-            
                 }
             }
         }
@@ -164,7 +160,7 @@ inline bool argumentParser_contains(ArgumentParser* parser, Argument* argument){
     while(LINKED_LIST_ITERATOR_HAS_NEXT(&it)){
         const Argument* _argument = LINKED_LIST_ITERATOR_NEXT(&it);
 
-    if(argument == _argument && (_argument->values != NULL || _argument->values[0] == &ARGUMENT_PARSER_ARGUMENT_PRESENT_FLAG)){
+    if(argument == _argument && (_argument->numValues != 0 || ( _argument->values != NULL &&_argument->values[0] == &ARGUMENT_PARSER_ARGUMENT_PRESENT_FLAG))){
             return true;
         }
     }

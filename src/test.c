@@ -302,6 +302,10 @@ TEST_TEST_FUNCTION(argumentParser_parse){
         return TEST_FAILURE("Failed to parse arguments. '%s'.", util_toErrorString(error));
     }
 
+    if(argumentImport_1.numValues != 0){
+        return TEST_FAILURE("Failed to parse argument: '%s' '%s'.", argumentImport_1.arguments[0], util_toErrorString(error));
+    }
+
     argumentParser_free(&parser);
 
     argumentParser_init(&parser);

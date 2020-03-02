@@ -22,12 +22,12 @@
 #define CONSOLE_CLIENT_USAGE_ARGUMENT_ADD_SHOW "--addShow <name>."
 #define CONSOLE_CLIENT_USAGE_ARGUMENT_REMOVE_SHOW "--removeShow <name>."
 #define CONSOLE_CLIENT_USAGE_ARGUMENT_ADD_EPISODE "-a, --add, --addFile, --addEpisode <file>."
-#define CONSOLE_CLIENT_USAGE_ARGUMENT_IMPORT "-i, --import"
+#define CONSOLE_CLIENT_USAGE_ARGUMENT_IMPORT "-i, --import optional:<path>"
 #define CONSOLE_CLIENT_USAGE_ARGUMENT_BATCH_IMPORT "-b, --batch, --batchImport"
 #define CONSOLE_CLIENT_USAGE_ARGUMENT_RENAME "--rename"
 #define CONSOLE_CLIENT_USAGE_ARGUMENT_RENAME_EPISODE "--renameEpisode <old_name> <new_name>"
 #define CONSOLE_CLIENT_USAGE_ARGUMENT_REMOVE_EPISODE "--removeEpisode <name>"
-#define CONSOLE_CLIENT_USAGE_ARGUMENT_LIST_SHOWS "-l, --list"
+#define CONSOLE_CLIENT_USAGE_ARGUMENT_LIST_SHOWS "-l, --list --listShows"
 #define CONSOLE_CLIENT_USAGE_ARGUMENT_LIST_ALL_SHOWS "--listAll, --listAllShows"
 #define CONSOLE_CLIENT_USAGE_ARGUMENT_SHOW_INFO "--showInfo <name>"
 #define CONSOLE_CLIENT_USAGE_ARGUMENT_SET_IMPORT_DIRECTORY "--setImportDirectory <path>"
@@ -328,7 +328,7 @@ local ERROR_CODE consoleClient_selectYesNo(bool*);
     }
 
     // --listShows.
-    if(argumentParser_contains(&parser, &argumentListShows)){ 
+    if(argumentParser_contains(&parser, &argumentListShows)){
         if(argumentListShows.numValues != 0){
             UTIL_LOG_CONSOLE(LOG_INFO, "Invalid command. Usage: " CONSOLE_CLIENT_USAGE_ARGUMENT_LIST_SHOWS);
         }else{
@@ -510,11 +510,21 @@ label_free:
 
 inline void consoleClient_printHelp(void){
     UTIL_LOG_CONSOLE(LOG_INFO, "Usage: herder --[command]/-[alias] <arguments>.");
+    UTIL_LOG_CONSOLE_(LOG_INFO, "\t%s\t\t\t\t%s", CONSOLE_CLIENT_USAGE_ARGUMENT_ADD_SHOW, "Adds a new empty show with the given name to the library.");
+    UTIL_LOG_CONSOLE_(LOG_INFO, "\t%s\t\t\t\t%s", CONSOLE_CLIENT_USAGE_ARGUMENT_REMOVE_SHOW, "Removes the show with the given name from the library.");
+    UTIL_LOG_CONSOLE_(LOG_INFO, "\t%s\t%s", CONSOLE_CLIENT_USAGE_ARGUMENT_ADD_EPISODE, "Adds the given file to the library.");
+    UTIL_LOG_CONSOLE_(LOG_INFO, "\t%s\t\t\t%s", CONSOLE_CLIENT_USAGE_ARGUMENT_IMPORT, "Imports all files from the given directory, if no directory is specified the import directory set via '--setImportDirectory' will be used.");
+    UTIL_LOG_CONSOLE_(LOG_INFO, "\t%s\t\t\t%s", CONSOLE_CLIENT_USAGE_ARGUMENT_BATCH_IMPORT, "Like '--import' but only imports episodes which don't require any user input to be add to the library.");
+    UTIL_LOG_CONSOLE_(LOG_INFO, "\t%s\t\t\t\t\t%s", CONSOLE_CLIENT_USAGE_ARGUMENT_RENAME, "Interactivly renames an episode.");
+    UTIL_LOG_CONSOLE_(LOG_INFO, "\t%s\t\t%s", CONSOLE_CLIENT_USAGE_ARGUMENT_RENAME_EPISODE, "Renames episode <old_name> to <new_name>.");
+    UTIL_LOG_CONSOLE_(LOG_INFO, "\t%s\t\t\t\t%s", CONSOLE_CLIENT_USAGE_ARGUMENT_REMOVE_EPISODE, "Remove episode <name> from the library.");
+    UTIL_LOG_CONSOLE_(LOG_INFO, "\t%s\t\t\t\t%s", CONSOLE_CLIENT_USAGE_ARGUMENT_LIST_SHOWS, "Lists all shows currently in the library.");
+    UTIL_LOG_CONSOLE_(LOG_INFO, "\t%s\t\t\t%s", CONSOLE_CLIENT_USAGE_ARGUMENT_LIST_ALL_SHOWS, "Lists all episodes of all shows currently in the library.");
+    UTIL_LOG_CONSOLE_(LOG_INFO, "\t%s\t\t\t\t%s", CONSOLE_CLIENT_USAGE_ARGUMENT_SHOW_INFO, "Lists all episodes of the show <name>.");
     UTIL_LOG_CONSOLE_(LOG_INFO, "\t%s\t\t\t%s", CONSOLE_CLIENT_USAGE_ARGUMENT_SET_IMPORT_DIRECTORY, "Sets the 'import directory' to the given path.");
     UTIL_LOG_CONSOLE_(LOG_INFO, "\t%s\t\t\t%s", CONSOLE_CLIENT_USAGE_ARGUMENT_SET_LIBRARY_DIRECTORY, "Sets the 'library directory' to the given path.");
     UTIL_LOG_CONSOLE_(LOG_INFO, "\t%s\t\t\t\t%s", CONSOLE_CLIENT_USAGE_ARGUMENT_SET_REMOTE_HOST, "Sets the 'remote host' address to the given URL.");
     UTIL_LOG_CONSOLE_(LOG_INFO, "\t%s\t\t\t\t%s", CONSOLE_CLIENT_USAGE_ARGUMENT_SET_REMOTE_PORT, "Sets the 'remote host' port to the given port.");
-    UTIL_LOG_CONSOLE_(LOG_INFO, "\t%s\t%s", CONSOLE_CLIENT_USAGE_ARGUMENT_ADD_EPISODE, "Adds the given file to the library.");
 }
 
 inline ERROR_CODE consoleClient_listShows(Property* remoteHostProperty, Property* remoteHostPortProperty){
