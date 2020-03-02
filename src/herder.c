@@ -124,7 +124,6 @@ ERROR_CODE herder_addShow(Property* remoteHost, Property* remotePort, const char
     
     http_closeConnection(socketFD);
 
-    // TODO:(jan) Decide if this is too clever, since 'data' equals 'httpProcessingBuffer' (alocated via mmap), we can always get the return code, it might just have garbage in it.
     const uint_fast64_t returnCode = util_byteArrayTo_uint64(response.data);
     if(response.statusCode != _200_OK){
         error = ERROR_INVALID_STATUS_CODE;
@@ -197,7 +196,6 @@ ERROR_CODE herder_removeShow(Property* remoteHost, Property* remotePort, const c
     
     http_closeConnection(socketFD);
 
-    // TODO:(jan) Decide if this is too clever, since 'data' equals 'httpProcessingBuffer' (alocated via mmap), we can always get the return code, it might just have garbage in it.
     const ERROR_CODE returnCode = util_byteArrayTo_uint64(response.data);
     if(response.statusCode != _200_OK){
         error = ERROR_INVALID_STATUS_CODE;
