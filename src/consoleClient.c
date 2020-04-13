@@ -523,6 +523,7 @@ inline void consoleClient_printHelp(void){
     UTIL_LOG_CONSOLE_(LOG_INFO, "\t%s\t\t\t%s", CONSOLE_CLIENT_USAGE_ARGUMENT_SET_LIBRARY_DIRECTORY, "Sets the 'library directory' to the given path.");
     UTIL_LOG_CONSOLE_(LOG_INFO, "\t%s\t\t\t\t%s", CONSOLE_CLIENT_USAGE_ARGUMENT_SET_REMOTE_HOST, "Sets the 'remote host' address to the given URL.");
     UTIL_LOG_CONSOLE_(LOG_INFO, "\t%s\t\t\t\t%s", CONSOLE_CLIENT_USAGE_ARGUMENT_SET_REMOTE_PORT, "Sets the 'remote host' port to the given port.");
+    UTIL_LOG_CONSOLE_(LOG_INFO, "\t%s\t\t\t%s", CONSOLE_CLIENT_USAGE_ARGUMENT_SHOW_SETTINGS, "Shows a quick overview of all the user settings.");
 }
 
 inline ERROR_CODE consoleClient_listShows(Property* remoteHost, Property* remotePort){
