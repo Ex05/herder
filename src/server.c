@@ -746,7 +746,7 @@ label_return:
 			if((error = server_init(&server, (char*) serverRootDirectory->buffer, serverRootDirectory->entry->length - 1, port)) != ERROR_NO_ERROR){
                 UTIL_LOG_CONSOLE(LOG_ERR, util_toErrorString(error));
 
-				goto label_exit;
+				goto label_free;
 			}
 
 			// HTML/Static pages
@@ -770,8 +770,6 @@ label_return:
                 UTIL_LOG_CONSOLE_(LOG_ERR, "%s", util_toErrorString(error));
             }
 
-			server_free(&server);
-
             if(lockf(lockFile, F_ULOCK, 0)  == -1){
 			    UTIL_LOG_ERROR_("Failed to unlock lock file [%d] (%s)", errno, strerror(errno));
 		    }
@@ -779,6 +777,8 @@ label_return:
 
 	label_free:
 		close(lockFile);
+
+        server_free(&server);
 
         util_deleteFile(serverDaemonLockFileName);
 
@@ -796,9 +796,9 @@ label_return:
             free(serverExternalPort);
         }
 
-		closelog();
-
     label_exit:
+        closelog();
+
 		return 0;
 	}
 

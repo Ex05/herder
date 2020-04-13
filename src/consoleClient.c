@@ -980,7 +980,7 @@ label_yesNo:
         goto label_freeNewName;
     }
 
-    // To use the 'HERDER_CONSTRUCT_FILE_PATH' macro we need an to fill out an episode info struct.
+    // To use the 'HERDER_CONSTRUCT_FILE_PATH' macro we need to fill out an episode info struct.
     EpisodeInfo info;
     mediaLibrary_initEpisodeInfo(&info);
     mediaLibrary_fillEpisodeInfo(selectedShow, selectedSeason, selectedEpisode, &info);
