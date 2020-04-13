@@ -9,9 +9,12 @@
 
 #define HTTP_PROCESSING_BUFFER_SIZE 8192 //16384
 
-ERROR_CODE herder_pullShowList(LinkedList* shows, const char* host, const uint_fast16_t port){
+ERROR_CODE herder_pullShowList(LinkedList* shows, Property* remoteHost, Property* remotePort){
     ERROR_CODE error = ERROR_NO_ERROR;
     
+    char* host = (char*) remoteHost->buffer;
+    uint_fast16_t port = util_byteArrayTo_uint64(remotePort->buffer);
+
     void* httpProcessingBuffer;    
     if((error = util_blockAlloc(&httpProcessingBuffer, HTTP_PROCESSING_BUFFER_SIZE)) != ERROR_NO_ERROR){
         goto label_unMap;

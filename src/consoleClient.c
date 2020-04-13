@@ -59,7 +59,7 @@ local ERROR_CODE consoleClient_extractShowInfo(Property*, Property*, EpisodeInfo
 
 local ERROR_CODE consoleClient_rename(Property*, Property*, Property*);
 
-local ERROR_CODE consoleClient_renameEpisode(Property*, Property*, char*, const uint_fast64_t, char*,  const uint_fast64_t);
+local ERROR_CODE consoleClient_renameEpisode(Property*, Property*, const char*, uint_fast64_t, const char*, const uint_fast64_t);
 
 local ERROR_CODE consoleClient_selectShow(Property*, Property*, Show**);
 
@@ -293,15 +293,13 @@ local ERROR_CODE consoleClient_selectYesNo(bool*);
     }
 
     // --renameEpisode.
-    if(argumentParser_contains(&parser, &argumentRenameEpisode)){ 
-        if(argumentRenameEpisode.numArguments != 2){
+    if(argumentParser_contains(&parser, &argumentRenameEpisode)){
+        if(argumentRenameEpisode.numValues != 2){
             UTIL_LOG_CONSOLE(LOG_INFO, "Invalid command. Usage: " CONSOLE_CLIENT_USAGE_ARGUMENT_RENAME_EPISODE);
         }else{
             if(CONSOLE_CLIENT_REMOTE_HOST_PROPERTIES_SET()){
-                UTIL_LOG_CONSOLE_(LOG_DEBUG, "NumArguments: '%" PRIuFAST8 "'.", argumentRenameEpisode.numArguments);
-
                 ERROR_CODE error;
-                if((error = consoleClient_renameEpisode(remoteHost, remotePort, argumentRenameEpisode.arguments[1], strlen(argumentRenameEpisode.arguments[1]), argumentRenameEpisode.arguments[2], strlen(argumentRenameEpisode.arguments[2]))) != ERROR_NO_ERROR){
+                if((error = consoleClient_renameEpisode(remoteHost, remotePort, argumentRenameEpisode.values[0], argumentRenameEpisode.valueLengths[0], argumentRenameEpisode.values[1], argumentRenameEpisode.valueLengths[1])) != ERROR_NO_ERROR){
                     UTIL_LOG_CONSOLE_(LOG_ERR, "Failed to rename Episode. '%s'", util_toErrorString(error));
                 }
             }else{
@@ -527,14 +525,11 @@ inline void consoleClient_printHelp(void){
     UTIL_LOG_CONSOLE_(LOG_INFO, "\t%s\t\t\t\t%s", CONSOLE_CLIENT_USAGE_ARGUMENT_SET_REMOTE_PORT, "Sets the 'remote host' port to the given port.");
 }
 
-inline ERROR_CODE consoleClient_listShows(Property* remoteHostProperty, Property* remoteHostPortProperty){
+inline ERROR_CODE consoleClient_listShows(Property* remoteHost, Property* remotePort){
     ERROR_CODE error = ERROR_NO_ERROR;
 
-    char* host = (char*) remoteHostProperty->buffer;
-    uint_fast16_t port = util_byteArrayTo_uint64(remoteHostPortProperty->buffer);
-
     LinkedList shows;
-    if((error = herder_pullShowList(&shows, host, port)) != ERROR_NO_ERROR){
+    if((error = herder_pullShowList(&shows, remoteHost, remotePort)) != ERROR_NO_ERROR){
         if(error != ERROR_FAILED_TO_CONNECT){
             goto label_freeShowList;
         }else{
@@ -648,14 +643,11 @@ label_return:
     return ERROR(error);
 }
 
-inline ERROR_CODE consoleClient_listAllShows(Property* remoteHostProperty, Property* remoteHostPortProperty){
+inline ERROR_CODE consoleClient_listAllShows(Property* remoteHost, Property* remotePort){
     ERROR_CODE error = ERROR_NO_ERROR;
 
-    char* host = (char*) remoteHostProperty->buffer;
-    uint_fast16_t port = util_byteArrayTo_uint64(remoteHostPortProperty->buffer);
-
     LinkedList shows = {0};
-    if((error = herder_pullShowList(&shows, host, port)) != ERROR_NO_ERROR){
+    if((error = herder_pullShowList(&shows, remoteHost, remotePort)) != ERROR_NO_ERROR){
         goto label_freeShowList;
     }
 
@@ -672,7 +664,7 @@ inline ERROR_CODE consoleClient_listAllShows(Property* remoteHostProperty, Prope
     while(LINKED_LIST_ITERATOR_HAS_NEXT(&it)){
         Show* show = LINKED_LIST_ITERATOR_NEXT(&it);
         
-        if((error = consoleClient_printShowInfo(remoteHostProperty, remoteHostPortProperty, show->name, show->nameLength)) != ERROR_NO_ERROR){
+        if((error = consoleClient_printShowInfo(remoteHost, remotePort, show->name, show->nameLength)) != ERROR_NO_ERROR){
             UTIL_LOG_CONSOLE(LOG_ERR, util_toErrorString(error));
         }
 
@@ -1040,34 +1032,58 @@ label_return:
     return ERROR(error);
 }
 
-local ERROR_CODE consoleClient_renameEpisode(Property* remoteHost, Property* remotePort, char* oldName, const uint_fast64_t oldNameLength, char* newName,  const uint_fast64_t newNameLength){
+local ERROR_CODE consoleClient_renameEpisode(Property* remoteHost, Property* remotePort, const char* oldName, const uint_fast64_t oldNameLength, const char* newName,  const uint_fast64_t newNameLength){
     ERROR_CODE error;
 
-    EpisodeInfo info;
-    if((error = mediaLibrary_initEpisodeInfo_(&info, oldName, oldNameLength)) != ERROR_NO_ERROR){
+    LinkedList shows;
+    if((error = linkedList_init(&shows)) != ERROR_NO_ERROR){
         goto label_return;
     }
 
-    // if((error = herder_extractShowInfo(remoteHost, remotePort, &info)) != ERROR_NO_ERROR){
-    //     goto label_freeInfo;
-    // }
+    if((error = herder_pullShowList(&shows, remoteHost, remotePort)) != ERROR_NO_ERROR){
+        goto label_freeShows;
+    }
 
-// label_freeInfo:
-    mediaLibrary_freeEpisodeInfo(&info);
+    EpisodeInfo info;
+    if((error = mediaLibrary_initEpisodeInfo(&info)) != ERROR_NO_ERROR){
+        goto label_freeShows;
+    }
+
+    char* fileName = alloca(sizeof(*fileName) * (oldNameLength + 1));
+    memcpy(fileName, oldName, oldNameLength + 1);
+
+    if((error = mediaLibrary_extractEpisodeInfo(&info, &shows, fileName, oldNameLength)) != ERROR_NO_ERROR){
+        goto label_freeShows;
+    }
+
+    UTIL_LOG_CONSOLE_(LOG_DEBUG, "Show: '%s', Season: '%" PRIdFAST16 "', Episode:'%" PRIdFAST16 "' '%s'.", info.showName, info.season, info.episode, info.name);
+
+    LinkedListIterator it;
+label_freeShows:
+    linkedList_initIterator(&it, &shows);
+
+    while(LINKED_LIST_ITERATOR_HAS_NEXT(&it)){
+        Show* show = LINKED_LIST_ITERATOR_NEXT(&it);
+        
+        mediaLibrary_freeShow(show);
+        free(show);
+    }
+
+    linkedList_free(&shows);
+
+    free(info.showName);
+    free(info.name);
 
 label_return:
-    return ERROR(ERROR_NO_ERROR);
+    return ERROR(error);
 }
 
 local ERROR_CODE consoleClient_selectShow(Property* remoteHost, Property* remotePort, Show** selection){
     ERROR_CODE error;
 
-    char* host = (char*) remoteHost->buffer;
-    uint_fast16_t port = util_byteArrayTo_uint64(remotePort->buffer);
-
     // Pull show list.
     LinkedList shows;
-    if((error = herder_pullShowList(&shows, host, port)) != ERROR_NO_ERROR){
+    if((error = herder_pullShowList(&shows, remoteHost, remotePort)) != ERROR_NO_ERROR){
         if(error != ERROR_FAILED_TO_CONNECT){
             goto label_freeShowList;
         }else{
@@ -1103,7 +1119,7 @@ label_readUserInput:
     UTIL_LOG_CONSOLE(LOG_INFO, "\nPlease select a show.");
 
     if((error = util_readUserInput(&userInput, &userInputLength)) != ERROR_NO_ERROR){
-        goto label_return;
+        goto label_freeShowList;
     }
 
     char* showSelection = NULL;
@@ -1116,9 +1132,9 @@ label_readUserInput:
     }
 
     if(numberSelection + 1 > (int_fast64_t) shows.length || numberSelection < 0){
-        free(userInput);
-
         UTIL_LOG_CONSOLE(LOG_ERR, "Invalid selection.");
+
+        free(userInput);
 
         goto label_readUserInput;
     }else{
