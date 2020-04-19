@@ -275,13 +275,9 @@ local SERVER_CONTEXT_HANDLER(server_pageAddShow){
     ERROR_CODE error;
     error = mediaLibrary_addShow(&server->library, &show, showName, showNameLength);
 
-    if(error == ERROR_NO_ERROR || error == ERROR_DUPLICATE_ENTRY){
-        util_uint64ToByteArray(response->data + response->dataLength, error);
-        response->dataLength += sizeof(uint64_t);
-    }else{
-        return ERROR(error);
-    }
-
+    util_uint64ToByteArray(response->data + response->dataLength, error);
+    response->dataLength += sizeof(uint64_t);
+   
     http_setHTTP_Version(response, HTTP_VERSION_1_1);
     response->statusCode = _200_OK;
 
