@@ -127,7 +127,7 @@ typedef struct{
     HTTP_RequestType type;
     char* requestURL;
     uint_fast16_t urlLength;
-    int_fast8_t* data;
+    int8_t* data;
     uint_fast64_t bufferSize;
     uint_fast64_t dataLength;
 }HTTP_Request;
@@ -139,7 +139,7 @@ typedef struct{
     char* statusMsg;
     int_fast16_t statusCode;    
     uint_fast64_t statusMsgLength;
-    int_fast8_t* data;
+    int8_t* data;
     uint_fast64_t bufferSize;
     uint_fast64_t dataLength;
     bool staticContent;
