@@ -303,7 +303,7 @@ ERROR_CODE herder_addEpisode(Property* remoteHost, Property* remotePort, Propert
 
     char* path;
     uint_fast64_t pathLength;
-    HERDER_CONSTRUCT_FILE_PATH(&path, &pathLength, episodeInfo);
+    HERDER_CONSTRUCT_RELATIVE_FILE_PATH(&path, &pathLength, episodeInfo);
 
     const uint_fast64_t fileDstLength = (libraryDirectory->entry->length - 1) + pathLength + episodeInfo->fileExtensionLength + 1;
 
@@ -331,6 +331,103 @@ ERROR_CODE herder_addEpisode(Property* remoteHost, Property* remotePort, Propert
     }
 
     // TODO: Inform server that something went wrong and stuff should be removed from the library in case of failed file copy. (jan - 2018.11.28)
+
+label_freeRequest:
+    http_freeHTTP_Request(&request);
+
+label_freeResponse:
+    http_freeHTTP_Response(&response);
+
+label_unMap:
+    if(util_unMap(httpProcessingBuffer, HTTP_PROCESSING_BUFFER_SIZE) != ERROR_NO_ERROR){
+        UTIL_LOG_ERROR(util_toErrorString(ERROR_FAILED_TO_UNMAP_MEMORY));
+    }
+
+    return ERROR(error);
+}
+
+ERROR_CODE herder_removeEpisode(Property* remoteHost, Property* remotePort, Property* libraryDirectory, EpisodeInfo* episodeInfo){
+    ERROR_CODE error = ERROR_NO_ERROR;
+
+    char* host = (char*) remoteHost->buffer;
+    uint_fast16_t port = util_byteArrayTo_uint64(remotePort->buffer);
+
+    void* httpProcessingBuffer;
+    if((error = util_blockAlloc(&httpProcessingBuffer, HTTP_PROCESSING_BUFFER_SIZE)) != ERROR_NO_ERROR){
+        goto label_unMap;
+    }
+
+    int_fast32_t socketFD;
+    if((error = http_openConnection(&socketFD, host, port)) != ERROR_NO_ERROR){
+        goto label_unMap;
+    }
+
+    const char url[] = "/removeEpisode";
+
+    HTTP_Request request;
+    if((error = http_initRequest(&request, url, strlen(url), httpProcessingBuffer, HTTP_PROCESSING_BUFFER_SIZE, HTTP_VERSION_1_1, REQUEST_TYPE_POST)) != ERROR_NO_ERROR){
+        goto label_freeRequest;
+    }
+
+    HTTP_ADD_HEADER_FIELD(request, Host, host);
+
+    // ShowName.
+    util_uint64ToByteArray(request.data + request.dataLength, episodeInfo->showNameLength);
+    request.dataLength += sizeof(uint64_t);   
+
+    memcpy(request.data + request.dataLength, episodeInfo->showName, episodeInfo->showNameLength);
+    request.dataLength += episodeInfo->showNameLength;
+
+    // Season.
+    util_uint16ToByteArray(request.data + request.dataLength, episodeInfo->season);
+    request.dataLength += sizeof(uint16_t);
+
+    // Episode.
+    util_uint16ToByteArray(request.data + request.dataLength, episodeInfo->episode);
+    request.dataLength += sizeof(uint16_t);   
+
+    HTTP_Response response;
+    http_initResponse(&response, httpProcessingBuffer, HTTP_PROCESSING_BUFFER_SIZE);
+    if((error = http_sendRequest(&request, &response, socketFD)) != ERROR_NO_ERROR){
+        goto label_freeResponse;
+    }
+
+    http_closeConnection(socketFD);
+
+    uint_fast64_t readOffset = 0;
+    
+    error = util_byteArrayTo_uint64(response.data + readOffset);
+    readOffset += sizeof(uint64_t);
+
+    if(error != ERROR_NO_ERROR){
+        UTIL_LOG_CONSOLE_(LOG_ERR, "Failed to remove Season:%02" PRIdFAST16 " Episode:%02" PRIdFAST16 " of '%s' from the library. [%s]", episodeInfo->season, episodeInfo->episode, episodeInfo->showName, util_toErrorString(error));
+
+        goto label_freeRequest;
+    }
+
+    char* relativePath;
+    uint_fast64_t relativePathLength;
+    HERDER_CONSTRUCT_RELATIVE_FILE_PATH(&relativePath, &relativePathLength, episodeInfo);
+
+    const uint_fast64_t absoluteFilePathLength = (libraryDirectory->entry->length - 1) + relativePathLength + 1;
+
+    char* absoluteFilePath = alloca(sizeof(*absoluteFilePath) * (absoluteFilePathLength + 1));
+    uint_fast64_t writeOffset = 0;
+
+    strncpy(absoluteFilePath + writeOffset, (char*) libraryDirectory->buffer, libraryDirectory->entry->length - 1);
+    writeOffset += libraryDirectory->entry->length - 1;
+
+    strncpy(absoluteFilePath + writeOffset, relativePath, relativePathLength);
+    writeOffset += relativePathLength;
+    
+    absoluteFilePath[writeOffset] = '\0';
+
+    // Remove file/episode from disk.
+    if((error = util_deleteFile(absoluteFilePath)) != ERROR_NO_ERROR){
+        UTIL_LOG_CONSOLE_(LOG_ERR, "Failed to remove Season:%02" PRIdFAST16 " Episode:%02" PRIdFAST16 " of '%s' from the library. [%s]", episodeInfo->season, episodeInfo->episode, episodeInfo->showName, util_toErrorString(error));
+
+        goto label_freeRequest;
+    }
 
 label_freeRequest:
     http_freeHTTP_Request(&request);
@@ -545,7 +642,7 @@ ERROR_CODE herder_add(Property* remoteHost, Property* remotePort, Property* libr
 
     char* path;
     uint_fast64_t pathLength;
-    HERDER_CONSTRUCT_FILE_PATH(&path, &pathLength, episodeInfo);
+    HERDER_CONSTRUCT_RELATIVE_FILE_PATH(&path, &pathLength, episodeInfo);
 
     const uint_fast64_t fileDstLength = (libraryDirectory->entry->length - 1) + pathLength;
 

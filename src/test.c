@@ -1417,7 +1417,7 @@ TEST_TEST_FUNCTION(herder_constructFilePath){
 
     char* path;
     uint_fast64_t pathLength;
-    HERDER_CONSTRUCT_FILE_PATH(&path, &pathLength, &info);
+    HERDER_CONSTRUCT_RELATIVE_FILE_PATH(&path, &pathLength, &info);
 
     if(strcmp(path, "American_Dad/American_Dad - Season_02/American_Dad_s02e14_The_last_Smith.mkv") != 0){
        return TEST_FAILURE("'%s' does not equal '%s'.", path, "American_Dad/American_Dad - Season_02/American_Dad_s02e14_The_last_Smith.mkv");

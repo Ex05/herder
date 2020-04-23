@@ -653,6 +653,18 @@ ERROR_CODE medialibrary_removeEpisode(MediaLibrary* library, Show* show, Season*
         goto label_return;
     }
 
+    if(LINKED_LIST_IS_EMPTY(&show->seasons)){
+        if((error = linkedList_remove(&show->seasons, season)) != ERROR_NO_ERROR){
+            UTIL_LOG_ERROR_("Failed to remove empty season %" PRIuFAST16" from from.", season->number);
+        
+            goto label_return;
+        }
+
+        linkedList_free(&season->episodes);
+
+        free(season);
+    }
+
     if(removeFromDisk){
         if((error = medialibrary_removeEpisodeFrromLibraryFile(library, show, season, episode)) != ERROR_NO_ERROR){
             goto label_return;

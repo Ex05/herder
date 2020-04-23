@@ -26,6 +26,7 @@
 #define CONSOLE_CLIENT_USAGE_ARGUMENT_BATCH_IMPORT "-b, --batch, --batchImport"
 #define CONSOLE_CLIENT_USAGE_ARGUMENT_RENAME "--rename"
 #define CONSOLE_CLIENT_USAGE_ARGUMENT_RENAME_EPISODE "--renameEpisode <old_name> <new_name>"
+#define CONSOLE_CLIENT_USAGE_ARGUMENT_REMOVE "--remove"
 #define CONSOLE_CLIENT_USAGE_ARGUMENT_REMOVE_EPISODE "--removeEpisode <name>"
 #define CONSOLE_CLIENT_USAGE_ARGUMENT_LIST_SHOWS "-l, --list --listShows"
 #define CONSOLE_CLIENT_USAGE_ARGUMENT_LIST_ALL_SHOWS "--listAll, --listAllShows"
@@ -61,6 +62,10 @@ local ERROR_CODE consoleClient_rename(Property*, Property*, Property*);
 
 local ERROR_CODE consoleClient_renameEpisode(Property*, Property*, const char*, uint_fast64_t, const char*, const uint_fast64_t);
 
+local ERROR_CODE consoleClient_remove(Property*, Property*, Property*);
+
+local ERROR_CODE consoleClient_removeEpisode(Property*, Property*, Property*, const char*, uint_fast64_t);
+
 local ERROR_CODE consoleClient_selectShow(Property*, Property*, Show**);
 
 local ERROR_CODE consoleClient_selectSeason(Property*, Property*, Season**, Show*);
@@ -86,11 +91,12 @@ local ERROR_CODE consoleClient_selectYesNo(bool*);
     ARGUMENT_PARSER_ADD_ARGUMENT(Help, 3, "-?", "-h", "--help");
     ARGUMENT_PARSER_ADD_ARGUMENT(AddShow, 1, "--addShow");
     ARGUMENT_PARSER_ADD_ARGUMENT(RemoveShow, 1, "--removeShow");
-    ARGUMENT_PARSER_ADD_ARGUMENT(Add, 4, "-a", "-add", "--addFile", "--addEpisode");
+    ARGUMENT_PARSER_ADD_ARGUMENT(Add, 4, "-a", "--add", "--addFile", "--addEpisode");
     ARGUMENT_PARSER_ADD_ARGUMENT(Import, 2, "-i", "--import");
     ARGUMENT_PARSER_ADD_ARGUMENT(BatchImport, 3, "-b", "--batch", "--batchImport");
     ARGUMENT_PARSER_ADD_ARGUMENT(Rename, 1, "--rename");
     ARGUMENT_PARSER_ADD_ARGUMENT(RenameEpisode, 1, "--renameEpisode");
+    ARGUMENT_PARSER_ADD_ARGUMENT(Remove, 1, "--remove");
     ARGUMENT_PARSER_ADD_ARGUMENT(RemoveEpisode, 1, "--removeEpisode");
     ARGUMENT_PARSER_ADD_ARGUMENT(ListShows, 3, "-l", "--list", "--listShows");
     ARGUMENT_PARSER_ADD_ARGUMENT(ListAll, 2, "--listAll", "--listAllShows");
@@ -203,12 +209,31 @@ local ERROR_CODE consoleClient_selectYesNo(bool*);
             if(CONSOLE_CLIENT_REMOTE_HOST_PROPERTIES_SET() && (propertyFile_propertySet(libraryDirectory, CONSOLE_CLIENT_PROPERTY_LIBRARY_DIRECTORY_NAME) == ERROR_NO_ERROR)){
                 if(!util_fileExists(argumentAdd.values[0]) || util_isDirectory(argumentAdd.values[0])){
                     UTIL_LOG_CONSOLE_(LOG_INFO, "ERROR: '%s' is not a falid file.", argumentAdd.values[0]);
-                }else{             
-                    // if((error = herder_addEpisode(remoteHost, remotePort, libraryDirectory, argumentAdd.value, argumentAdd.valueLength)) != ERROR_NO_ERROR){
-                    //        UTIL_LOG_CONSOLE_(LOG_ERR, "Failed to add '%s' to library. [%s]", argumentAdd.value,  util_toErrorString(error));
-                    // }else{
-                    //     UTIL_LOG_CONSOLE_(LOG_INFO, "Successfully added '%s' to the library.", argumentAdd.value);
-                    // }
+                }else{
+                    EpisodeInfo info;
+                    if((error = mediaLibrary_initEpisodeInfo(&info)) != ERROR_NO_ERROR){
+                        UTIL_LOG_CONSOLE_(LOG_ERR, "Failed to add '%s' to library. [%s]", argumentAdd.values[0],  util_toErrorString(error));
+                    }
+
+                    LinkedList shows;
+                    if((error = linkedList_init(&shows)) != ERROR_NO_ERROR){
+                       UTIL_LOG_CONSOLE_(LOG_ERR, "Failed to add '%s' to library. [%s]", argumentAdd.values[0],  util_toErrorString(error));
+                    }
+
+                    if((error = herder_pullShowList(&shows, remoteHost, remotePort)) != ERROR_NO_ERROR){
+                         UTIL_LOG_CONSOLE_(LOG_ERR, "Failed to add '%s' to library. [%s]", argumentAdd.values[0],  util_toErrorString(error));
+                    }                    
+
+                    char* fileName = alloca(sizeof(*fileName) * (argumentAdd.valueLengths[0] + 1));
+                    memcpy(fileName, argumentAdd.values[0], argumentAdd.valueLengths[0] + 1);
+
+                    mediaLibrary_extractEpisodeInfo(&info, &shows, fileName, argumentAdd.valueLengths[0]);
+
+                    if((error = herder_addEpisode(remoteHost, remotePort, libraryDirectory, &info)) != ERROR_NO_ERROR){
+                           UTIL_LOG_CONSOLE_(LOG_ERR, "Failed to add '%s' to library. [%s]", argumentAdd.values[0],  util_toErrorString(error));
+                    }else{
+                        UTIL_LOG_CONSOLE_(LOG_INFO, "Successfully added '%s' to the library.", argumentAdd.values[0]);
+                    }
                 }
             }else{
                 UTIL_LOG_CONSOLE(LOG_ERR, util_toErrorString(ERROR_PROPERTY_NOT_SET));
@@ -310,13 +335,34 @@ local ERROR_CODE consoleClient_selectYesNo(bool*);
         goto label_freeProperties;
     }
 
+    // --remove.
+    if(argumentParser_contains(&parser, &argumentRemove)){ 
+        if(argumentRename.numValues != 0){
+            UTIL_LOG_CONSOLE(LOG_INFO, "Invalid command. Usage: " CONSOLE_CLIENT_USAGE_ARGUMENT_REMOVE);
+        }else{
+            if(CONSOLE_CLIENT_REMOTE_HOST_PROPERTIES_SET()){
+                ERROR_CODE error;
+                if((error = consoleClient_remove(remoteHost, remotePort, libraryDirectory)) != ERROR_NO_ERROR){
+                    UTIL_LOG_CONSOLE_(LOG_ERR, "Failed to remove Episode. '%s'", util_toErrorString(error));
+                }
+            }else{
+                UTIL_LOG_CONSOLE(LOG_ERR, util_toErrorString(ERROR_PROPERTY_NOT_SET));
+            }
+        }
+        
+        goto label_freeProperties;
+    }
+
     // --removeEpisode.
     if(argumentParser_contains(&parser, &argumentRemoveEpisode)){ 
-        if((argumentRemoveEpisode.numValues != 1)){
+        if(argumentRenameEpisode.numValues != 1){
             UTIL_LOG_CONSOLE(LOG_INFO, "Invalid command. Usage: " CONSOLE_CLIENT_USAGE_ARGUMENT_REMOVE_EPISODE);
         }else{
             if(CONSOLE_CLIENT_REMOTE_HOST_PROPERTIES_SET()){
-                UTIL_LOG_CONSOLE(LOG_CRIT, util_toErrorString(ERROR_FUNCTION_NOT_IMPLEMENTED));
+                ERROR_CODE error;
+                if((error = consoleClient_removeEpisode(remoteHost, remotePort, libraryDirectory, argumentRemoveEpisode.values[0], argumentRemoveEpisode.valueLengths[0])) != ERROR_NO_ERROR){
+                    UTIL_LOG_CONSOLE_(LOG_ERR, "Failed to remove Episode. '%s'", util_toErrorString(error));
+                }
             }else{
                 UTIL_LOG_CONSOLE(LOG_ERR, util_toErrorString(ERROR_PROPERTY_NOT_SET));
             }
@@ -515,6 +561,7 @@ inline void consoleClient_printHelp(void){
     UTIL_LOG_CONSOLE_(LOG_INFO, "\t%s\t\t\t%s", CONSOLE_CLIENT_USAGE_ARGUMENT_BATCH_IMPORT, "Like '--import' but only imports episodes which don't require any user input to be add to the library.");
     UTIL_LOG_CONSOLE_(LOG_INFO, "\t%s\t\t\t\t\t%s", CONSOLE_CLIENT_USAGE_ARGUMENT_RENAME, "Interactivly renames an episode.");
     UTIL_LOG_CONSOLE_(LOG_INFO, "\t%s\t\t%s", CONSOLE_CLIENT_USAGE_ARGUMENT_RENAME_EPISODE, "Renames episode <old_name> to <new_name>.");
+    UTIL_LOG_CONSOLE_(LOG_INFO, "\t%s\t\t\t\t\t%s", CONSOLE_CLIENT_USAGE_ARGUMENT_REMOVE, "Interactivly remove an episode from the library.");
     UTIL_LOG_CONSOLE_(LOG_INFO, "\t%s\t\t\t\t%s", CONSOLE_CLIENT_USAGE_ARGUMENT_REMOVE_EPISODE, "Remove episode <name> from the library.");
     UTIL_LOG_CONSOLE_(LOG_INFO, "\t%s\t\t\t\t%s", CONSOLE_CLIENT_USAGE_ARGUMENT_LIST_SHOWS, "Lists all shows currently in the library.");
     UTIL_LOG_CONSOLE_(LOG_INFO, "\t%s\t\t\t%s", CONSOLE_CLIENT_USAGE_ARGUMENT_LIST_ALL_SHOWS, "Lists all episodes of all shows currently in the library.");
@@ -980,14 +1027,14 @@ label_yesNo:
         goto label_freeNewName;
     }
 
-    // To use the 'HERDER_CONSTRUCT_FILE_PATH' macro we need to fill out an episode info struct.
+    // To use the 'HERDER_CONSTRUCT_RELATIVE_FILE_PATH' macro we need to fill out an episode info struct.
     EpisodeInfo info;
     mediaLibrary_initEpisodeInfo(&info);
     mediaLibrary_fillEpisodeInfo(selectedShow, selectedSeason, selectedEpisode, &info);
 
     char* path;
     uint_fast64_t pathLength;
-    HERDER_CONSTRUCT_FILE_PATH(&path, &pathLength, (&info));
+    HERDER_CONSTRUCT_RELATIVE_FILE_PATH(&path, &pathLength, (&info));
 
     const uint_fast64_t fileDstLength = (libraryDirectory->entry->length - 1) + pathLength + 1;
 
@@ -1058,6 +1105,111 @@ local ERROR_CODE consoleClient_renameEpisode(Property* remoteHost, Property* rem
     }
 
     UTIL_LOG_CONSOLE_(LOG_DEBUG, "Show: '%s', Season: '%" PRIdFAST16 "', Episode:'%" PRIdFAST16 "' '%s'.", info.showName, info.season, info.episode, info.name);
+
+    // TODO: Actually remove episode.
+
+    LinkedListIterator it;
+label_freeShows:
+    linkedList_initIterator(&it, &shows);
+
+    while(LINKED_LIST_ITERATOR_HAS_NEXT(&it)){
+        Show* show = LINKED_LIST_ITERATOR_NEXT(&it);
+        
+        mediaLibrary_freeShow(show);
+        free(show);
+    }
+
+    linkedList_free(&shows);
+
+    free(info.showName);
+    free(info.name);
+
+label_return:
+    return ERROR(error);
+}
+
+ERROR_CODE consoleClient_remove(Property* remoteHost, Property* remotePort, Property* libraryDirectory){
+    ERROR_CODE error = ERROR_NO_ERROR;
+
+    Show* selectedShow = NULL;
+    if((error = consoleClient_selectShow(remoteHost, remotePort, &selectedShow))){
+        goto label_return;
+    }
+
+    UTIL_LOG_CONSOLE_(LOG_DEBUG, "Selected show:'%s'.", selectedShow->name);
+
+    Season* selectedSeason = NULL;
+    if((error = consoleClient_selectSeason(remoteHost, remotePort, &selectedSeason, selectedShow))){
+        goto label_return;
+    }
+
+    UTIL_LOG_CONSOLE_(LOG_DEBUG, "Selected season:'%" PRIdFAST16 "'.", selectedSeason->number);
+
+    Episode* selectedEpisode = NULL;
+    if((error = consoleClient_selectEpisode(&selectedEpisode, selectedSeason) != ERROR_NO_ERROR)){
+        goto label_return;
+    }
+
+    UTIL_LOG_CONSOLE_(LOG_DEBUG, "Selected:[Episode:%" PRIdFAST16 " '%s'].", selectedEpisode->number, selectedEpisode->name);
+
+label_yesNo:
+    UTIL_LOG_CONSOLE_(LOG_INFO, "Remove '%s', s%02" PRIdFAST16 "e%02" PRIdFAST16 " - '%s' from the library? Yes/No.", selectedShow->name, selectedSeason->number, selectedEpisode->number, selectedEpisode->name);
+
+    bool renameEpisode;
+    if((error = consoleClient_selectYesNo(&renameEpisode) != ERROR_NO_ERROR)){
+        goto label_yesNo;
+    }
+
+    if(!renameEpisode){
+        goto label_freeNewName;
+    }
+
+    EpisodeInfo info;
+    mediaLibrary_initEpisodeInfo(&info);
+    mediaLibrary_fillEpisodeInfo(selectedShow, selectedSeason, selectedEpisode, &info);
+
+    // Send remove packet.
+    if((error = herder_removeEpisode(remoteHost, remotePort, libraryDirectory, &info)) != ERROR_NO_ERROR){
+        goto label_freeNewName;
+    }
+
+label_freeNewName:
+    mediaLibrary_freeShow(selectedShow);
+    
+    free(selectedShow);
+
+label_return:
+    return ERROR(error);
+}
+
+local ERROR_CODE consoleClient_removeEpisode(Property* remoteHost, Property* remotePort, Property* libraryDirectory, const char* episodeName,  const uint_fast64_t episodeNameLength){
+    ERROR_CODE error;
+
+    LinkedList shows;
+    if((error = linkedList_init(&shows)) != ERROR_NO_ERROR){
+        goto label_return;
+    }
+
+    if((error = herder_pullShowList(&shows, remoteHost, remotePort)) != ERROR_NO_ERROR){
+        goto label_freeShows;
+    }
+
+    EpisodeInfo info;
+    if((error = mediaLibrary_initEpisodeInfo(&info)) != ERROR_NO_ERROR){
+        goto label_freeShows;
+    }
+
+    char* fileName = alloca(sizeof(*fileName) * (episodeNameLength + 1));
+    memcpy(fileName, episodeName, episodeNameLength + 1);
+
+    if((error = mediaLibrary_extractEpisodeInfo(&info, &shows, fileName, episodeNameLength)) != ERROR_NO_ERROR){
+        goto label_freeShows;
+    }
+
+    // Send remove packet.
+    if((error = herder_removeEpisode(remoteHost, remotePort, libraryDirectory, &info)) != ERROR_NO_ERROR){
+        goto label_freeShows;
+    }
 
     LinkedListIterator it;
 label_freeShows:

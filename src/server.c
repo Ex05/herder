@@ -317,6 +317,67 @@ local SERVER_CONTEXT_HANDLER(server_pageRemoveShow){
     return ERROR(ERROR_NO_ERROR);
 }
 
+local SERVER_CONTEXT_HANDLER(server_pageRemoveEpisode){
+    if(request->type != REQUEST_TYPE_POST){
+        server_constructErrorPage(server, request, response, _405_METHOD_NOT_ALLOWED);
+
+        return ERROR(ERROR_NO_ERROR);
+    }
+     // TODO:(jan) Add error handling for to small/malformed requests.
+    uint_fast64_t readOffset = 0;
+
+     // ShowName.
+    const uint_fast64_t showNameLength = util_byteArrayTo_uint64(request->data + readOffset);
+    readOffset += sizeof(uint64_t);
+
+    char* showName = (char*) request->data + readOffset;
+    readOffset += showNameLength;
+
+    // Season.
+    const uint_fast16_t seasonNumber = util_byteArrayTo_uint16(request->data + readOffset);
+    readOffset += sizeof(uint16_t);
+
+    // Episode.
+    const uint_fast16_t episodeNumber = util_byteArrayTo_uint16(request->data + readOffset);
+    readOffset += sizeof(uint16_t);
+
+    ERROR_CODE error;
+    if(showNameLength == 0){
+        error = ERROR_INVALID_CONTENT_LENGTH;
+
+        goto label_return;
+    }
+
+    Show* show;
+    if((error = medialibrary_getShow(&server->library, &show, showName, showNameLength)) != ERROR_NO_ERROR){
+        goto label_return;
+    }
+
+    Season* season;
+    if((error = medialibrary_getSeason(show, &season, seasonNumber)) != ERROR_NO_ERROR){
+        goto label_return;
+    }
+
+    Episode* episode;
+    if(mediaLibrary_getEpisode(season, &episode, episodeNumber) != ERROR_NO_ERROR){
+        goto label_return;
+    }
+
+    error = medialibrary_removeEpisode(&server->library, show, season, episode, true);
+    
+label_return:
+    util_uint64ToByteArray(response->data + response->dataLength, error);
+    response->dataLength += sizeof(uint64_t);
+
+    http_setHTTP_Version(response, HTTP_VERSION_1_1);
+    response->statusCode = _200_OK;
+
+    const char connection[] = "close";
+    HTTP_ADD_HEADER_FIELD((*response), Connection, connection);
+
+    return ERROR(ERROR_NO_ERROR);
+}
+
 local SERVER_CONTEXT_HANDLER(server_pageShows){
      if(request->type != REQUEST_TYPE_GET){
         server_constructErrorPage(server, request, response, _405_METHOD_NOT_ALLOWED);
@@ -759,6 +820,7 @@ label_return:
             server_addContext(&server, "/extractShowInfo", server_pageExtractShowInfo);
             server_addContext(&server, "/showInfo", server_pageShowInfo);
             server_addContext(&server, "/renameEpisode", server_pageRenameEpisode);
+            server_addContext(&server, "/removeEpisode", server_pageRemoveEpisode);
 
 			UTIL_LOG_INFO_("Starting server on port '%" PRIuFAST16 "'.", port);
 

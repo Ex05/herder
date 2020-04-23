@@ -3,7 +3,7 @@
 
 #include "util.h"
 
-#define HERDER_CONSTRUCT_FILE_PATH(path, stringLength, episodeInfo) \
+#define HERDER_CONSTRUCT_RELATIVE_FILE_PATH(path, stringLength, episodeInfo) \
     char* _noWhiteSpaceShowName = alloca(sizeof(*_noWhiteSpaceShowName) * ((episodeInfo)->showNameLength + 1)); \
     strncpy(_noWhiteSpaceShowName, (episodeInfo)->showName, (episodeInfo)->showNameLength + 1); \
     util_replaceAllChars(_noWhiteSpaceShowName, ' ', '_'); \
