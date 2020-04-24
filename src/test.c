@@ -1392,7 +1392,100 @@ TEST_TEST_FUNCTION_(propertyFile_remove, PropertyFile, propertyFile){
     }
 
     return TEST_SUCCESS;
-}    
+}
+
+TEST_TEST_FUNCTION_(propertyFile_createAndSetStringProperty, PropertyFile, propertyFile){
+    ERROR_CODE error;
+
+    #define TEST_STRING "test_123"
+
+    Property* testProperty = NULL;
+
+    if((error = propertyFile_createAndSetStringProperty(propertyFile, &testProperty, "testProperty", TEST_STRING, strlen(TEST_STRING))) != ERROR_NO_ERROR){
+        return TEST_FAILURE("Failed to add property:'testProperty'. '%s'.", util_toErrorString(error));
+    }
+
+    propertyFile_freeProperty(testProperty);
+    free(testProperty);
+
+    Property* retrievedProperty;
+    if(propertyFile_getProperty(propertyFile, &retrievedProperty, "testProperty") != ERROR_NO_ERROR){
+       return TEST_FAILURE("Failed to retrieve property 'testProperty'. '%s'.", util_toErrorString(error));
+    }
+
+    if(strncmp(TEST_STRING , (char*) retrievedProperty->buffer, strlen(TEST_STRING) + 1) != 0){
+        return TEST_FAILURE("Error 'testProperty' value '%s' != '%s'.", (char*) retrievedProperty->buffer, TEST_STRING);
+    }
+
+    #undef TEST_STRING
+
+    propertyFile_freeProperty(retrievedProperty);
+    free(retrievedProperty);
+
+    return TEST_SUCCESS;
+}   
+
+TEST_TEST_FUNCTION_(propertyFile_createAndSetDirectoryProperty, PropertyFile, propertyFile){
+    ERROR_CODE error;
+
+    #define IMPORT_DIRECTORY "/home/ex05/herder/import"
+
+    Property* testProperty = NULL;
+    if((error = propertyFile_createAndSetDirectoryProperty(propertyFile, &testProperty, "testProperty", IMPORT_DIRECTORY, strlen(IMPORT_DIRECTORY))) != ERROR_NO_ERROR){
+        return TEST_FAILURE("Failed to add property:'testProperty'. '%s'.", util_toErrorString(error));
+    }
+
+    propertyFile_freeProperty(testProperty);
+    free(testProperty);
+
+    Property* retrievedProperty;
+    if(propertyFile_getProperty(propertyFile, &retrievedProperty, "testProperty") != ERROR_NO_ERROR){
+       return TEST_FAILURE("Failed to retrieve property 'testProperty'. '%s'.", util_toErrorString(error));
+    }
+
+    if(strncmp(IMPORT_DIRECTORY "/", (char*) retrievedProperty->buffer, strlen(IMPORT_DIRECTORY) + 2) != 0){
+        return TEST_FAILURE("Error 'testProperty' value '%s' != '%s'.", (char*) retrievedProperty->buffer, IMPORT_DIRECTORY "/");
+    }
+
+    #undef IMPORT_DIRECTORY
+
+    propertyFile_freeProperty(retrievedProperty);
+    free(retrievedProperty);
+
+    return TEST_SUCCESS;
+}
+
+TEST_TEST_FUNCTION_(propertyFile_createAndSetUINT16Property, PropertyFile, propertyFile){
+    ERROR_CODE error;
+
+    #define TEST_VALUE 124
+
+    Property* testProperty = NULL;
+    if((error = propertyFile_createAndSetUINT16Property(propertyFile, &testProperty, "testProperty", TEST_VALUE)) != ERROR_NO_ERROR){
+        return TEST_FAILURE("Failed to add property:'testProperty'. '%s'.", util_toErrorString(error));
+    }
+
+    propertyFile_freeProperty(testProperty);
+    free(testProperty);
+
+    Property* retrievedProperty;
+    if(propertyFile_getProperty(propertyFile, &retrievedProperty, "testProperty") != ERROR_NO_ERROR){
+       return TEST_FAILURE("Failed to retrieve property 'testProperty'. '%s'.", util_toErrorString(error));
+    }
+
+    const uint16_t retrievedValue = util_byteArrayTo_uint16(retrievedProperty->buffer);
+
+    if(retrievedValue != TEST_VALUE){
+        return TEST_FAILURE("Error 'testProperty' value '%" PRIu16 "' != '%" PRIu16" '.", retrievedValue, TEST_VALUE);
+    }
+
+    #undef TEST_VALUE
+
+    propertyFile_freeProperty(retrievedProperty);
+    free(retrievedProperty);
+
+    return TEST_SUCCESS;
+}   
 
 // herder.c
 TEST_TEST_FUNCTION(herder_constructFilePath){
@@ -1595,19 +1688,8 @@ TEST_TEST_FUNCTION_(medialibrary_removeEpisode, MediaLibrary, library){
         return TEST_FAILURE("Failed to remove episode '%s' from media library. '%s'.", episodeName, util_toErrorString(error));
     }
 
-    LinkedListIterator it;
-    linkedList_initIterator(&it, &season_01->episodes);
-
-    while(LINKED_LIST_ITERATOR_HAS_NEXT(&it)){
-        Episode* episode = LINKED_LIST_ITERATOR_NEXT(&it);
-
-        if(episode->number == 1){
-            return TEST_FAILURE("Failed to remove episode '%d'.", 1);
-        }
-        
-        if(strncmp(episode->name, episodeName, episodeNameLength + 1) == 0){
-            return TEST_FAILURE("Failed to remove episode '%s' from media library. '%s'.", episodeName, util_toErrorString(error));
-        }
+    if(!LINKED_LIST_IS_EMPTY(&show->seasons)){
+        return TEST_FAILURE("Failed to remove episode '%s' from media library. '%s'.", episodeName, util_toErrorString(error));
     }
 
     return TEST_SUCCESS;
@@ -2081,6 +2163,9 @@ int main(void){
     TEST_SUIT_BEGIN_(propertyFile);
         __TEST_NO_SETUP__(); TEST(propertyFile_create);
         TEST(propertyFile_add);
+        TEST(propertyFile_createAndSetUINT16Property);
+        TEST(propertyFile_createAndSetStringProperty);
+        TEST(propertyFile_createAndSetDirectoryProperty);
         TEST(propertyFile_remove);
     TEST_SUIT_END();   
 

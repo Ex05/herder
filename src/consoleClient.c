@@ -431,7 +431,7 @@ local ERROR_CODE consoleClient_selectYesNo(bool*);
         if(argumentSetImportDirectory.numValues != 1){
             UTIL_LOG_CONSOLE(LOG_INFO, "Invalid command. Usage: " CONSOLE_CLIENT_USAGE_ARGUMENT_SET_IMPORT_DIRECTORY);
         }else{
-            if((error = propertyFile_createAndSetDirectoryProperty(&properties, importDirectory, CONSOLE_CLIENT_PROPERTY_IMPORT_DIRECTORY_NAME, argumentSetImportDirectory.values[0], argumentSetImportDirectory.valueLengths[0])) != ERROR_NO_ERROR){
+            if((error = propertyFile_createAndSetDirectoryProperty(&properties, &importDirectory, CONSOLE_CLIENT_PROPERTY_IMPORT_DIRECTORY_NAME, argumentSetImportDirectory.values[0], argumentSetImportDirectory.valueLengths[0])) != ERROR_NO_ERROR){
                 UTIL_LOG_CONSOLE(LOG_ERR, util_toErrorString(error));
             }else{
                 UTIL_LOG_CONSOLE_(LOG_INFO, "Successfully set '%s' to '%s'", CONSOLE_CLIENT_PROPERTY_IMPORT_DIRECTORY_NAME, argumentSetImportDirectory.values[0]);
@@ -446,7 +446,7 @@ local ERROR_CODE consoleClient_selectYesNo(bool*);
         if(argumentSetLibraryDirectory.numValues != 1){
             UTIL_LOG_CONSOLE(LOG_INFO, "Invalid command. Usage: " CONSOLE_CLIENT_USAGE_ARGUMENT_SET_LIBRARY_DIRECTORY);
         }else{
-            if((error = propertyFile_createAndSetDirectoryProperty(&properties, libraryDirectory, CONSOLE_CLIENT_PROPERTY_LIBRARY_DIRECTORY_NAME, argumentSetLibraryDirectory.values[0], argumentSetLibraryDirectory.valueLengths[0])) != ERROR_NO_ERROR){
+            if((error = propertyFile_createAndSetDirectoryProperty(&properties, &libraryDirectory, CONSOLE_CLIENT_PROPERTY_LIBRARY_DIRECTORY_NAME, argumentSetLibraryDirectory.values[0], argumentSetLibraryDirectory.valueLengths[0])) != ERROR_NO_ERROR){
                 UTIL_LOG_CONSOLE(LOG_ERR, util_toErrorString(error));
             }else{
                 UTIL_LOG_CONSOLE_(LOG_INFO, "Successfully set '%s' to '%s'", CONSOLE_CLIENT_PROPERTY_LIBRARY_DIRECTORY_NAME, argumentSetLibraryDirectory.values[0]);
@@ -461,7 +461,7 @@ local ERROR_CODE consoleClient_selectYesNo(bool*);
         if(argumentSetRemoteHost.numValues != 1){
             UTIL_LOG_CONSOLE(LOG_INFO, "Invalid command. Usage: " CONSOLE_CLIENT_USAGE_ARGUMENT_SET_REMOTE_HOST);
         }else{
-            if((error = propertyFile_createAndSetStringProperty(&properties, libraryDirectory, CONSOLE_CLIENT_PROPERTY_REMOTE_HOST_NAME, argumentSetRemoteHost.values[0], argumentSetRemoteHost.valueLengths[0])) != ERROR_NO_ERROR){
+            if((error = propertyFile_createAndSetStringProperty(&properties, &libraryDirectory, CONSOLE_CLIENT_PROPERTY_REMOTE_HOST_NAME, argumentSetRemoteHost.values[0], argumentSetRemoteHost.valueLengths[0])) != ERROR_NO_ERROR){
                 UTIL_LOG_CONSOLE(LOG_ERR, util_toErrorString(error));
             }else{
                 UTIL_LOG_CONSOLE_(LOG_INFO, "Successfully set '%s' to '%s'", CONSOLE_CLIENT_PROPERTY_REMOTE_HOST_NAME, argumentSetRemoteHost.values[0]);
@@ -490,7 +490,7 @@ local ERROR_CODE consoleClient_selectYesNo(bool*);
                 }
             }
 
-            if((error = propertyFile_createAndSetUINT16Property(&properties, libraryDirectory, CONSOLE_CLIENT_PROPERTY_REMOTE_PORT_NAME, port)) != ERROR_NO_ERROR){
+            if((error = propertyFile_createAndSetUINT16Property(&properties, &libraryDirectory, CONSOLE_CLIENT_PROPERTY_REMOTE_PORT_NAME, port)) != ERROR_NO_ERROR){
                 UTIL_LOG_CONSOLE(LOG_ERR, util_toErrorString(error));
             }else{
                 UTIL_LOG_CONSOLE_(LOG_INFO, "Successfully set '%s' to '%s'", CONSOLE_CLIENT_PROPERTY_REMOTE_PORT_NAME, argumentSetRemoteHostPort.values[0]);
@@ -1021,51 +1021,9 @@ label_yesNo:
     }
 
     // Send rename packet.
-    if((error = herder_renameEpisode(remoteHost, remotePort, selectedShow, selectedSeason, selectedEpisode, newEpisodeName, newEpisodeNameLength)) != ERROR_NO_ERROR){
+    if((error = herder_renameEpisode(remoteHost, remotePort, libraryDirectory, selectedShow, selectedSeason, selectedEpisode, newEpisodeName, newEpisodeNameLength)) != ERROR_NO_ERROR){
         UTIL_LOG_CONSOLE_(LOG_ERR, "Server side error, failed to rename episode. [%s]", util_toErrorString(error));
 
-        goto label_freeNewName;
-    }
-
-    // To use the 'HERDER_CONSTRUCT_RELATIVE_FILE_PATH' macro we need to fill out an episode info struct.
-    EpisodeInfo info;
-    mediaLibrary_initEpisodeInfo(&info);
-    mediaLibrary_fillEpisodeInfo(selectedShow, selectedSeason, selectedEpisode, &info);
-
-    char* path;
-    uint_fast64_t pathLength;
-    HERDER_CONSTRUCT_RELATIVE_FILE_PATH(&path, &pathLength, (&info));
-
-    const uint_fast64_t fileDstLength = (libraryDirectory->entry->length - 1) + pathLength + 1;
-
-    char* filePath = alloca(sizeof(*filePath) * (fileDstLength + 1));
-    uint_fast64_t writeOffset = 0;
-
-    strncpy(filePath + writeOffset, (char*) libraryDirectory->buffer, libraryDirectory->entry->length - 1);
-    writeOffset += libraryDirectory->entry->length - 1;
-
-    strncpy(filePath + writeOffset, path, pathLength);
-    writeOffset += pathLength;
-    
-    filePath[writeOffset] = '\0';
-
-    char* fileDirectory = alloca(sizeof(*fileDirectory) * fileDstLength + 1);
-    if((error = util_getFileDirectory(fileDirectory, filePath, fileDstLength)) != ERROR_NO_ERROR){
-        goto label_freeNewName;
-    }
-
-    char* oldFileName = util_getFileName(filePath, fileDstLength);
-
-    // Build new fileName.
-    const uint_fast64_t newFileNameLength = info.showNameLength + 2/*_*/ + (2 * UTIL_UINT16_STRING_LENGTH) + 3 /*'e'/'s'/'.'*/ + newEpisodeNameLength + info.fileExtensionLength;
-    char* newFileName = alloca(sizeof(*newFileName) * (newFileNameLength + 1));
-    
-    snprintf(newFileName, newFileNameLength, "%s_s%02" PRIdFAST16 "e%02" PRIdFAST16 "_%s.%s", info.showName, info.season, info.episode, newEpisodeName, info.fileExtension);
-
-    util_replaceAllChars(newFileName, ' ', '_');
-
-    // Rename file on disk.
-    if((error = util_renameFileRelative(fileDirectory, oldFileName, newFileName)) != ERROR_NO_ERROR){
         goto label_freeNewName;
     }
 
@@ -1107,6 +1065,7 @@ local ERROR_CODE consoleClient_renameEpisode(Property* remoteHost, Property* rem
     UTIL_LOG_CONSOLE_(LOG_DEBUG, "Show: '%s', Season: '%" PRIdFAST16 "', Episode:'%" PRIdFAST16 "' '%s'.", info.showName, info.season, info.episode, info.name);
 
     // TODO: Actually remove episode.
+    UTIL_LOG_CONSOLE(LOG_CRIT, "Function not implemented.");
 
     LinkedListIterator it;
 label_freeShows:

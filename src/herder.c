@@ -844,7 +844,7 @@ label_unMap:
     return ERROR(error);
 }
 
-ERROR_CODE herder_renameEpisode(Property* remoteHost, Property* remotePort, Show* show, Season* season, Episode* episode, char* newEpisodeName, const uint_fast64_t newEpisodeNameLength){
+ERROR_CODE herder_renameEpisode(Property* remoteHost, Property* remotePort, Property* libraryDirectory, Show* show, Season* season, Episode* episode, char* newEpisodeName, const uint_fast64_t newEpisodeNameLength){
     ERROR_CODE error;
 
     char* host = (char*) remoteHost->buffer;
@@ -924,5 +924,48 @@ label_unMap:
         UTIL_LOG_ERROR(util_toErrorString(ERROR_FAILED_TO_UNMAP_MEMORY));
     }
 
+    // To use the 'HERDER_CONSTRUCT_RELATIVE_FILE_PATH' macro we need to fill out an episode info struct.
+    EpisodeInfo info;
+    mediaLibrary_initEpisodeInfo(&info);
+    mediaLibrary_fillEpisodeInfo(show, season, episode, &info);
+
+    char* path;
+    uint_fast64_t pathLength;
+    HERDER_CONSTRUCT_RELATIVE_FILE_PATH(&path, &pathLength, (&info));
+
+    const uint_fast64_t fileDstLength = (libraryDirectory->entry->length - 1) + pathLength + 1;
+
+    char* filePath = alloca(sizeof(*filePath) * (fileDstLength + 1));
+    uint_fast64_t writeOffset = 0;
+
+    strncpy(filePath + writeOffset, (char*) libraryDirectory->buffer, libraryDirectory->entry->length - 1);
+    writeOffset += libraryDirectory->entry->length - 1;
+
+    strncpy(filePath + writeOffset, path, pathLength);
+    writeOffset += pathLength;
+    
+    filePath[writeOffset] = '\0';
+
+    char* fileDirectory = alloca(sizeof(*fileDirectory) * fileDstLength + 1);
+    if((error = util_getFileDirectory(fileDirectory, filePath, fileDstLength)) != ERROR_NO_ERROR){
+        goto label_return;
+    }
+
+    char* oldFileName = util_getFileName(filePath, fileDstLength);
+
+    // Build new fileName.
+    const uint_fast64_t newFileNameLength = info.showNameLength + 2/*_*/ + (2 * UTIL_UINT16_STRING_LENGTH) + 3 /*'e'/'s'/'.'*/ + newEpisodeNameLength + info.fileExtensionLength;
+    char* newFileName = alloca(sizeof(*newFileName) * (newFileNameLength + 1));
+    
+    snprintf(newFileName, newFileNameLength, "%s_s%02" PRIdFAST16 "e%02" PRIdFAST16 "_%s.%s", info.showName, info.season, info.episode, newEpisodeName, info.fileExtension);
+
+    util_replaceAllChars(newFileName, ' ', '_');
+
+    // Rename file on disk.
+    if((error = util_renameFileRelative(fileDirectory, oldFileName, newFileName)) != ERROR_NO_ERROR){
+        goto label_return;
+    }
+
+label_return:
     return ERROR(error);
 }

@@ -574,7 +574,7 @@ inline ERROR_CODE propertyFile_propertySet(Property* property, const char* prope
     return ERROR(ERROR_NO_ERROR);
 }
 
-inline ERROR_CODE propertyFile_createAndSetDirectoryProperty(PropertyFile* properties, Property* property, const char* propertyName, const char* value, const uint_fast64_t valueLength){
+inline ERROR_CODE propertyFile_createAndSetDirectoryProperty(PropertyFile* properties, Property** property, const char* propertyName, const char* value, const uint_fast64_t valueLength){
     // Note: Make sure 'slashTerminated' is clamped to '0 - 1' so we can use it later to add/subtract depending on whether the string was slash termianted or not. (jan - 2018.10.20)
     const bool slashTerminated = (value[valueLength - 1] == '/') & 0x01;
 
@@ -584,10 +584,10 @@ inline ERROR_CODE propertyFile_createAndSetDirectoryProperty(PropertyFile* prope
     if(slashTerminated){
         propertyString = alloca(sizeof(*propertyString) * (valueLength + 1));
         memmove(propertyString, value, valueLength + 1);
-
     }else{
         propertyString = alloca(sizeof(*propertyString) * (propertyStringLength + 1));
         memcpy(propertyString, value, valueLength);
+
         propertyString[propertyStringLength - 1] = '/';
         propertyString[propertyStringLength] = '\0';
     } 
@@ -595,20 +595,20 @@ inline ERROR_CODE propertyFile_createAndSetDirectoryProperty(PropertyFile* prope
     return ERROR(propertyFile_createAndSetStringProperty(properties, property, propertyName, propertyString, propertyStringLength));
 }
 
-inline ERROR_CODE propertyFile_createAndSetStringProperty(PropertyFile* properties, Property* property, const char* propertyName, const char* value, const uint_fast64_t valueLength){
+inline ERROR_CODE propertyFile_createAndSetStringProperty(PropertyFile* properties, Property** property, const char* propertyName, const char* value, const uint_fast64_t valueLength){
     ERROR_CODE error;
     if((error = propertyFile_createProperty(properties, property, propertyName, sizeof(*value) * (valueLength + 1))) != ERROR_NO_ERROR){
         return ERROR(error);
     }
 
-    if(propertyFile_setBuffer(property, (int8_t*) value) != ERROR_NO_ERROR){
+    if(propertyFile_setBuffer(*property, (int8_t*) value) != ERROR_NO_ERROR){
         return ERROR_(ERROR_FAILED_TO_UPDATE_PROPERTY, "'%s'", propertyName);
     }
 
     return ERROR(ERROR_NO_ERROR);
 }
 
-inline ERROR_CODE propertyFile_createAndSetUINT16Property(PropertyFile* properties, Property* property, const char* propertyName, const uint16_t value){
+inline ERROR_CODE propertyFile_createAndSetUINT16Property(PropertyFile* properties, Property** property, const char* propertyName, const uint16_t value){
     ERROR_CODE error;
     if((error = propertyFile_createProperty(properties, property, propertyName, sizeof(value))) != ERROR_NO_ERROR){
         return ERROR(error);
@@ -617,25 +617,25 @@ inline ERROR_CODE propertyFile_createAndSetUINT16Property(PropertyFile* properti
     int8_t* buffer = alloca(sizeof(value));
     util_uint16ToByteArray(buffer, value);
 
-    if(propertyFile_setBuffer(property, buffer) != ERROR_NO_ERROR){
+    if(propertyFile_setBuffer(*property, buffer) != ERROR_NO_ERROR){
         return ERROR_(ERROR_FAILED_TO_UPDATE_PROPERTY, "'%s'", propertyName);
     }
 
    return ERROR(ERROR_NO_ERROR);
 }
 
-inline ERROR_CODE propertyFile_createProperty(PropertyFile* properties, Property* property, const char* propertyName, const uint_fast64_t size){
-   if(PROPERTY_IS_NOT_SET(property)){
-        if(propertyFile_addProperty(properties, &property, propertyName, sizeof(uint16_t)) != ERROR_NO_ERROR){
+inline ERROR_CODE propertyFile_createProperty(PropertyFile* properties, Property** property, const char* propertyName, const uint_fast64_t size){
+   if(PROPERTY_IS_NOT_SET(*property)){
+        if(propertyFile_addProperty(properties, property, propertyName, size) != ERROR_NO_ERROR){
             return ERROR_(ERROR_FAILED_TO_ADD_PROPERTY, "'%s'", propertyName);
         }
     }else{
-        if(property->entry->length != sizeof(uint16_t)){
-            if(propertyFile_removeProperty(property) != ERROR_NO_ERROR){
+        if((*property)->entry->length != size){
+            if(propertyFile_removeProperty(*property) != ERROR_NO_ERROR){
                 return ERROR_(ERROR_FAILED_TO_REMOVE_PROPERTY, "'%s'", propertyName);
             }
 
-            if(propertyFile_addProperty(properties, &property, propertyName, sizeof(uint16_t)) != ERROR_NO_ERROR){
+            if(propertyFile_addProperty(properties, property, propertyName, size) != ERROR_NO_ERROR){
                 return ERROR_(ERROR_FAILED_TO_ADD_PROPERTY, "'%s'", propertyName);
             }
         }

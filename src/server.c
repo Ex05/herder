@@ -711,7 +711,7 @@ label_return:
            if(argumentSetServerRootDirectory.numValues != 1){
                 UTIL_LOG_CONSOLE(LOG_INFO, "Invalid command. Usage: " SERVER_USAGE_ARGUMENT_SET_SERVER_ROOT_DIRECTORY);
             }else{
-                if((error = propertyFile_createAndSetDirectoryProperty(&properties, serverRootDirectory, SERVER_PROPERTY_SERVER_ROOT_DIRECTORY_NAME, argumentSetServerRootDirectory.values[0], argumentSetServerRootDirectory.valueLengths[0])) != ERROR_NO_ERROR){
+                if((error = propertyFile_createAndSetDirectoryProperty(&properties, &serverRootDirectory, SERVER_PROPERTY_SERVER_ROOT_DIRECTORY_NAME, argumentSetServerRootDirectory.values[0], argumentSetServerRootDirectory.valueLengths[0])) != ERROR_NO_ERROR){
                     UTIL_LOG_CONSOLE(LOG_ERR, util_toErrorString(error));
                 }else{
                     UTIL_LOG_CONSOLE_(LOG_INFO, "Successfully set '%s' to '%s'", SERVER_PROPERTY_SERVER_ROOT_DIRECTORY_NAME, argumentSetServerRootDirectory.values[0]);
@@ -740,7 +740,7 @@ label_return:
                     }
                 }
 
-                if((error = propertyFile_createAndSetUINT16Property(&properties, serverExternalPort, PROPERTY_SERVER_EXTERNAL_PORT_NAME, port)) != ERROR_NO_ERROR){
+                if((error = propertyFile_createAndSetUINT16Property(&properties, &serverExternalPort, PROPERTY_SERVER_EXTERNAL_PORT_NAME, port)) != ERROR_NO_ERROR){
                     UTIL_LOG_CONSOLE(LOG_ERR, util_toErrorString(error));
                 }else{
                     UTIL_LOG_CONSOLE_(LOG_INFO, "Successfully set '%s' to '%s'", PROPERTY_SERVER_EXTERNAL_PORT_NAME, argumentSetServerExternalPort.values[0]);

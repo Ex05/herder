@@ -62,13 +62,13 @@ bool propertyFile_contains(PropertyFile*, const char*);
 
 ERROR_CODE propertyFile_propertySet(Property*, const char*);
 
-ERROR_CODE propertyFile_createAndSetDirectoryProperty(PropertyFile*, Property*, const char*, const char*, const uint_fast64_t);
+ERROR_CODE propertyFile_createAndSetDirectoryProperty(PropertyFile*, Property**, const char*, const char*, const uint_fast64_t);
 
-ERROR_CODE propertyFile_createAndSetStringProperty(PropertyFile*, Property*, const char*, const char*, const uint_fast64_t);
+ERROR_CODE propertyFile_createAndSetStringProperty(PropertyFile*, Property**, const char*, const char*, const uint_fast64_t);
 
-ERROR_CODE propertyFile_createAndSetUINT16Property(PropertyFile*, Property*, const char*, const uint16_t);
+ERROR_CODE propertyFile_createAndSetUINT16Property(PropertyFile*, Property**, const char*, const uint16_t);
 
-ERROR_CODE propertyFile_createProperty(PropertyFile*, Property*, const char*, const uint_fast64_t);
+ERROR_CODE propertyFile_createProperty(PropertyFile*, Property**, const char*, const uint_fast64_t);
 
 #endif
 
