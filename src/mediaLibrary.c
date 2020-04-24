@@ -435,22 +435,23 @@ inline ERROR_CODE mediaLibrary_extractSeasonNumber(EpisodeInfo* info, char* file
 
 // TODO:(jan) Refactor this mess and add some guidance for readers.
 ERROR_CODE mediaLibrary_extractShowName(EpisodeInfo* info, LinkedList* shows, char* fileName, const uint_fast64_t fileNameLength){
-    // Split the filename into easily searchable word chunks.
     uint_fast64_t endIndex = 0;
-    // We need the '/0' to terminate our loop.
+
+    // We need the trailing '/0' of the file name to terminate our loop.
     uint_fast64_t remainingCharacter = fileNameLength + 1;
 
+    // Split the filename into easily searchable word chunks.
     LinkedList wordList;
     linkedList_init(&wordList);
 
-    char* s = alloca(sizeof(*s) * (fileNameLength + 1));
-    strncpy(s, fileName, fileNameLength + 1);
-    util_toLowerChase(s);
+    char* lowerCaseFileName = alloca(sizeof(*lowerCaseFileName) * (fileNameLength + 1));
+    strncpy(lowerCaseFileName, fileName, fileNameLength + 1);
+    util_toLowerChase(lowerCaseFileName);
 
     while(remainingCharacter > 0){
         char c;
         do{
-            c = s[endIndex++];
+            c = lowerCaseFileName[endIndex++];
         }while(c != '\0' && !mediaLibrary_isCharcterWordDelimiter(c));
 
         if(endIndex == 1){
@@ -458,15 +459,15 @@ ERROR_CODE mediaLibrary_extractShowName(EpisodeInfo* info, LinkedList* shows, ch
         }
 
         if(endIndex > 2){
-            char* chunk = alloca(sizeof(*chunk) * endIndex);
-            memcpy(chunk, s, endIndex - 1);
-            chunk[endIndex - 1] = '\0';
+            char* wordChunk = alloca(sizeof(*wordChunk) * endIndex);
+            memcpy(wordChunk, lowerCaseFileName, endIndex - 1);
+            wordChunk[endIndex - 1] = '\0';
 
-            linkedList_add(&wordList, chunk);
+            linkedList_add(&wordList, wordChunk);
         }
 
 label_continue:
-        s += endIndex;
+        lowerCaseFileName += endIndex;
         
         remainingCharacter -= endIndex;
         endIndex = 0;
@@ -478,6 +479,7 @@ label_continue:
 
     uint_fast32_t maxHits = 0;
     Show* mostLikely = NULL;
+    LinkedListIterator wordListIterator;
     while(LINKED_LIST_ITERATOR_HAS_NEXT(&showIterator)){
         Show* show = LINKED_LIST_ITERATOR_NEXT(&showIterator);
 
@@ -485,14 +487,13 @@ label_continue:
         strncpy(lowerChaseShowName, show->name, show->nameLength + 1);
         util_toLowerChase(lowerChaseShowName);
 
-        LinkedListIterator wordListIterator;
         linkedList_initIterator(&wordListIterator, &wordList);
 
         uint_fast32_t hits = 0;
         while(LINKED_LIST_ITERATOR_HAS_NEXT(&wordListIterator)){
-            char* chunk = LINKED_LIST_ITERATOR_NEXT(&wordListIterator);
+            char* wordChunk = LINKED_LIST_ITERATOR_NEXT(&wordListIterator);
 
-            if(strstr(lowerChaseShowName, chunk) != NULL){
+            if(strstr(lowerChaseShowName, wordChunk) != NULL){
                 hits++;
             }
         }
@@ -514,7 +515,8 @@ label_continue:
         strncpy(info->showName, mostLikely->name, mostLikely->nameLength + 1);
         info->showNameLength = mostLikely->nameLength;
 
-        char* lowerCaseFileName = alloca(sizeof(*s) * (fileNameLength + 1));
+        // Remove show name from file name.
+        char* lowerCaseFileName = alloca(sizeof(*lowerCaseFileName) * (fileNameLength + 1));
         strncpy(lowerCaseFileName, fileName, fileNameLength + 1);
         util_toLowerChase(lowerCaseFileName);
 
