@@ -246,13 +246,13 @@ local ERROR_CODE consoleClient_selectYesNo(bool*);
     // --import.
     if(argumentParser_contains(&parser, &argumentImport)){ 
         ERROR_CODE error;
-        if(argumentImport.numValues == 0){
+        if(argumentImport.numValues == 1){
             // Import from path.
             if((error = consoleClient_import(remoteHost, remotePort, libraryDirectory, argumentImport.values[0], false)) != ERROR_NO_ERROR){
                 UTIL_LOG_CONSOLE_(LOG_ERR, "ERROR: Failed to import from directory: '%s'. [%s]", argumentImport.values[0], util_toErrorString(error));
             }
         }else{
-            if(argumentImport.numValues != 1){
+            if(argumentImport.numValues == 0){
                 if(PROPERTY_IS_SET(importDirectory)){
                     // Import from importDirectory_setting.
                     if((error = consoleClient_import(remoteHost, remotePort, libraryDirectory, (char*) importDirectory->buffer, false)) != ERROR_NO_ERROR){
@@ -274,13 +274,13 @@ local ERROR_CODE consoleClient_selectYesNo(bool*);
     // --batch.
     if(argumentParser_contains(&parser, &argumentBatchImport)){ 
         ERROR_CODE error;
-        if(argumentBatchImport.numValues == 0){
+        if(argumentBatchImport.numValues == 1){
             // Import from path.
             if((error = consoleClient_import(remoteHost, remotePort, libraryDirectory, argumentBatchImport.values[0], true)) != ERROR_NO_ERROR){
                 UTIL_LOG_CONSOLE_(LOG_ERR, "ERROR: Failed to import from directory: '%s'. [%s]", argumentBatchImport.values[0], util_toErrorString(error));
             }
         }else{
-            if(argumentBatchImport.numValues != 1){
+            if(argumentBatchImport.numValues == 0){
                 if(PROPERTY_IS_SET(importDirectory)){
                     // Import from importDirectory_setting.
                     if((error = consoleClient_import(remoteHost, remotePort, libraryDirectory, (char*) importDirectory->buffer, true)) != ERROR_NO_ERROR){
@@ -634,6 +634,8 @@ ERROR_CODE consoleClient_import(Property* remoteHost, Property* remotePort, Prop
 
     if(LINKED_LIST_IS_EMPTY(&infos)){
         UTIL_LOG_CONSOLE_(LOG_INFO, "No files recorgnised for import in '%s'.", directory);
+
+        goto label_freeFiles;
     }
 
     while(LINKED_LIST_ITERATOR_HAS_NEXT(&it)){
@@ -672,7 +674,7 @@ ERROR_CODE consoleClient_import(Property* remoteHost, Property* remotePort, Prop
         }else{
             i++;
             
-            UTIL_LOG_CONSOLE_(LOG_INFO, "Successfully added '%s'. to library. %" PRIdFAST64 "\\%" PRIdFAST64 ".", info->fileName, i, entries);
+            UTIL_LOG_CONSOLE_(LOG_INFO, " %" PRIdFAST64 "/%" PRIdFAST64 " Successfully added '%s'. to library.",  i, entries, info->fileName);
         }
 
         mediaLibrary_freeEpisodeInfo(info);
