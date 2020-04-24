@@ -1242,7 +1242,7 @@ inline ERROR_CODE mediaLibrary_initEpisodeInfo_(EpisodeInfo* info, char* filePat
     return ERROR(ERROR_NO_ERROR);
 }
 
-inline void mediaLibrary_fillEpisodeInfo(Show* show, Season* season, Episode* episode, EpisodeInfo* info){
+inline void mediaLibrary_fillEpisodeInfo(EpisodeInfo* info, Show* show, Season* season, Episode* episode){
     info->showName = show->name;
     info->showNameLength = show->nameLength;
     info->season = season->number;

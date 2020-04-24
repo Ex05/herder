@@ -60,7 +60,7 @@ local ERROR_CODE consoleClient_extractShowInfo(Property*, Property*, EpisodeInfo
 
 local ERROR_CODE consoleClient_rename(Property*, Property*, Property*);
 
-local ERROR_CODE consoleClient_renameEpisode(Property*, Property*, const char*, uint_fast64_t, const char*, const uint_fast64_t);
+local ERROR_CODE consoleClient_renameEpisode(Property*, Property*, Property*, const char*, uint_fast64_t, const char*, const uint_fast64_t);
 
 local ERROR_CODE consoleClient_remove(Property*, Property*, Property*);
 
@@ -324,7 +324,7 @@ local ERROR_CODE consoleClient_selectYesNo(bool*);
         }else{
             if(CONSOLE_CLIENT_REMOTE_HOST_PROPERTIES_SET()){
                 ERROR_CODE error;
-                if((error = consoleClient_renameEpisode(remoteHost, remotePort, argumentRenameEpisode.values[0], argumentRenameEpisode.valueLengths[0], argumentRenameEpisode.values[1], argumentRenameEpisode.valueLengths[1])) != ERROR_NO_ERROR){
+                if((error = consoleClient_renameEpisode(remoteHost, remotePort, libraryDirectory, argumentRenameEpisode.values[0], argumentRenameEpisode.valueLengths[0], argumentRenameEpisode.values[1], argumentRenameEpisode.valueLengths[1])) != ERROR_NO_ERROR){
                     UTIL_LOG_CONSOLE_(LOG_ERR, "Failed to rename Episode. '%s'", util_toErrorString(error));
                 }
             }else{
@@ -434,7 +434,7 @@ local ERROR_CODE consoleClient_selectYesNo(bool*);
             if((error = propertyFile_createAndSetDirectoryProperty(&properties, &importDirectory, CONSOLE_CLIENT_PROPERTY_IMPORT_DIRECTORY_NAME, argumentSetImportDirectory.values[0], argumentSetImportDirectory.valueLengths[0])) != ERROR_NO_ERROR){
                 UTIL_LOG_CONSOLE(LOG_ERR, util_toErrorString(error));
             }else{
-                UTIL_LOG_CONSOLE_(LOG_INFO, "Successfully set '%s' to '%s'", CONSOLE_CLIENT_PROPERTY_IMPORT_DIRECTORY_NAME, argumentSetImportDirectory.values[0]);
+                UTIL_LOG_CONSOLE_(LOG_INFO, "Successfully set '%s' to '%s'", CONSOLE_CLIENT_PROPERTY_IMPORT_DIRECTORY_NAME, (char*) importDirectory->buffer);
             }
         }
 
@@ -518,8 +518,6 @@ label_printHelp:
     consoleClient_printHelp();
 
 label_freeProperties:
-    propertyFile_free(&properties);
-
     if(PROPERTY_IS_SET(libraryDirectory)){
         propertyFile_freeProperty(libraryDirectory);
 
@@ -543,6 +541,8 @@ label_freeProperties:
 
         free(importDirectory);
     }
+
+    propertyFile_free(&properties);
 
 label_free:
 	argumentParser_free(&parser);
@@ -1020,8 +1020,14 @@ label_yesNo:
         goto label_freeNewName;
     }
 
-    // Send rename packet.
-    if((error = herder_renameEpisode(remoteHost, remotePort, libraryDirectory, selectedShow, selectedSeason, selectedEpisode, newEpisodeName, newEpisodeNameLength)) != ERROR_NO_ERROR){
+    EpisodeInfo info;
+    if((error = mediaLibrary_initEpisodeInfo(&info)) != ERROR_NO_ERROR){
+        goto label_freeNewName;
+    }
+
+    mediaLibrary_fillEpisodeInfo(&info ,selectedShow, selectedSeason, selectedEpisode);
+
+    if((error = herder_renameEpisode(remoteHost, remotePort, libraryDirectory, &info, newEpisodeName, newEpisodeNameLength)) != ERROR_NO_ERROR){
         UTIL_LOG_CONSOLE_(LOG_ERR, "Server side error, failed to rename episode. [%s]", util_toErrorString(error));
 
         goto label_freeNewName;
@@ -1038,7 +1044,7 @@ label_return:
     return ERROR(error);
 }
 
-local ERROR_CODE consoleClient_renameEpisode(Property* remoteHost, Property* remotePort, const char* oldName, const uint_fast64_t oldNameLength, const char* newName,  const uint_fast64_t newNameLength){
+local ERROR_CODE consoleClient_renameEpisode(Property* remoteHost, Property* remotePort, Property* libraryDirectory, const char* oldName, const uint_fast64_t oldNameLength, const char* newName,  const uint_fast64_t newNameLength){
     ERROR_CODE error;
 
     LinkedList shows;
@@ -1062,10 +1068,11 @@ local ERROR_CODE consoleClient_renameEpisode(Property* remoteHost, Property* rem
         goto label_freeShows;
     }
 
-    UTIL_LOG_CONSOLE_(LOG_DEBUG, "Show: '%s', Season: '%" PRIdFAST16 "', Episode:'%" PRIdFAST16 "' '%s'.", info.showName, info.season, info.episode, info.name);
+    if((error = herder_renameEpisode(remoteHost, remotePort, libraryDirectory, &info, newName, newNameLength)) != ERROR_NO_ERROR){
+        UTIL_LOG_CONSOLE_(LOG_ERR, "Server side error, failed to rename episode. [%s]", util_toErrorString(error));
 
-    // TODO: Actually remove episode.
-    UTIL_LOG_CONSOLE(LOG_CRIT, "Function not implemented.");
+        goto label_freeShows;
+    }
 
     LinkedListIterator it;
 label_freeShows:
@@ -1125,7 +1132,7 @@ label_yesNo:
 
     EpisodeInfo info;
     mediaLibrary_initEpisodeInfo(&info);
-    mediaLibrary_fillEpisodeInfo(selectedShow, selectedSeason, selectedEpisode, &info);
+    mediaLibrary_fillEpisodeInfo(&info, selectedShow, selectedSeason, selectedEpisode);
 
     // Send remove packet.
     if((error = herder_removeEpisode(remoteHost, remotePort, libraryDirectory, &info)) != ERROR_NO_ERROR){

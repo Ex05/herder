@@ -85,7 +85,7 @@ ERROR_CODE mediaLibrary_sortSeasons(Season***, LinkedList*);
 
 ERROR_CODE mediaLibrary_sortEpisodes(Episode***, LinkedList*);
 
-void mediaLibrary_fillEpisodeInfo(Show*, Season*, Episode*, EpisodeInfo*);
+void mediaLibrary_fillEpisodeInfo(EpisodeInfo*, Show*, Season*, Episode*);
 
 ERROR_CODE mediaLibrary_renameEpisode(MediaLibrary*, Show*, Season*, Episode*, char*, const uint_fast64_t);
 

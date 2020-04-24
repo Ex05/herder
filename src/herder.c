@@ -844,7 +844,7 @@ label_unMap:
     return ERROR(error);
 }
 
-ERROR_CODE herder_renameEpisode(Property* remoteHost, Property* remotePort, Property* libraryDirectory, Show* show, Season* season, Episode* episode, char* newEpisodeName, const uint_fast64_t newEpisodeNameLength){
+ERROR_CODE herder_renameEpisode(Property* remoteHost, Property* remotePort, Property* libraryDirectory, EpisodeInfo* info, const char* newEpisodeName, const uint_fast64_t newEpisodeNameLength){
     ERROR_CODE error;
 
     char* host = (char*) remoteHost->buffer;
@@ -870,18 +870,18 @@ ERROR_CODE herder_renameEpisode(Property* remoteHost, Property* remotePort, Prop
     HTTP_ADD_HEADER_FIELD(request, Host, host);
 
     // Show_Name.
-    util_uint64ToByteArray(request.data + request.dataLength, show->nameLength);
+    util_uint64ToByteArray(request.data + request.dataLength, info->nameLength);
     request.dataLength += sizeof(uint64_t);   
 
-    memcpy(request.data + request.dataLength, show->name, show->nameLength + 1);
-    request.dataLength += show->nameLength + 1;
+    memcpy(request.data + request.dataLength, info->showName, info->nameLength + 1);
+    request.dataLength += info->nameLength + 1;
 
     // Season_Number.
-    util_uint16ToByteArray(request.data + request.dataLength, season->number);
+    util_uint16ToByteArray(request.data + request.dataLength, info->season);
     request.dataLength += sizeof(uint16_t);   
 
     // Episode_Number.
-    util_uint16ToByteArray(request.data + request.dataLength, episode->number);
+    util_uint16ToByteArray(request.data + request.dataLength, info->episode);
     request.dataLength += sizeof(uint16_t);   
 
     // New Episode_Name.
@@ -924,14 +924,9 @@ label_unMap:
         UTIL_LOG_ERROR(util_toErrorString(ERROR_FAILED_TO_UNMAP_MEMORY));
     }
 
-    // To use the 'HERDER_CONSTRUCT_RELATIVE_FILE_PATH' macro we need to fill out an episode info struct.
-    EpisodeInfo info;
-    mediaLibrary_initEpisodeInfo(&info);
-    mediaLibrary_fillEpisodeInfo(show, season, episode, &info);
-
     char* path;
     uint_fast64_t pathLength;
-    HERDER_CONSTRUCT_RELATIVE_FILE_PATH(&path, &pathLength, (&info));
+    HERDER_CONSTRUCT_RELATIVE_FILE_PATH(&path, &pathLength, info);
 
     const uint_fast64_t fileDstLength = (libraryDirectory->entry->length - 1) + pathLength + 1;
 
@@ -954,10 +949,10 @@ label_unMap:
     char* oldFileName = util_getFileName(filePath, fileDstLength);
 
     // Build new fileName.
-    const uint_fast64_t newFileNameLength = info.showNameLength + 2/*_*/ + (2 * UTIL_UINT16_STRING_LENGTH) + 3 /*'e'/'s'/'.'*/ + newEpisodeNameLength + info.fileExtensionLength;
+    const uint_fast64_t newFileNameLength = info->showNameLength + 2/*_*/ + (2 * UTIL_UINT16_STRING_LENGTH) + 3 /*'e'/'s'/'.'*/ + newEpisodeNameLength + info->fileExtensionLength;
     char* newFileName = alloca(sizeof(*newFileName) * (newFileNameLength + 1));
     
-    snprintf(newFileName, newFileNameLength, "%s_s%02" PRIdFAST16 "e%02" PRIdFAST16 "_%s.%s", info.showName, info.season, info.episode, newEpisodeName, info.fileExtension);
+    snprintf(newFileName, newFileNameLength, "%s_s%02" PRIdFAST16 "e%02" PRIdFAST16 "_%s.%s", info->showName, info->season, info->episode, newEpisodeName, info->fileExtension);
 
     util_replaceAllChars(newFileName, ' ', '_');
 

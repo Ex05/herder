@@ -635,6 +635,10 @@ inline ERROR_CODE propertyFile_createProperty(PropertyFile* properties, Property
                 return ERROR_(ERROR_FAILED_TO_REMOVE_PROPERTY, "'%s'", propertyName);
             }
 
+            propertyFile_freeProperty(*property);
+
+            free(*property);
+
             if(propertyFile_addProperty(properties, property, propertyName, size) != ERROR_NO_ERROR){
                 return ERROR_(ERROR_FAILED_TO_ADD_PROPERTY, "'%s'", propertyName);
             }

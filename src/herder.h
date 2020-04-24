@@ -2,6 +2,7 @@
 #define HERDER_H
 
 #include "util.h"
+#include "mediaLibrary.h"
 
 #define HERDER_CONSTRUCT_RELATIVE_FILE_PATH(path, stringLength, episodeInfo) \
     char* _noWhiteSpaceShowName = alloca(sizeof(*_noWhiteSpaceShowName) * ((episodeInfo)->showNameLength + 1)); \
@@ -28,6 +29,6 @@ ERROR_CODE herder_pullShowInfo(Property*, Property*, Show*);
 
 ERROR_CODE herder_add(Property*, Property*, Property*, EpisodeInfo*);
 
-ERROR_CODE herder_renameEpisode(Property*, Property*, Property*, Show*, Season*, Episode*, char*, const uint_fast64_t);
+ERROR_CODE herder_renameEpisode(Property*, Property*, Property*, EpisodeInfo*, const char*, const uint_fast64_t);
 
 #endif
