@@ -742,6 +742,25 @@ TEST_TEST_FUNCTION(util_getBaseDirectory){
 
     // Test_3.
     {
+        char url[] = "/git.html";
+        
+        char* baseDirectory;
+        uint_fast64_t baseDirectoryLength;
+        if((error = util_getBaseDirectory(&baseDirectory, &baseDirectoryLength, url, strlen(url))) != ERROR_NO_ERROR){
+            return TEST_FAILURE("Failed to get base directory of path: '%s'. '%s'.", url, util_toErrorString(error));
+        }
+
+        if(baseDirectoryLength != 1){
+            return TEST_FAILURE("Base directory length '%" PRIdFAST64 "' != '%d'", baseDirectoryLength, 1);
+        }
+
+        if(strncmp("/", baseDirectory, baseDirectoryLength) != 0){
+            return TEST_FAILURE("'util_getBaseDirectory' '%s' != '%s'.", baseDirectory, "/");
+        }
+    }
+
+    // Test_4.
+    {
         char url[] = "/img/img_001.png";
 
         char* baseDirectory;

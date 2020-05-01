@@ -62,7 +62,7 @@ SERVER_CONTEXT_HANDLER(server_defaultContextHandler){
         fileLocationLength = request->urlLength;
         
         fileLocation = alloca(sizeof(*fileLocation) * (fileLocationLength + 1));
-    memcpy(fileLocation, request->requestURL, fileLocationLength);
+        memcpy(fileLocation, request->requestURL, fileLocationLength);
         fileLocation[fileLocationLength] = '\0';
     }
 
@@ -714,7 +714,7 @@ label_return:
                 if((error = propertyFile_createAndSetDirectoryProperty(&properties, &serverRootDirectory, SERVER_PROPERTY_SERVER_ROOT_DIRECTORY_NAME, argumentSetServerRootDirectory.values[0], argumentSetServerRootDirectory.valueLengths[0])) != ERROR_NO_ERROR){
                     UTIL_LOG_CONSOLE(LOG_ERR, util_toErrorString(error));
                 }else{
-                    UTIL_LOG_CONSOLE_(LOG_INFO, "Successfully set '%s' to '%s'", SERVER_PROPERTY_SERVER_ROOT_DIRECTORY_NAME, argumentSetServerRootDirectory.values[0]);
+                    UTIL_LOG_CONSOLE_(LOG_INFO, "Successfully set '%s' to '%s'", SERVER_PROPERTY_SERVER_ROOT_DIRECTORY_NAME, (char*) serverRootDirectory->buffer);
                 }
 
                 goto label_free;
@@ -1056,12 +1056,12 @@ inline ERROR_CODE server_getContext(HerderServer* server, ContextHandler** conte
     while(LINKED_LIST_ITERATOR_HAS_NEXT(&it)){
         Context* context = LINKED_LIST_ITERATOR_NEXT(&it);
 
-        // UTIL_LOG_CONSOLE_(LOG_DEBUG, "'%s' - [%" PRIuFAST64 "] :'%s' + '%c'", baseDirectory, baseDirectoryLength, context->location, context->location[context->locationLength]);
+        if(strncmp(baseDirectory, context->location, baseDirectoryLength) == 0){
+            if(context->location[baseDirectoryLength + 1] == '\0'){
+                *contextHandler = context->contextHandler;
 
-        if(strncmp(baseDirectory, context->location, context->locationLength + 1) == 0){
-            *contextHandler = context->contextHandler;
-
-            return ERROR(ERROR_NO_ERROR);
+                return ERROR(ERROR_NO_ERROR);
+            }
         }
     }
 

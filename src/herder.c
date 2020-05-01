@@ -466,7 +466,7 @@ ERROR_CODE herder_extractShowInfo(Property* remoteHost, Property* remotePort, Ep
 
     const char url[] = "/extractShowInfo";
 
-    if((error = util_getFileExtension(&episodeInfo->fileExtension, &episodeInfo->fileExtensionLength, episodeInfo->path, episodeInfo->pathLength)) != ERROR_NO_ERROR){
+    if((error = util_getFileExtension(&episodeInfo->fileExtension,(uint_fast64_t*) &episodeInfo->fileExtensionLength, episodeInfo->path, episodeInfo->pathLength)) != ERROR_NO_ERROR){
         if(error == ERROR_INVALID_STRING){
             error = ERROR_INVALID_FILE_EXTENSION;
         }

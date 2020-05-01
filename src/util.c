@@ -579,7 +579,7 @@ inline ERROR_CODE util_getBaseDirectory(char** baseDirectory, uint_fast64_t* bas
         }else{
             // URL: /img/img_001.png
             *baseDirectory = url + firstSeperator;
-            *baseDirectoryLength = (secondSeperator - firstSeperator) + 1/*Include the /*/;
+            *baseDirectoryLength = (secondSeperator - firstSeperator) + 1/*Include the second '/'*/;
 
             return ERROR(ERROR_NO_ERROR);
         }

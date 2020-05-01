@@ -53,13 +53,15 @@ preprocess(){
     pushd src > /dev/null
 
     if hash time 2>/dev/null; then
-        printf "Preprocess:\n"
+        printf "Preprocessing:\n"
 
         \time --format '\tUser time: %Us\n\tSystem time: %Ss\n\tCPU utilization: %P' $1 $2 -o ../$3/$4.i $4.c
     else
-        printf "Preprocess...\n"
+        printf "Preprocessing...\n"
 
         $1 $2 -o ../$3/$4.i $4.c
+
+        printf "Install the 'time' package to get a timing information about the compilation process."
     fi
 
     popd > /dev/null
@@ -76,7 +78,9 @@ assemble(){
     else
         printf "Assembling...\n"
 
-        $1 $2 -o ../$3/$4.s ../$3/$4.i    
+        $1 $2 -o ../$3/$4.s ../$3/$4.i
+
+        printf "Install the 'time' package to get a timing information about the compilation process."
     fi
 
     popd > /dev/null
@@ -88,13 +92,15 @@ compile(){
 
     # Compile.
     if hash time 2>/dev/null; then
-        printf "Compile:\n"
+        printf "Compiling:\n"
 
          \time --format '\tUser time: %Us\n\tSystem time: %Ss\n\tCPU utilization: %P' $1 $2 -o ../$3/$5 $4
     else
-        printf "Compile...\n"
+        printf "Compiling...\n"
 
         $1 $2 -o ../$3/$5 $4
+
+        printf "Install the 'time' package to get a timing information about the compilation process."
     fi
 
     popd > /dev/null
@@ -106,13 +112,15 @@ link(){
     
     # Link.
     if hash time 2>/dev/null; then
-        printf "Link:\n"
+        printf "Linking:\n"
 
         \time --format '\tUser time: %Us\n\tSystem time: %Ss\n\tCPU utilization: %P' $1 $2 $3 -o ../$6 ../$4/$5.o
     else
-        printf "Link...\n"
+        printf "Linking...\n"
 
         $1 $2 $3 -o ../$6 ../$4/$5.o
+
+        printf "Install the 'time' package to get a timing information about the compilation process."
     fi
     
     popd >/dev/null
