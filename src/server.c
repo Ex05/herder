@@ -110,8 +110,9 @@ local THREAD_POOL_RUNNABLE_(server_run, Job, job){
     HTTP_Request request;
     http_initRequest_(&request, buffer, HTTP_PROCESSING_BUFFER_SIZE, 0);
 
-    if(http_receiveRequest(&request, client->sockFD) != ERROR_NO_ERROR){
-        UTIL_LOG_ERROR("Failed to receive HTTP request.");
+    ERROR_CODE error;
+    if((error = http_receiveRequest(&request, client->sockFD)) != ERROR_NO_ERROR){
+        UTIL_LOG_ERROR_("Failed to receive HTTP request. '%s' [%s].", request.requestURL, util_toErrorString(error));
 
         goto label_failedToRecevieHTTP_Request;
     }  
@@ -126,7 +127,6 @@ local THREAD_POOL_RUNNABLE_(server_run, Job, job){
         server_constructErrorPage(client->server, &request, &response, _400_BAD_REQUEST);
     }
 
-    ERROR_CODE error;
     if(contextHandler == NULL){
         server_constructErrorPage(client->server, &request, &response, _401_UNAUTHORIZED);
     }else{
@@ -1047,7 +1047,7 @@ inline ERROR_CODE server_getContext(HerderServer* server, ContextHandler** conte
     char* baseDirectory;
     uint_fast64_t baseDirectoryLength;
     if(util_getBaseDirectory(&baseDirectory, &baseDirectoryLength, request->requestURL, request->urlLength) != ERROR_NO_ERROR){
-        return ERROR_(ERROR_INVALID_REQUEST_URL, "Failed to find baseDirectory URL:'%s'.",request->requestURL);
+        return ERROR_(ERROR_INVALID_REQUEST_URL, "Failed to find baseDirectory URL:'%s'.", request->requestURL);
     }
     
     LinkedListIterator it;
@@ -1057,7 +1057,7 @@ inline ERROR_CODE server_getContext(HerderServer* server, ContextHandler** conte
         Context* context = LINKED_LIST_ITERATOR_NEXT(&it);
 
         if(strncmp(baseDirectory, context->location, baseDirectoryLength) == 0){
-            if(context->location[baseDirectoryLength + 1] == '\0'){
+            if(context->location[baseDirectoryLength] == '\0'){
                 *contextHandler = context->contextHandler;
 
                 return ERROR(ERROR_NO_ERROR);
