@@ -477,6 +477,19 @@ inline void util_append(char* a, const uint_fast64_t lengthA, char* b, const uin
     strncat(a, b, lengthB - (lengthA - lengthB));
 }
 
+inline int util_hash(uint8_t* s, uint_fast64_t length){
+    int hash = 0;
+
+    int c;
+    while (length-- != 0){
+        c = *s++;
+
+        hash = c + (hash << 6) + (hash << 16) - hash;
+    }
+
+    return hash;
+}
+
 // sdbm - hash implementation. see(http://www.cse.yorku.ca/~oz/hash.html)
 inline int util_hashString(const char* s, uint_fast64_t length){
     int hash = 0;

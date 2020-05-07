@@ -36,6 +36,7 @@
 #define CONSOLE_CLIENT_USAGE_ARGUMENT_SET_REMOTE_HOST "--setRemoteHost <port>"
 #define CONSOLE_CLIENT_USAGE_ARGUMENT_SET_REMOTE_PORT "--setRemotePort <port>"
 #define CONSOLE_CLIENT_USAGE_ARGUMENT_SHOW_SETTINGS "--showSettings"
+#define CONSOLE_CLIENT_USAGE_ARGUMENT_PLAY "-p, --play"
 
 #define CONSOLE_CLIENT_PROPERTY_IMPORT_DIRECTORY_NAME "importDirectory"
 #define CONSOLE_CLIENT_PROPERTY_REMOTE_HOST_NAME "remoteHost"
@@ -106,6 +107,7 @@ local ERROR_CODE consoleClient_selectYesNo(bool*);
     ARGUMENT_PARSER_ADD_ARGUMENT(SetRemoteHost, 1, "--setRemoteHost");
     ARGUMENT_PARSER_ADD_ARGUMENT(SetRemoteHostPort, 1, "--setRemotePort");
     ARGUMENT_PARSER_ADD_ARGUMENT(ShowSettings, 1, "--showSettings");
+    ARGUMENT_PARSER_ADD_ARGUMENT(Play, 1, "--play");
 
     if((error = argumentParser_parse(&parser, argc, argv)) != ERROR_NO_ERROR){
         if(error == ERROR_NO_VALID_ARGUMENT){
@@ -524,6 +526,25 @@ local ERROR_CODE consoleClient_selectYesNo(bool*);
             }
         }
         
+        goto label_freeProperties;
+    }
+
+    // --play.
+    if(argumentParser_contains(&parser, &argumentPlay)){ 
+        if(argumentShowSettings.numValues != 0){
+            UTIL_LOG_CONSOLE(LOG_INFO, "Invalid command. Usage: " CONSOLE_CLIENT_USAGE_ARGUMENT_SHOW_SETTINGS);
+        }else{
+            system("vlc \"file:///home/ex05/herder/library/American_Dad/American_Dad%20-%20Season_01/American_Dad_s01e01_Pilot.avi\" --play-and-exit");
+
+            // Pull all episodes of given show.
+
+            // If we can get feedback on which episode is playing.
+                // Create playlist and play via vlc.
+                // In Playlist directory save last completly played episode
+            // Else play each episode individually. (Might not play nice with reopening of the window?)
+                // In Playlist directory save last completly played episode
+        }
+
         goto label_freeProperties;
     }
 

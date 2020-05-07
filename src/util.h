@@ -281,6 +281,8 @@ void util_replaceAllChars(char*, const char, const char);
 
 void util_append(char*, const uint_fast64_t, char*, const uint_fast64_t);
 
+int util_hash(uint8_t*, uint_fast64_t);
+
 int util_hashString(const char*, uint_fast64_t);
 
 ERROR_CODE util_createDirectory(const char*);

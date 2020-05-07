@@ -948,6 +948,7 @@ inline ERROR_CODE server_getFile(HerderServer* server, CacheObject** cacheObject
         memcpy(fileLocation + server->rootDirectoryLength, symbolicFileLocation + 1, symbolicFileLocationLength - 1);
         fileLocation[fileLocationLength] = '\0';
 
+        __UTIL_SUPPRESS_NEXT_ERROR_OF_TYPE__(ERROR_FAILED_TO_RETRIEV_FILE_INFO);
         error = cache_load(&server->cache, cacheObject, fileLocation, fileLocationLength, symbolicFileLocation, symbolicFileLocationLength);
    }
 

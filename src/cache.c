@@ -82,6 +82,8 @@ inline void cache_free(Cache* cache){
 }
 
 inline ERROR_CODE cache_get(Cache* cache, CacheObject** cacheObject, char* symbolicFileLocation, const uint_fast64_t symbolicFileLocationLength){    
+    ERROR_CODE error = ERROR_NO_ERROR;
+
     sem_wait(&cache->activeAcesses);
 
     LinkedListIterator it;
@@ -91,7 +93,58 @@ inline ERROR_CODE cache_get(Cache* cache, CacheObject** cacheObject, char* symbo
         CacheObject* o =  LINKED_LIST_ITERATOR_NEXT(&it);
 
         if(strncmp(symbolicFileLocation, o->symbolicFileLocation, symbolicFileLocationLength > o->symbolicFileLocationLength ? symbolicFileLocationLength : o->symbolicFileLocationLength) == 0){
+            // TODO: Research if registering a "file/directory watch/register/hook??" is reliable under linux. (2020.05.01 - jan)
+            // if(o->timeLastHit.tv_sec > 180 || (o->timeLastHit.tv_sec > 30 && o->hitsSizeLastCheck == 0)){
+            if(true){
+                struct stat fileInfo;
+    
+                if(lstat(o->fileLocation, &fileInfo) == -1){
+                    return ERROR_(ERROR_FAILED_TO_RETRIEV_FILE_INFO, "File:'%s'", o->fileLocation);
+                }
+
+                if(!S_ISREG(fileInfo.st_mode)){
+                    return ERROR(ERROR_FAILED_TO_RETRIEV_FILE_INFO);
+                }
+                
+                const uint_fast64_t fileSize = fileInfo.st_size;
+
+                if(fileSize != o->size){
+                    UTIL_LOG_CONSOLE_(LOG_DEBUG, "[Cache] Reloading file: '%s'.", o->symbolicFileLocation);
+
+                    if((error = linkedList_remove(&cache->elements, o)) != ERROR_NO_ERROR){
+                        goto label_return;
+                    }
+
+                    cache->currentSize -= o->size;
+
+                    char* fileLocation = malloc(sizeof(*fileLocation) * (o->fileLocationLength + 1));
+                    strncpy(fileLocation, o->fileLocation, o->fileLocationLength + 1);
+
+                    char* symbolicFileLocation = malloc(sizeof(*symbolicFileLocation) * (o->symbolicFileLocationLength + 1));
+                    strncpy(symbolicFileLocation, o->symbolicFileLocation, o->symbolicFileLocationLength + 1);
+
+                    free(o->fileLocation);
+                    free(o->symbolicFileLocation);
+                    free(o->data);
+
+                    sem_post(&cache->activeAcesses);
+
+                    if((error = cache_load(cache, cacheObject, fileLocation, o->fileLocationLength, symbolicFileLocation, o->symbolicFileLocationLength)) != ERROR_NO_ERROR){
+                        goto label_return;
+                    }
+
+                    free(o);
+
+                    return ERROR(error);
+                }
+            }
+
             *cacheObject = o;
+
+            o->totalHits++;
+            o->hitsSizeLastCheck++;
+
+            clock_gettime(CLOCK_MONOTONIC, &o->timeLastHit);
 
             goto label_return;
         }
@@ -100,7 +153,7 @@ inline ERROR_CODE cache_get(Cache* cache, CacheObject** cacheObject, char* symbo
 label_return:
     sem_post(&cache->activeAcesses);
 
-    return ERROR(ERROR_NO_ERROR);
+    return ERROR(error);
 }
 
 inline ERROR_CODE cache_load(Cache* cache, CacheObject** cacheObject, char* fileLocation, const uint_fast64_t fileLocationLength, char* symbolicFileLocation, const uint_fast64_t symbolicFileLocationLength){

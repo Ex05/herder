@@ -21,14 +21,15 @@ typedef struct{
 typedef struct{
     uint8_t* data;
     uint_fast64_t size;
+    struct timespec timeCheckin;
+    struct timespec timeLastHit;
+    uint32_t totalHits;
+    uint32_t hitsSizeLastCheck;
     uint_fast64_t fileLocationLength;
     uint_fast64_t symbolicFileLocationLength;
     uint_fast64_t fileExtensionOffset;
-    uint_fast64_t totalHits;
     char* fileLocation;
     char* symbolicFileLocation;
-    struct timespec timeCheckin;
-    struct timespec timeLastHit;
 }CacheObject;
 
 ERROR_CODE cache_init(Cache*, const uint_fast64_t, const uint_fast64_t);
