@@ -48,10 +48,91 @@ local ERROR_CODE server_getFile(HerderServer*, CacheObject**, char*, const uint_
 local void server_daemonize(const char* workingDirectory);
 
 local HerderServer server;
+
+static void             /* Display information from inotify_event structure */
+ displayInotifyEvent(struct inotify_event *i)
+ {
+   //  printf("    wd =%2d; ", i->wd);
+     if (i->cookie > 0)
+         printf("cookie =%4d; ", i->cookie);
  
+/*      printf("mask = ");
+     if (i->mask & IN_ACCESS)        printf("IN_ACCESS ");
+     if (i->mask & IN_ATTRIB)        printf("IN_ATTRIB ");
+     if (i->mask & IN_CLOSE_NOWRITE) printf("IN_CLOSE_NOWRITE ");
+     if (i->mask & IN_CLOSE_WRITE)   printf("IN_CLOSE_WRITE ");
+     if (i->mask & IN_CREATE)        printf("IN_CREATE ");
+     if (i->mask & IN_DELETE)        printf("IN_DELETE ");
+     if (i->mask & IN_DELETE_SELF)   printf("IN_DELETE_SELF ");
+     if (i->mask & IN_IGNORED)       printf("IN_IGNORED ");
+     if (i->mask & IN_ISDIR)         printf("IN_ISDIR ");
+     if (i->mask & IN_MODIFY)        printf("IN_MODIFY ");
+     if (i->mask & IN_MOVE_SELF)     printf("IN_MOVE_SELF ");
+     if (i->mask & IN_MOVED_FROM)    printf("IN_MOVED_FROM ");
+     if (i->mask & IN_MOVED_TO)      printf("IN_MOVED_TO ");
+     if (i->mask & IN_OPEN)          printf("IN_OPEN ");
+     if (i->mask & IN_Q_OVERFLOW)    printf("IN_Q_OVERFLOW ");
+     if (i->mask & IN_UNMOUNT)       printf("IN_UNMOUNT ");
+     printf("\n");
+ 
+     if (i->len > 0)
+     printf("        name = %s\n", i->name); */
+ }
+
+THREAD_POOL_RUNNABLE(server_inotifyWatch){
+    char buffer[4096] __attribute__ ((aligned(__alignof__(struct inotify_event))));;
+
+    int fileDescriptor;    
+    if((fileDescriptor = inotify_init()) == -1){
+        UTIL_LOG_ERROR_("Failed to initialise 'inotify'. [%s]", strerror(errno));
+
+        return NULL;
+    }
+
+    // For each subdirectory of the 'www' directory in 'server_workingDirectory' add an 'inotify_watch'.
+    
+    int watchDescriptor;
+    if((watchDescriptor = inotify_add_watch(fileDescriptor, "/tmp", IN_CREATE | IN_DELETE | IN_DELETE_SELF| IN_MOVE_SELF | IN_MOVED_FROM | IN_MOVED_TO)) == -1){
+        UTIL_LOG_ERROR_("Failed to add watch to directory '%s'. [%s]","/tmp", strerror(errno));
+
+        return NULL;
+    }
+
+    while(true){
+        const ssize_t length = read(fileDescriptor, buffer, sizeof(buffer));
+
+        if(length == -1 && errno != EAGAIN){
+            UTIL_LOG_ERROR_("Failed to read from 'inotify' event buffer for '%s'. [%s]","/tmp", strerror(errno));
+
+            return NULL;
+        }
+        
+        // End of file.
+        if(length == 0){
+            break;
+        }
+
+        char* eventPointer = buffer;
+        while(eventPointer < buffer + length){
+             struct inotify_event * event = (struct inotify_event *) eventPointer;
+             displayInotifyEvent(event);
+ 
+             eventPointer += sizeof(*event) + event->len;
+         }
+    }
+
+    inotify_rm_watch(fileDescriptor, watchDescriptor);
+
+    close(fileDescriptor);
+
+    return NULL;
+}
+
 SERVER_CONTEXT_HANDLER(server_defaultContextHandler){
     uint_fast64_t fileLocationLength;
     char* fileLocation;
+
+    ERROR_CODE error;
     if(request->urlLength == 1 && request->requestURL[0] == '/'){
         fileLocationLength = 11/*/index.html*/;
         fileLocation = alloca(sizeof(*fileLocation) * (11/*/index.html*/ + 1));
@@ -59,18 +140,23 @@ SERVER_CONTEXT_HANDLER(server_defaultContextHandler){
         memcpy(fileLocation, "/index.html", 11);
         fileLocation[fileLocationLength] = '\0';
     }else{
+        if(request->urlLength == 0){
+            error = server_constructErrorPage(server, request, response, _404_NOT_FOUND);
+
+            return ERROR(error);
+        }
+
         fileLocationLength = request->urlLength;
-        
+         
         fileLocation = alloca(sizeof(*fileLocation) * (fileLocationLength + 1));
         memcpy(fileLocation, request->requestURL, fileLocationLength);
         fileLocation[fileLocationLength] = '\0';
     }
 
     CacheObject* cacheObject;
-    ERROR_CODE error;
     if((error = server_getFile(server, &cacheObject, fileLocation, fileLocationLength)) != ERROR_NO_ERROR){
         if(error == ERROR_FAILED_TO_RETRIEV_FILE_INFO){
-            error = server_constructErrorPage(server, request, response, _404_NOT_FOUND);
+            error = server_constructErrorPage(server, request, response, _400_BAD_REQUEST);
 
             return ERROR(error);
         }else{
@@ -870,7 +956,7 @@ ERROR_CODE server_init(HerderServer* server, const char* rootDirectory, const ui
     const int_fast32_t numAvailableCores = util_getNumAvailableProcessorCores();
     const int_fast32_t numThreads = numAvailableCores * 12;
         
-    if((error = threadPool_init(&server->threadPool, numThreads)) != ERROR_NO_ERROR){
+    if((error = threadPool_init(&server->threadPool, numThreads + 1/* inotify watch thread for 'www' directory. */)) != ERROR_NO_ERROR){
         return ERROR(error);
     }
 
@@ -937,6 +1023,8 @@ inline ERROR_CODE server_getFile(HerderServer* server, CacheObject** cacheObject
     }
 
     if(*cacheObject == NULL){
+        UTIL_LOG_CONSOLE_(LOG_DEBUG, "File: '%s'.", symbolicFileLocation);
+
         const uint_fast64_t fileLocationLength = server->rootDirectoryLength + symbolicFileLocationLength - 1;
         
         char* fileLocation = malloc(sizeof(*fileLocation) * fileLocationLength + 1);
@@ -974,6 +1062,8 @@ inline void server_freeContext(Context* context){
 }
 
 ERROR_CODE server_start(HerderServer* server){
+    threadPool_run(&server->threadPool, server_inotifyWatch, NULL);
+
     while(server->alive){
         Client* client = malloc(sizeof(*client));
         if(client == NULL){
@@ -1174,9 +1264,9 @@ inline void server_daemonize(const char* workingDirectory){
         UTIL_LOG_ERROR("Failed to change working directory."); 
     }
 
-    int_fast32_t fd;
-    for (fd = sysconf(_SC_OPEN_MAX); fd >= 0; fd--){
-        close(fd);
+    int_fast32_t fileDescriptor;
+    for (fileDescriptor = sysconf(_SC_OPEN_MAX); fileDescriptor >= 0; fileDescriptor--){
+        close(fileDescriptor);
     }
 
     openlog(SERVER_DAEMON_NAME, LOG_PID | LOG_NOWAIT, LOG_DAEMON);

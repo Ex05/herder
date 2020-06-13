@@ -10,6 +10,7 @@
 
 #include <sys/un.h>
 #include <netinet/in.h>
+#include <sys/inotify.h>
 
 typedef struct {
     int sockFD;

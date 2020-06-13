@@ -55,8 +55,6 @@ local ERROR_CODE consoleClient_listAllShows(Property*, Property*);
 
 local ERROR_CODE consoleClient_printShowInfo(Property*, Property*, const char*, const uint_fast64_t);
 
-local ERROR_CODE consoleClient_walkDirectory(LinkedList*, const char*);
-
 local ERROR_CODE consoleClient_extractShowInfo(Property*, Property*, EpisodeInfo*, const bool);
 
 local ERROR_CODE consoleClient_rename(Property*, Property*, Property*);
@@ -673,7 +671,7 @@ ERROR_CODE consoleClient_import(Property* remoteHost, Property* remotePort, Prop
         goto label_return;
     }
 
-    if((error = consoleClient_walkDirectory(&infos, directory)) != ERROR_NO_ERROR){
+    if((error = util_walkDirectory(&infos, directory, UTIL_FILES)) != ERROR_NO_ERROR){
         goto label_return;
     }
 
@@ -958,70 +956,6 @@ label_freeUserInput:
     free(userInput);
 
 label_return:
-    return ERROR(error);
-}
-
-ERROR_CODE consoleClient_walkDirectory(LinkedList* list, const char* directory){
-    ERROR_CODE error = ERROR_NO_ERROR;
-
-    DIR* currentDirectory = opendir(directory);
-    if(currentDirectory == NULL){
-        error = ERROR_FAILED_TO_OPEN_DIRECTORY;
-
-        goto label_closeDir;
-    }
-
-    struct dirent* directoryEntry;
-
-    const uint_fast64_t directoryLength = strlen(directory);
-
-    while((directoryEntry = readdir(currentDirectory)) != NULL){
-        // Avoid reentering current and parent directory.
-        const uint_fast64_t currentEntryLength = strlen(directoryEntry->d_name);
-        if(strncmp(directoryEntry->d_name, ".", currentEntryLength) == 0 || strncmp(directoryEntry->d_name, "..", currentEntryLength) == 0){
-            continue;
-        }
-
-        if(directoryEntry->d_type == DT_DIR){                      
-            const uint_fast64_t directoryPathLength = directoryLength + currentEntryLength + 1;  
-
-            char* directoryPath;
-            directoryPath = alloca(sizeof(*directoryPath) * (directoryPathLength + 1));
-            strncpy(directoryPath, directory, directoryLength + 1);     
-
-            util_append(directoryPath + directoryLength, directoryPathLength - 1 - directoryLength, directoryEntry->d_name, currentEntryLength);        
-            directoryPath[directoryPathLength - 1] = '/';
-            directoryPath[directoryPathLength] = '\0';
-          
-            if((error = consoleClient_walkDirectory(list, directoryPath)) != ERROR_NO_ERROR){
-                goto label_closeDir;
-            }
-        }else{                                
-            const uint_fast64_t pathLength = directoryLength + currentEntryLength; 
-
-            char* path;
-            path = malloc(sizeof(*path) * (pathLength + 1));
-            strncpy(path, directory, directoryLength + 1);     
-
-            util_append(path + directoryLength, pathLength - directoryLength, directoryEntry->d_name, currentEntryLength);        
-            path[pathLength] = '\0';
-
-            EpisodeInfo* info = malloc(sizeof(*info));
-            mediaLibrary_initEpisodeInfo(info);
-            info->path = path;                  
-            info->pathLength = pathLength;
-            info->fileName = path + (pathLength - currentEntryLength);
-            info->fileNameLength = currentEntryLength;
-
-            if((error = linkedList_add(list, info)) !=ERROR_NO_ERROR){
-                goto label_closeDir;
-            }
-        }
-    }
-
-label_closeDir:
-    closedir(currentDirectory);
-        
     return ERROR(error);
 }
 
