@@ -778,6 +778,17 @@ TEST_TEST_FUNCTION(util_getBaseDirectory){
         }
     }
 
+    // Test_5.
+    {
+        char url[] = "check.proxyradar.com:80";
+
+        char* baseDirectory;
+        uint_fast64_t baseDirectoryLength;
+        if((error = util_getBaseDirectory(&baseDirectory, &baseDirectoryLength, url, strlen(url))) != ERROR_INVALID_REQUEST_URL){
+            return TEST_FAILURE("Failed to throw an error for path: '%s'. Expected '%s' buit functiion returned '%s'.", url, util_toErrorString(ERROR_INVALID_REQUEST_URL), util_toErrorString(error));
+        }
+    }
+
     return TEST_SUCCESS;
 }
 
@@ -869,7 +880,7 @@ TEST_TEST_FUNCTION(util_append){
     char a[11] = {'1', '2', '3', '4', '5'};
     char b[] = "67890";
     
-    util_append(a, strlen(a), b, strlen(b));
+    util_append(a, strlen(a), 7b, strlen(b));
 
     if(strncmp(a, "1234567890", 11) != 0){
         return TEST_FAILURE("'util_append' '%s' != '%s'.", a, "1234567890");
@@ -2004,6 +2015,33 @@ TEST_TEST_FUNCTION(server_addContext){
         goto label_free;
     }
 
+    // Test_2.
+    {
+        const char requestURL[] = "check.proxyradar.com:80";
+
+        UTIL_LOG_CONSOLE_(LOG_DEBUG, "Test:'%s'", requestURL);
+
+        http_freeHTTP_Request(&request);
+
+        http_initRequest(&request, requestURL, strlen(requestURL), buffer, 8096, HTTP_VERSION_1_0, REQUEST_TYPE_GET);
+
+        ContextHandler* contextHandler;
+        if((error = server_getContext(&server, &contextHandler, &request)) == ERROR_NO_ERROR){
+            ret = false;
+
+            UTIL_LOG_CONSOLE(LOG_DEBUG, "GET_CONTEXT.");
+
+            goto label_free;
+        }
+
+        if(contextHandler != NULL){
+            ret = false;
+
+            goto label_free;
+        }
+    }
+
+
 label_free:
     http_freeHTTP_Request(&request);    
 
@@ -2204,11 +2242,11 @@ int main(void){
         TEST(herder_constructFilePath);
     TEST_SUIT_END();
 
-/*     TEST_SUIT_BEGIN("server");
+   /* TEST_SUIT_BEGIN("server");
         // Note:(jan) Running the server in valgrind takes to long, probably due to the 'accept' call having to be interrupted in the server loop.
         TEST(server_addContext);
         // Note:(jan) No need to run this, as this was not meant to be an automated test, and needed console output in 'http.c' that is no longer present to be useful.
-        TEST(server_send);
+        // TEST(server_send);
     TEST_SUIT_END(); */
 
     TEST_END();

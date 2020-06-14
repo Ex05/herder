@@ -140,12 +140,6 @@ SERVER_CONTEXT_HANDLER(server_defaultContextHandler){
         memcpy(fileLocation, "/index.html", 11);
         fileLocation[fileLocationLength] = '\0';
     }else{
-        if(request->urlLength == 0){
-            error = server_constructErrorPage(server, request, response, _404_NOT_FOUND);
-
-            return ERROR(error);
-        }
-
         fileLocationLength = request->urlLength;
          
         fileLocation = alloca(sizeof(*fileLocation) * (fileLocationLength + 1));
@@ -199,25 +193,29 @@ local THREAD_POOL_RUNNABLE_(server_run, Job, job){
     ERROR_CODE error;
     if((error = http_receiveRequest(&request, client->sockFD)) != ERROR_NO_ERROR){
         UTIL_LOG_ERROR_("Failed to receive HTTP request. '%s' [%s].", request.requestURL, util_toErrorString(error));
+    }
 
-        goto label_failedToRecevieHTTP_Request;
-    }  
+    UTIL_LOG_CONSOLE_(LOG_DEBUG, "URL:'%s'.", request.requestURL);
 
     HTTP_Response response;
     http_initResponse(&response, buffer, HTTP_PROCESSING_BUFFER_SIZE);
 
-    ContextHandler* contextHandler;
-    // TODO:(jan) Check return value and send correct error page (ERROR_ENTRY_NOT_FOUND vs ERORR_INVALID_URL).
-    __UTIL_SUPPRESS_NEXT_ERROR_OF_TYPE__(ERROR_ENTRY_NOT_FOUND);
-    if(server_getContext(client->server, &contextHandler, &request) != ERROR_NO_ERROR){
-        server_constructErrorPage(client->server, &request, &response, _400_BAD_REQUEST);
-    }
-
-    if(contextHandler == NULL){
-        server_constructErrorPage(client->server, &request, &response, _401_UNAUTHORIZED);
+    if(error != ERROR_NO_ERROR){
+        error = server_constructErrorPage(client->server, &request, &response, _400_BAD_REQUEST);
     }else{
-        if((error = contextHandler(client->server, &request, &response)) != ERROR_NO_ERROR){
-            UTIL_LOG_ERROR(util_toErrorString(error));
+        ContextHandler* contextHandler;
+        // TODO:(jan) Check return value and send correct error page (ERROR_ENTRY_NOT_FOUND vs ERORR_INVALID_URL).
+        __UTIL_SUPPRESS_NEXT_ERROR_OF_TYPE__(ERROR_ENTRY_NOT_FOUND);
+        if(server_getContext(client->server, &contextHandler, &request) != ERROR_NO_ERROR){
+            server_constructErrorPage(client->server, &request, &response, _400_BAD_REQUEST);
+        }
+
+        if(contextHandler == NULL){
+            server_constructErrorPage(client->server, &request, &response, _401_UNAUTHORIZED);
+        }else{
+            if((error = contextHandler(client->server, &request, &response)) != ERROR_NO_ERROR){
+                UTIL_LOG_ERROR(util_toErrorString(error));
+            }
         }
     }
 
@@ -227,7 +225,6 @@ local THREAD_POOL_RUNNABLE_(server_run, Job, job){
 
     http_freeHTTP_Response(&response);
 
-label_failedToRecevieHTTP_Request:
     close(client->sockFD);
 
     http_freeHTTP_Request(&request);
@@ -1023,8 +1020,6 @@ inline ERROR_CODE server_getFile(HerderServer* server, CacheObject** cacheObject
     }
 
     if(*cacheObject == NULL){
-        UTIL_LOG_CONSOLE_(LOG_DEBUG, "File: '%s'.", symbolicFileLocation);
-
         const uint_fast64_t fileLocationLength = server->rootDirectoryLength + symbolicFileLocationLength - 1;
         
         char* fileLocation = malloc(sizeof(*fileLocation) * fileLocationLength + 1);
@@ -1138,6 +1133,8 @@ inline ERROR_CODE server_getContext(HerderServer* server, ContextHandler** conte
     char* baseDirectory;
     uint_fast64_t baseDirectoryLength;
     if(util_getBaseDirectory(&baseDirectory, &baseDirectoryLength, request->requestURL, request->urlLength) != ERROR_NO_ERROR){
+        *contextHandler = NULL;
+
         return ERROR_(ERROR_INVALID_REQUEST_URL, "Failed to find baseDirectory URL:'%s'.", request->requestURL);
     }
     
