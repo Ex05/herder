@@ -810,14 +810,7 @@ ERROR_CODE util_walkDirectory(LinkedList* list, const char* directory, bool list
                 util_append(path + directoryLength, pathLength - directoryLength, directoryEntry->d_name, currentEntryLength);        
                 path[pathLength] = '\0';
 
-                EpisodeInfo* info = malloc(sizeof(*info));
-                mediaLibrary_initEpisodeInfo(info);
-                info->path = path;                  
-                info->pathLength = pathLength;
-                info->fileName = path + (pathLength - currentEntryLength);
-                info->fileNameLength = currentEntryLength;
-
-                if((error = linkedList_add(list, info)) !=ERROR_NO_ERROR){
+                if((error = linkedList_add(list, path)) !=ERROR_NO_ERROR){
                     goto label_closeDir;
                 }
             }

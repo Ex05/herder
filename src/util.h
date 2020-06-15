@@ -243,7 +243,6 @@ inline ERROR_CODE util_error(const ERROR_CODE error, const char* file, const int
 #define UTIL_FILES 1
 
 #include "linkedList.h"
-#include "mediaLibrary.h"
 
 int_fast32_t util_fileExists(const char*);
 

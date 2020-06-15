@@ -160,6 +160,8 @@ SERVER_CONTEXT_HANDLER(server_defaultContextHandler){
         }
     }
 
+    UTIL_LOG_CONSOLE_(LOG_DEBUG, "URL:'%s', File:'%s'.", request->requestURL, fileLocation);
+
     response->cacheObject = cacheObject;
     response->dataLength += cacheObject->size;
     response->staticContent = true;
@@ -194,8 +196,6 @@ local THREAD_POOL_RUNNABLE_(server_run, Job, job){
     if((error = http_receiveRequest(&request, client->sockFD)) != ERROR_NO_ERROR){
         UTIL_LOG_ERROR_("Failed to receive HTTP request. '%s' [%s].", request.requestURL, util_toErrorString(error));
     }
-
-    UTIL_LOG_CONSOLE_(LOG_DEBUG, "URL:'%s'.", request.requestURL);
 
     HTTP_Response response;
     http_initResponse(&response, buffer, HTTP_PROCESSING_BUFFER_SIZE);

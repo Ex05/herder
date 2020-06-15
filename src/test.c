@@ -880,7 +880,7 @@ TEST_TEST_FUNCTION(util_append){
     char a[11] = {'1', '2', '3', '4', '5'};
     char b[] = "67890";
     
-    util_append(a, strlen(a), 7b, strlen(b));
+    util_append(a, strlen(a), b, strlen(b));
 
     if(strncmp(a, "1234567890", 11) != 0){
         return TEST_FAILURE("'util_append' '%s' != '%s'.", a, "1234567890");

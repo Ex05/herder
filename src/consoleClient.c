@@ -684,19 +684,34 @@ ERROR_CODE consoleClient_import(Property* remoteHost, Property* remotePort, Prop
         goto label_freeFiles;
     }
 
-    while(LINKED_LIST_ITERATOR_HAS_NEXT(&it)){
-        EpisodeInfo* info = LINKED_LIST_ITERATOR_NEXT(&it);
+    LinkedList fileInfos;
+    if((error = linkedList_init(&fileInfos)) != ERROR_NO_ERROR){
+        goto label_freeFiles;
+    }
 
-        UTIL_LOG_CONSOLE_(LOG_INFO, "\"%s\"", info->fileName);
+    while(LINKED_LIST_ITERATOR_HAS_NEXT(&it)){        
+        char* path = LINKED_LIST_ITERATOR_NEXT(&it);
+
+        const uint_fast64_t pathLength = strlen(path);
+
+        EpisodeInfo info;
+        mediaLibrary_initEpisodeInfo(&info);
+        info.path = path;                  
+        info.pathLength = pathLength;
+
+        info.fileName = util_getFileName(info.path, info.pathLength);
+        info.fileNameLength = strlen(info.fileName);
+
+        UTIL_LOG_CONSOLE_(LOG_INFO, "\"%s\"", info.fileName);
           
-        if((error = consoleClient_extractShowInfo(remoteHost, remotePort, info, batchImport)) != ERROR_NO_ERROR){
-            UTIL_LOG_CONSOLE_(LOG_ERR, "Failed to extract show info from file: '%s'. [%s]", info->fileName, util_toErrorString(error));
+        if((error = consoleClient_extractShowInfo(remoteHost, remotePort, &info, batchImport)) != ERROR_NO_ERROR){
+            UTIL_LOG_CONSOLE_(LOG_ERR, "Failed to extract show info from file: '%s'. [%s]", info.fileName, util_toErrorString(error));
 
-            linkedList_remove(&infos, info);
-            mediaLibrary_freeEpisodeInfo(info);
-
-            free(info);
+            linkedList_remove(&infos, &info);
+            mediaLibrary_freeEpisodeInfo(&info);
         }
+
+        linkedList_add(&fileInfos, &info);
     }
 
     UTIL_LOG_CONSOLE(LOG_INFO, "Importing:...");
@@ -704,7 +719,7 @@ ERROR_CODE consoleClient_import(Property* remoteHost, Property* remotePort, Prop
     const uint_fast64_t entries = infos.length;
     uint_fast64_t i = 0;
 
-    linkedList_initIterator(&it, &infos);
+    linkedList_initIterator(&it, &fileInfos);
     while(LINKED_LIST_ITERATOR_HAS_NEXT(&it)){
         EpisodeInfo* info = LINKED_LIST_ITERATOR_NEXT(&it);
 
@@ -714,8 +729,7 @@ ERROR_CODE consoleClient_import(Property* remoteHost, Property* remotePort, Prop
             }
 
             mediaLibrary_freeEpisodeInfo(info);
-            free(info);
-
+        
             goto label_freeFiles;
         }else{
             i++;
@@ -724,13 +738,14 @@ ERROR_CODE consoleClient_import(Property* remoteHost, Property* remotePort, Prop
         }
 
         mediaLibrary_freeEpisodeInfo(info);
-        free(info);
     }
 
     __UTIL_SUPPRESS_NEXT_ERROR_OF_TYPE__(ERROR_FAILED_TO_DELETE_DIRECTORY);
     if((error = util_deleteDirectory(directory, true, true)) != ERROR_NO_ERROR){
         goto label_freeFiles;
     }
+
+    linkedList_free(&fileInfos);
 
 label_freeFiles:
     linkedList_free(&infos);
