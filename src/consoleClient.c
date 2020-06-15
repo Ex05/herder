@@ -671,7 +671,7 @@ ERROR_CODE consoleClient_import(Property* remoteHost, Property* remotePort, Prop
         goto label_return;
     }
 
-    if((error = util_walkDirectory(&infos, directory, UTIL_FILES)) != ERROR_NO_ERROR){
+    if((error = util_walkDirectory(&infos, directory, UTIL_FILES_ONLY)) != ERROR_NO_ERROR){
         goto label_return;
     }
 

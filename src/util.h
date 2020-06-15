@@ -239,8 +239,8 @@ inline ERROR_CODE util_error(const ERROR_CODE error, const char* file, const int
 
 #define UTIL_UINT16_STRING_LENGTH 5
 
-#define UTIL_DIRECTORIES 0
-#define UTIL_FILES 1
+#define UTIL_DIRECTORIES_ONLY 0
+#define UTIL_FILES_ONLY 1
 
 #include "linkedList.h"
 

@@ -79,7 +79,7 @@ static void             /* Display information from inotify_event structure */
      printf("        name = %s\n", i->name); */
  }
 
-THREAD_POOL_RUNNABLE(server_inotifyWatch){
+THREAD_POOL_RUNNABLE_(server_inotifyWatch, HerderServer, server){
     char buffer[4096] __attribute__ ((aligned(__alignof__(struct inotify_event))));;
 
     int fileDescriptor;    
@@ -90,7 +90,17 @@ THREAD_POOL_RUNNABLE(server_inotifyWatch){
     }
 
     // For each subdirectory of the 'www' directory in 'server_workingDirectory' add an 'inotify_watch'.
-    
+    LinkedList directoryList;
+    linkedList_init(&directoryList);
+
+    // char* serverRootDirectory = alloca(sizeof(*serverRootDirectory) * (server->rootDirectoryLength + 3/*www*/ + 1));
+
+    // if(util_walkDirectory(&directoryList, serverRootDirectory, UTIL_DIRECTORIES_ONLY) != ERROR_NO_ERROR){
+    //     UTIL_LOG_ERROR("Failed to walk directory structure of server root.");
+
+    //     return NULL;
+    // }
+
     int watchDescriptor;
     if((watchDescriptor = inotify_add_watch(fileDescriptor, "/tmp", IN_CREATE | IN_DELETE | IN_DELETE_SELF| IN_MOVE_SELF | IN_MOVED_FROM | IN_MOVED_TO)) == -1){
         UTIL_LOG_ERROR_("Failed to add watch to directory '%s'. [%s]","/tmp", strerror(errno));
@@ -1057,7 +1067,9 @@ inline void server_freeContext(Context* context){
 }
 
 ERROR_CODE server_start(HerderServer* server){
-    threadPool_run(&server->threadPool, server_inotifyWatch, NULL);
+    UTIL_LOG_CONSOLE_(LOG_DEBUG, "Server_0:'%p'.", (void*) server);
+
+    threadPool_run(&server->threadPool, (Runnable*) server_inotifyWatch, server);
 
     while(server->alive){
         Client* client = malloc(sizeof(*client));

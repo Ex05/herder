@@ -142,7 +142,7 @@ void* threadPool_threadFunc(void* data){
         memset(httpProcessingBuffer, 0, HTTP_PROCESSING_BUFFER_SIZE);
         job->buffer = httpProcessingBuffer;
 
-        job->runnable(job);
+        job->runnable(job->data);
         
         free(job);
     }

@@ -783,14 +783,14 @@ ERROR_CODE util_walkDirectory(LinkedList* list, const char* directory, bool list
             const uint_fast64_t directoryPathLength = directoryLength + currentEntryLength + 1;  
 
             char* directoryPath;
-            directoryPath = (listItemType == UTIL_DIRECTORIES) ? malloc(sizeof(*directoryPath) * (directoryPathLength + 1)) : alloca(sizeof(*directoryPath) * (directoryPathLength + 1));
+            directoryPath = (listItemType == UTIL_DIRECTORIES_ONLY) ? malloc(sizeof(*directoryPath) * (directoryPathLength + 1)) : alloca(sizeof(*directoryPath) * (directoryPathLength + 1));
             strncpy(directoryPath, directory, directoryLength + 1);     
 
             util_append(directoryPath + directoryLength, directoryPathLength - 1 - directoryLength, directoryEntry->d_name, currentEntryLength);        
             directoryPath[directoryPathLength - 1] = '/';
             directoryPath[directoryPathLength] = '\0';
           
-            if(listItemType == UTIL_DIRECTORIES){
+            if(listItemType == UTIL_DIRECTORIES_ONLY){
                 if((error = linkedList_add(list, directoryPath)) !=ERROR_NO_ERROR){
                     goto label_closeDir;
                 }
@@ -800,7 +800,7 @@ ERROR_CODE util_walkDirectory(LinkedList* list, const char* directory, bool list
                 goto label_closeDir;
             }
         }else{       
-            if(listItemType == UTIL_FILES){
+            if(listItemType == UTIL_FILES_ONLY){
                 const uint_fast64_t pathLength = directoryLength + currentEntryLength; 
 
                 char* path;
