@@ -79,7 +79,9 @@ static void             /* Display information from inotify_event structure */
      printf("        name = %s\n", i->name); */
  }
 
-THREAD_POOL_RUNNABLE_(server_inotifyWatch, HerderServer, server){
+THREAD_POOL_RUNNABLE_(server_inotifyWatch, Job, job){
+    HerderServer* server = job->data;
+
     char buffer[4096] __attribute__ ((aligned(__alignof__(struct inotify_event))));;
 
     int fileDescriptor;    
@@ -93,13 +95,21 @@ THREAD_POOL_RUNNABLE_(server_inotifyWatch, HerderServer, server){
     LinkedList directoryList;
     linkedList_init(&directoryList);
 
-    // char* serverRootDirectory = alloca(sizeof(*serverRootDirectory) * (server->rootDirectoryLength + 3/*www*/ + 1));
+    UTIL_LOG_CONSOLE_(LOG_DEBUG, "Root:'%s'.", server->rootDirectory);
 
-    // if(util_walkDirectory(&directoryList, serverRootDirectory, UTIL_DIRECTORIES_ONLY) != ERROR_NO_ERROR){
-    //     UTIL_LOG_ERROR("Failed to walk directory structure of server root.");
+    if(util_walkDirectory(&directoryList, server->rootDirectory, UTIL_DIRECTORIES_ONLY) != ERROR_NO_ERROR){
+        UTIL_LOG_ERROR("Failed to walk directory structure of server root.");
 
-    //     return NULL;
-    // }
+        return NULL;
+    }
+
+    LinkedListIterator it;
+    linkedList_initIterator(&it, &directoryList);
+    while(LINKED_LIST_ITERATOR_HAS_NEXT(&it)){
+        char* directory = LINKED_LIST_ITERATOR_NEXT(&it);
+
+        UTIL_LOG_CONSOLE_(LOG_DEBUG, "Dir:'%s'.", directory);
+    }
 
     int watchDescriptor;
     if((watchDescriptor = inotify_add_watch(fileDescriptor, "/tmp", IN_CREATE | IN_DELETE | IN_DELETE_SELF| IN_MOVE_SELF | IN_MOVED_FROM | IN_MOVED_TO)) == -1){
@@ -1067,8 +1077,6 @@ inline void server_freeContext(Context* context){
 }
 
 ERROR_CODE server_start(HerderServer* server){
-    UTIL_LOG_CONSOLE_(LOG_DEBUG, "Server_0:'%p'.", (void*) server);
-
     threadPool_run(&server->threadPool, (Runnable*) server_inotifyWatch, server);
 
     while(server->alive){
