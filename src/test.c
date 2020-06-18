@@ -393,15 +393,33 @@ TEST_TEST_FUNCTION_(linkedList_iteration, LinkedList, list){
     uint8_t buf[4] = {0};
 
     LinkedListIterator it;
-    linkedList_initIterator(&it, list);
 
-    uint_fast64_t i = 0;
-    while(LINKED_LIST_ITERATOR_HAS_NEXT(&it)){
-        buf[i++] = *(uint8_t*) LINKED_LIST_ITERATOR_NEXT(&it);
+    // Test_0.
+    {
+        linkedList_initIterator(&it, list);
+
+        uint_fast64_t i = 0;
+        while(LINKED_LIST_ITERATOR_HAS_NEXT(&it)){
+            buf[i++] = *(uint8_t*) LINKED_LIST_ITERATOR_NEXT(&it);
+        }
+
+        if(buf[0] != 3 || buf[1] != 2 || buf[2] != 1 || buf[3] != 0){
+            return TEST_FAILURE("%s", "Failed to iterate over linked list.");
+        }
     }
 
-    if(buf[0] != 3 || buf[1] != 2 || buf[2] != 1 || buf[3] != 0){
-        return TEST_FAILURE("%s", "Failed to iterate over linked list.");
+    // Test_1.
+    {
+        linkedList_initIterator(&it, list);
+
+        uint_fast64_t i = 0;
+        while(LINKED_LIST_ITERATOR_HAS_NEXT(&it)){
+            buf[i++] = *(uint8_t*) LINKED_LIST_ITERATOR_NEXT(&it);
+        }
+
+        if(buf[0] != 3 || buf[1] != 2 || buf[2] != 1 || buf[3] != 0){
+            return TEST_FAILURE("%s", "Failed to iterate over linked list.");
+        }
     }
 
     return TEST_SUCCESS;

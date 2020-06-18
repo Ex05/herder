@@ -49,34 +49,120 @@ local void server_daemonize(const char* workingDirectory);
 
 local HerderServer server;
 
-static void             /* Display information from inotify_event structure */
- displayInotifyEvent(struct inotify_event *i)
+local int watchDescriptor;
+local LinkedList watches;
+local LinkedList directories;
+
+static void displayInotifyEvent(struct inotify_event* event)
  {
-   //  printf("    wd =%2d; ", i->wd);
-     if (i->cookie > 0)
-         printf("cookie =%4d; ", i->cookie);
+   //  printf("    wd =%2d; ", event->wd);
+     if (event->cookie > 0)
+         printf("cookie =%4d; ", event->cookie);
  
-/*      printf("mask = ");
-     if (i->mask & IN_ACCESS)        printf("IN_ACCESS ");
-     if (i->mask & IN_ATTRIB)        printf("IN_ATTRIB ");
-     if (i->mask & IN_CLOSE_NOWRITE) printf("IN_CLOSE_NOWRITE ");
-     if (i->mask & IN_CLOSE_WRITE)   printf("IN_CLOSE_WRITE ");
-     if (i->mask & IN_CREATE)        printf("IN_CREATE ");
-     if (i->mask & IN_DELETE)        printf("IN_DELETE ");
-     if (i->mask & IN_DELETE_SELF)   printf("IN_DELETE_SELF ");
-     if (i->mask & IN_IGNORED)       printf("IN_IGNORED ");
-     if (i->mask & IN_ISDIR)         printf("IN_ISDIR ");
-     if (i->mask & IN_MODIFY)        printf("IN_MODIFY ");
-     if (i->mask & IN_MOVE_SELF)     printf("IN_MOVE_SELF ");
-     if (i->mask & IN_MOVED_FROM)    printf("IN_MOVED_FROM ");
-     if (i->mask & IN_MOVED_TO)      printf("IN_MOVED_TO ");
-     if (i->mask & IN_OPEN)          printf("IN_OPEN ");
-     if (i->mask & IN_Q_OVERFLOW)    printf("IN_Q_OVERFLOW ");
-     if (i->mask & IN_UNMOUNT)       printf("IN_UNMOUNT ");
+     printf("mask = ");
+     if (event->mask & IN_ACCESS)        printf("IN_ACCESS ");
+     if (event->mask & IN_ATTRIB)        printf("IN_ATTRIB ");
+     if (event->mask & IN_CLOSE_NOWRITE) printf("IN_CLOSE_NOWRITE ");
+     if (event->mask & IN_CLOSE_WRITE)   printf("IN_CLOSE_WRITE ");
+     if (event->mask & IN_CREATE)        printf("IN_CREATE ");
+     if (event->mask & IN_DELETE)        printf("IN_DELETE ");
+     if (event->mask & IN_DELETE_SELF)   printf("IN_DELETE_SELF ");
+     if (event->mask & IN_IGNORED)       printf("IN_IGNORED ");
+     if (event->mask & IN_ISDIR)         printf("IN_ISDIR ");
+     if (event->mask & IN_MODIFY)        printf("IN_MODIFY ");
+     if (event->mask & IN_MOVE_SELF)     printf("IN_MOVE_SELF ");
+     if (event->mask & IN_MOVED_FROM)    printf("IN_MOVED_FROM ");
+     if (event->mask & IN_MOVED_TO)      printf("IN_MOVED_TO ");
+     if (event->mask & IN_OPEN)          printf("IN_OPEN ");
+     if (event->mask & IN_Q_OVERFLOW)    printf("IN_Q_OVERFLOW ");
+     if (event->mask & IN_UNMOUNT)       printf("IN_UNMOUNT ");
      printf("\n");
  
-     if (i->len > 0)
-     printf("        name = %s\n", i->name); */
+     if (event->len > 0)
+     printf("        name = %s\n", event->name);
+
+    // Add directory to watch.
+    if((event->mask & IN_CREATE) && (event->mask & IN_ISDIR)){                
+        LinkedListIterator watchIterator;
+        linkedList_initIterator(&watchIterator, &watches);
+
+        LinkedListIterator directoryIterator;
+        linkedList_initIterator(&directoryIterator, &directories);
+
+        {
+            UTIL_LOG_CONSOLE_(LOG_DEBUG, "Event:'%d'.", event->wd);
+
+            int i = 0;
+            while(LINKED_LIST_ITERATOR_HAS_NEXT(&watchIterator)){
+                int* watch = LINKED_LIST_ITERATOR_NEXT(&watchIterator);
+                char* directory = LINKED_LIST_ITERATOR_NEXT(&directoryIterator);
+
+                UTIL_LOG_CONSOLE_(LOG_DEBUG, "%d: '%s' - '%d'.", i, directory, *watch);
+                i++;
+            }
+        }
+
+        linkedList_initIterator(&watchIterator, &watches);
+        linkedList_initIterator(&directoryIterator, &directories);
+
+        char* path = NULL;
+        while(LINKED_LIST_ITERATOR_HAS_NEXT(&watchIterator)){
+            int* watch = LINKED_LIST_ITERATOR_NEXT(&watchIterator);
+            char* directory = LINKED_LIST_ITERATOR_NEXT(&directoryIterator);
+
+            if(*watch == event->wd){
+                path = directory;
+
+                break;
+            }
+        }
+
+        if(path == NULL){
+            UTIL_LOG_ERROR("Failed to find source watch of inotify event.");
+
+            return;
+        }
+
+        const uint_fast64_t eventSourceNameLength = strlen(event->name) + 1;
+        const uint_fast64_t pathLength = strlen(path);
+        
+        const uint_fast64_t directoryPathLength = pathLength + eventSourceNameLength;
+
+        char* directoryPath = malloc(sizeof(*directoryPath) * (directoryPathLength + 1));
+        if(directoryPath == NULL){
+            UTIL_LOG_ERROR_("Error: '%s'.", util_toErrorString(ERROR_OUT_OF_MEMORY));
+
+            return;
+        }
+
+        memcpy(directoryPath, path, pathLength);
+        memcpy(directoryPath + pathLength, event->name, eventSourceNameLength - 1);
+        directoryPath[directoryPathLength - 1] = '/';
+        directoryPath[directoryPathLength] = '\0';
+
+        UTIL_LOG_CONSOLE_(LOG_DEBUG, "Path:'%s'.", directoryPath);
+
+        if(linkedList_add(&directories, directoryPath) != ERROR_NO_ERROR){
+            UTIL_LOG_ERROR("Failed to add server root directory to inotify watch.");
+
+            return;
+        }
+
+        int* watch = malloc(sizeof(*watch));
+        if(watch == NULL){
+            UTIL_LOG_ERROR_("Error: '%s'.", util_toErrorString(ERROR_OUT_OF_MEMORY));
+
+            return;
+        }
+
+        if((*watch = inotify_add_watch(watchDescriptor, directoryPath, IN_CREATE | IN_DELETE | IN_DELETE_SELF| IN_MOVE_SELF | IN_MOVED_FROM | IN_MOVED_TO)) == -1){
+            UTIL_LOG_ERROR_("Failed to add watch to directory '%s'. [%s]", directoryPath, strerror(errno));
+
+            return;
+        }
+
+        linkedList_add(&watches, watch);
+    }
  }
 
 THREAD_POOL_RUNNABLE_(server_inotifyWatch, Job, job){
@@ -84,42 +170,58 @@ THREAD_POOL_RUNNABLE_(server_inotifyWatch, Job, job){
 
     char buffer[4096] __attribute__ ((aligned(__alignof__(struct inotify_event))));;
 
-    int fileDescriptor;    
-    if((fileDescriptor = inotify_init()) == -1){
+    if((watchDescriptor = inotify_init()) == -1){
         UTIL_LOG_ERROR_("Failed to initialise 'inotify'. [%s]", strerror(errno));
 
         return NULL;
     }
 
-    // For each subdirectory of the 'www' directory in 'server_workingDirectory' add an 'inotify_watch'.
-    LinkedList directoryList;
-    linkedList_init(&directoryList);
+    linkedList_init(&watches);
+    linkedList_init(&directories);
 
-    UTIL_LOG_CONSOLE_(LOG_DEBUG, "Root:'%s'.", server->rootDirectory);
+    if(linkedList_add(&directories, server->rootDirectory) != ERROR_NO_ERROR){
+        UTIL_LOG_ERROR("Failed to add server root directory to inotify watch.");
 
-    if(util_walkDirectory(&directoryList, server->rootDirectory, UTIL_DIRECTORIES_ONLY) != ERROR_NO_ERROR){
+        return NULL;
+    }
+
+    if(util_walkDirectory(&directories, server->rootDirectory, UTIL_DIRECTORIES_ONLY) != ERROR_NO_ERROR){
         UTIL_LOG_ERROR("Failed to walk directory structure of server root.");
 
         return NULL;
     }
 
-    LinkedListIterator it;
-    linkedList_initIterator(&it, &directoryList);
-    while(LINKED_LIST_ITERATOR_HAS_NEXT(&it)){
-        char* directory = LINKED_LIST_ITERATOR_NEXT(&it);
-
-        UTIL_LOG_CONSOLE_(LOG_DEBUG, "Dir:'%s'.", directory);
-    }
-
-    int watchDescriptor;
-    if((watchDescriptor = inotify_add_watch(fileDescriptor, "/tmp", IN_CREATE | IN_DELETE | IN_DELETE_SELF| IN_MOVE_SELF | IN_MOVED_FROM | IN_MOVED_TO)) == -1){
-        UTIL_LOG_ERROR_("Failed to add watch to directory '%s'. [%s]","/tmp", strerror(errno));
+    char** directoryBuffer = malloc(sizeof(*directoryBuffer) * directories.length);
+    if(directoryBuffer == NULL){
+        UTIL_LOG_ERROR_("Error: '%s'.", util_toErrorString(ERROR_OUT_OF_MEMORY));
 
         return NULL;
     }
 
+    LinkedListIterator it;
+    linkedList_initIterator(&it, &directories);
+
+    int_fast64_t i = directories.length;
+    while(LINKED_LIST_ITERATOR_HAS_NEXT(&it)){
+        char* directory = LINKED_LIST_ITERATOR_NEXT(&it);
+
+        directoryBuffer[--i] = directory;
+    }
+
+    for(i = 0; i < (int_fast64_t) directories.length; i++){
+        int* watch = malloc(sizeof(*watch));
+
+        if((*watch = inotify_add_watch(watchDescriptor, directoryBuffer[i], IN_CREATE | IN_DELETE | IN_DELETE_SELF| IN_MOVE_SELF | IN_MOVED_FROM | IN_MOVED_TO)) == -1){
+            UTIL_LOG_ERROR_("Failed to add watch to directory '%s'. [%s]",directoryBuffer[i], strerror(errno));
+
+            return NULL;
+        }
+
+        linkedList_add(&watches, watch);
+    }
+
     while(true){
-        const ssize_t length = read(fileDescriptor, buffer, sizeof(buffer));
+        const ssize_t length = read(watchDescriptor, buffer, sizeof(buffer));
 
         if(length == -1 && errno != EAGAIN){
             UTIL_LOG_ERROR_("Failed to read from 'inotify' event buffer for '%s'. [%s]","/tmp", strerror(errno));
@@ -141,9 +243,27 @@ THREAD_POOL_RUNNABLE_(server_inotifyWatch, Job, job){
          }
     }
 
-    inotify_rm_watch(fileDescriptor, watchDescriptor);
+    linkedList_initIterator(&it, &watches);
+    while(LINKED_LIST_ITERATOR_HAS_NEXT(&it)){
+        int* watch = LINKED_LIST_ITERATOR_NEXT(&it);
 
-    close(fileDescriptor);
+        inotify_rm_watch(watchDescriptor, *watch);
+
+        free(watch);
+    }
+        
+    linkedList_free(&watches);
+
+    linkedList_initIterator(&it, &directories);
+    while(LINKED_LIST_ITERATOR_HAS_NEXT(&it)){
+        char* directory = LINKED_LIST_ITERATOR_NEXT(&it);
+
+        free(directory);
+    }
+
+    linkedList_free(&directories);
+
+    close(watchDescriptor);
 
     return NULL;
 }
@@ -256,7 +376,11 @@ local THREAD_POOL_RUNNABLE_(server_run, Job, job){
 
 local void server_deamonSignalHandler(int signal, siginfo_t* info, void* context){
 	switch(signal){
-        case SIGHUP:{
+        case SIGPIPE:{
+            UTIL_LOG_INFO("SIGPIPE catched, ignoring broken pipe.");
+             
+            break;
+        }case SIGHUP:{
             UTIL_LOG_INFO("SIGHUP catched.");
              
             break;
