@@ -179,7 +179,10 @@ THREAD_POOL_RUNNABLE_(server_inotifyWatch, Job, job){
     linkedList_init(&watches);
     linkedList_init(&directories);
 
-    if(linkedList_add(&directories, server->rootDirectory) != ERROR_NO_ERROR){
+    char* rootDirectory = malloc(sizeof(*rootDirectory) * server->rootDirectoryLength + 1);
+    memcpy(rootDirectory, server->rootDirectory, server->rootDirectoryLength + 1);
+
+    if(linkedList_add(&directories, rootDirectory) != ERROR_NO_ERROR){
         UTIL_LOG_ERROR("Failed to add server root directory to inotify watch.");
 
         return NULL;
@@ -220,6 +223,8 @@ THREAD_POOL_RUNNABLE_(server_inotifyWatch, Job, job){
         linkedList_add(&watches, watch);
     }
 
+    free(directoryBuffer);
+
     while(true){
         const ssize_t length = read(watchDescriptor, buffer, sizeof(buffer));
 
@@ -240,9 +245,12 @@ THREAD_POOL_RUNNABLE_(server_inotifyWatch, Job, job){
              displayInotifyEvent(event);
  
              eventPointer += sizeof(*event) + event->len;
+
+             goto label_free;
          }
     }
 
+label_free:
     linkedList_initIterator(&it, &watches);
     while(LINKED_LIST_ITERATOR_HAS_NEXT(&it)){
         int* watch = LINKED_LIST_ITERATOR_NEXT(&it);
@@ -264,6 +272,8 @@ THREAD_POOL_RUNNABLE_(server_inotifyWatch, Job, job){
     linkedList_free(&directories);
 
     close(watchDescriptor);
+
+    server_stop(server);
 
     return NULL;
 }
