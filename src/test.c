@@ -802,6 +802,7 @@ TEST_TEST_FUNCTION(util_getBaseDirectory){
 
         char* baseDirectory;
         uint_fast64_t baseDirectoryLength;
+        __UTIL_SUPPRESS_NEXT_ERROR_OF_TYPE__(ERROR_INVALID_REQUEST_URL);
         if((error = util_getBaseDirectory(&baseDirectory, &baseDirectoryLength, url, strlen(url))) != ERROR_INVALID_REQUEST_URL){
             return TEST_FAILURE("Failed to throw an error for path: '%s'. Expected '%s' buit functiion returned '%s'.", url, util_toErrorString(ERROR_INVALID_REQUEST_URL), util_toErrorString(error));
         }

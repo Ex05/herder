@@ -24,7 +24,6 @@ typedef struct{
     struct timespec timeCheckin;
     struct timespec timeLastHit;
     uint32_t totalHits;
-    uint32_t hitsSizeLastCheck;
     uint_fast64_t fileLocationLength;
     uint_fast64_t symbolicFileLocationLength;
     uint_fast64_t fileExtensionOffset;
@@ -39,5 +38,7 @@ void cache_free(Cache*);
 ERROR_CODE cache_get(Cache*, CacheObject**, char*, const uint_fast64_t);
 
 ERROR_CODE cache_load(Cache*, CacheObject**, char*, const uint_fast64_t, char*, const uint_fast64_t);
+
+ERROR_CODE cache_remove(Cache*, CacheObject*);
 
 #endif
