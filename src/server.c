@@ -348,42 +348,42 @@ THREAD_POOL_RUNNABLE_(server_inotifyWatch, Job, job){
                                 }
                             }
                         }else{
+                            if(event->mask & IN_DELETE){
+                                LinkedListIterator watchIterator;
+                                linkedList_initIterator(&watchIterator, &watches);
 
-                        }if(event->mask & IN_DELETE){
-                            LinkedListIterator watchIterator;
-                            linkedList_initIterator(&watchIterator, &watches);
+                                while(LINKED_LIST_ITERATOR_HAS_NEXT(&watchIterator)){
+                                    INOTIFY_Watch* watch =  LINKED_LIST_ITERATOR_NEXT(&watchIterator);
 
-                            while(LINKED_LIST_ITERATOR_HAS_NEXT(&watchIterator)){
-                                INOTIFY_Watch* watch =  LINKED_LIST_ITERATOR_NEXT(&watchIterator);
+                                    if(watch->id == event->wd){
+                                        const uint_fast64_t eventNameLength = strlen(event->name);
+                                        const uint_fast64_t baseDirectoryLength = watch->directoryNameLength - (server->rootDirectoryLength - 1/*Keep the leading '/'.*/);
+                                        const uint_fast64_t symbolicFileLocationLength = baseDirectoryLength + eventNameLength;
+                                                                    
+                                        char* symbolicFileLocation = malloc(sizeof(*symbolicFileLocation) * symbolicFileLocationLength + 1);
+                                        if(symbolicFileLocation == NULL){
+                                            UTIL_LOG_ERROR(util_toErrorString(ERROR_OUT_OF_MEMORY));
 
-                                if(watch->id == event->wd){
-                                    const uint_fast64_t eventNameLength = strlen(event->name);
-                                    const uint_fast64_t baseDirectoryLength = watch->directoryNameLength - (server->rootDirectoryLength - 1/*Keep the leading '/'.*/);
-                                    const uint_fast64_t symbolicFileLocationLength = baseDirectoryLength + eventNameLength;
-                                                                 
-                                    char* symbolicFileLocation = malloc(sizeof(*symbolicFileLocation) * symbolicFileLocationLength + 1);
-                                    if(symbolicFileLocation == NULL){
-                                        UTIL_LOG_ERROR(util_toErrorString(ERROR_OUT_OF_MEMORY));
-
-                                        return NULL;
-                                    }
-
-                                    memcpy(symbolicFileLocation, watch->directory + (server->rootDirectoryLength - 1), baseDirectoryLength);
-                                    memcpy(symbolicFileLocation + baseDirectoryLength, event->name, eventNameLength);
-                                    symbolicFileLocation[symbolicFileLocationLength] = '\0';
-                                
-                                    CacheObject* cacheObject;
-                                    if(cache_get(&server->cache, &cacheObject, symbolicFileLocation, symbolicFileLocationLength) != ERROR_NO_ERROR){
-                                        return NULL;
-                                    }
-
-                                    if(cacheObject != NULL){
-                                        if(cache_remove(&server->cache, cacheObject) != ERROR_NO_ERROR){
                                             return NULL;
                                         }
-                                    }
 
-                                    break;
+                                        memcpy(symbolicFileLocation, watch->directory + (server->rootDirectoryLength - 1), baseDirectoryLength);
+                                        memcpy(symbolicFileLocation + baseDirectoryLength, event->name, eventNameLength);
+                                        symbolicFileLocation[symbolicFileLocationLength] = '\0';
+                                    
+                                        CacheObject* cacheObject;
+                                        if(cache_get(&server->cache, &cacheObject, symbolicFileLocation, symbolicFileLocationLength) != ERROR_NO_ERROR){
+                                            return NULL;
+                                        }
+
+                                        if(cacheObject != NULL){
+                                            if(cache_remove(&server->cache, cacheObject) != ERROR_NO_ERROR){
+                                                return NULL;
+                                            }
+                                        }
+
+                                        break;
+                                    }
                                 }
                             }
                         }
@@ -1149,6 +1149,7 @@ label_return:
         }
 
 	    // server_daemonize(serverWorkingDirectory);
+        signal(SIGPIPE, SIG_IGN);
 
         const uint_fast64_t serverDaemonNameLength = strlen(SERVER_DAEMON_NAME);
         const uint_fast64_t serverDaemonLockFileNameLength = serverWorkingDirectoryLength + serverDaemonNameLength;

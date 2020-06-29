@@ -202,9 +202,9 @@ ERROR_CODE cache_remove(Cache* cache, CacheObject* cacheObject){
 }
 
 void cache_freeCacheObject(CacheObject* cacheObject){
-        free(cacheObject->data);
-        free(cacheObject->fileLocation);
-        free(cacheObject->symbolicFileLocation);
+    free(cacheObject->data);
+    free(cacheObject->fileLocation);
+    free(cacheObject->symbolicFileLocation);
 }
 
 #endif
