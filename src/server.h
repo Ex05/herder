@@ -31,12 +31,6 @@ typedef struct{
     HerderServer* server;
 }Client;
 
-typedef struct{
-    char* directory;
-    uint_fast64_t directoryNameLength;
-    int id;
-}INOTIFY_Watch;
-
 #define SERVER_CONTEXT_HANDLER(functionName) ERROR_CODE functionName(HerderServer* server, HTTP_Request* request, HTTP_Response* response)
 typedef SERVER_CONTEXT_HANDLER(ContextHandler);
 

@@ -47,10 +47,35 @@ local ERROR_CODE server_getFile(HerderServer*, CacheObject**, char*, const uint_
 
 local void server_daemonize(const char* workingDirectory);
 
+local void* server_inotifyEventHandler(HerderServer*, struct inotify_event*);
+
+// local void* server_inotifyEventHandlerDirectoryCreated(HerderServer*, struct inotify_event*);
+
+// local void* server_inotifyEventHandlerDirectoryDeleted(HerderServer*, struct inotify_event*);
+
+// local void* server_inotifyEventHandlerFileCreated(HerderServer*, struct inotify_event*);
+
+// local void* server_inotifyEventHandlerDirectoryFileDeleted(HerderServer*, struct inotify_event*);
+
+// local void* server_inotifyEventHandlerDirectoryFileModified(HerderServer*, struct inotify_event*);
+
 local HerderServer server;
 
 local int watchDescriptor;
 local LinkedList watches;
+
+typedef struct{
+    char* directory;
+    uint_fast64_t directoryNameLength;
+    int id;
+}INOTIFY_Watch;
+
+local void server_iniInotifyWatch(INOTIFY_Watch*, char*, const uint_fast64_t);
+
+local void server_iniInotifyWatch(INOTIFY_Watch* watch, char* directoryName, const uint_fast64_t directoryNameLength){
+    watch->directory = directoryName;
+    watch->directoryNameLength = directoryNameLength;
+}
 
 THREAD_POOL_RUNNABLE_(server_inotifyWatch, Job, job){
     HerderServer* server = job->data;
@@ -68,11 +93,23 @@ THREAD_POOL_RUNNABLE_(server_inotifyWatch, Job, job){
     }
 
     char* rootDirectory = malloc(sizeof(*rootDirectory) * server->rootDirectoryLength + 1);
+    if(rootDirectory == NULL){
+        UTIL_LOG_ERROR(util_toErrorString(ERROR_OUT_OF_MEMORY));
+
+        return NULL;
+    }
+
     memcpy(rootDirectory, server->rootDirectory, server->rootDirectoryLength + 1);
 
     INOTIFY_Watch* watch = malloc(sizeof(*watch));
-    watch->directory = rootDirectory;
-    watch->directoryNameLength = strlen(rootDirectory);
+    if(watch == NULL){
+        UTIL_LOG_ERROR(util_toErrorString(ERROR_OUT_OF_MEMORY));
+
+        return NULL;
+    }
+
+    server_iniInotifyWatch(watch, rootDirectory, server->rootDirectoryLength);
+
 
     if((watch->id = inotify_add_watch(watchDescriptor, rootDirectory, IN_CREATE | IN_DELETE | IN_DELETE_SELF| IN_MOVE_SELF | IN_MOVED_FROM | IN_MOVED_TO | IN_MODIFY)) == -1){
         UTIL_LOG_ERROR_("Failed to add watch to directory '%s'. [%s]", rootDirectory, strerror(errno));
@@ -129,7 +166,7 @@ THREAD_POOL_RUNNABLE_(server_inotifyWatch, Job, job){
             return NULL;
         }
         
-        // End of file.
+        // End of file/watch file descriptor was closed.
         if(length == 0){
             break;
         }
@@ -138,260 +175,11 @@ THREAD_POOL_RUNNABLE_(server_inotifyWatch, Job, job){
         while(eventPointer < buffer + length){
              struct inotify_event * event = (struct inotify_event *) eventPointer;
              
-            if (event->cookie > 0)
-                printf("cookie =%4d; ", event->cookie);
- 
-            if (event->len > 0){
-                printf("mask = ");
-                if (event->mask & IN_ACCESS)        printf("IN_ACCESS ");
-                if (event->mask & IN_ATTRIB)        printf("IN_ATTRIB ");
-                if (event->mask & IN_CLOSE_NOWRITE) printf("IN_CLOSE_NOWRITE ");
-                if (event->mask & IN_CLOSE_WRITE)   printf("IN_CLOSE_WRITE ");
-                if (event->mask & IN_CREATE)        printf("IN_CREATE ");
-                if (event->mask & IN_DELETE)        printf("IN_DELETE ");
-                if (event->mask & IN_DELETE_SELF)   printf("IN_DELETE_SELF ");
-                if (event->mask & IN_IGNORED)       printf("IN_IGNORED ");
-                if (event->mask & IN_ISDIR)         printf("IN_ISDIR ");
-                if (event->mask & IN_MODIFY)        printf("IN_MODIFY ");
-                if (event->mask & IN_MOVE_SELF)     printf("IN_MOVE_SELF ");
-                if (event->mask & IN_MOVED_FROM)    printf("IN_MOVED_FROM ");
-                if (event->mask & IN_MOVED_TO)      printf("IN_MOVED_TO ");
-                if (event->mask & IN_OPEN)          printf("IN_OPEN ");
-                if (event->mask & IN_Q_OVERFLOW)    printf("IN_Q_OVERFLOW ");
-                if (event->mask & IN_UNMOUNT)       printf("IN_UNMOUNT ");
-                printf("- '%d'\tname ='%s'\n", event->wd, event->name);
-
-                if(event->mask & IN_ISDIR){
-                    if(event->mask & IN_CREATE){
-                        LinkedListIterator watchIterator;
-                        linkedList_initIterator(&watchIterator, &watches);
-
-                        while(LINKED_LIST_ITERATOR_HAS_NEXT(&watchIterator)){
-                            INOTIFY_Watch* watch =  LINKED_LIST_ITERATOR_NEXT(&watchIterator);
-
-                            if(watch->id == event->wd){
-                                const uint_fast64_t sourceDirectoryLength = watch->directoryNameLength;
-                                const uint_fast64_t eventNameLength = strlen(event->name);
-                                const uint_fast64_t directoryLength = sourceDirectoryLength + eventNameLength + 1/*'/'*/;
-
-                                char* dir = malloc(sizeof(dir) * (directoryLength + 1));
-                                if(dir == NULL){
-                                    UTIL_LOG_ERROR(util_toErrorString(ERROR_OUT_OF_MEMORY));
-                                }
-
-                                memcpy(dir, watch->directory, sourceDirectoryLength);
-                                memcpy(dir + sourceDirectoryLength, event->name, eventNameLength);
-                                dir[directoryLength - 1] = '/';
-                                dir[directoryLength] = '\0';
-
-                                INOTIFY_Watch* watch = malloc(sizeof(*watch));
-                                if(watch == NULL){
-                                    UTIL_LOG_ERROR(util_toErrorString(ERROR_OUT_OF_MEMORY));
-                                }
-
-                                watch->directory = dir;
-                                watch->directoryNameLength = directoryLength;
-
-                                if((watch->id = inotify_add_watch(watchDescriptor, watch->directory, IN_CREATE | IN_DELETE | IN_DELETE_SELF| IN_MOVE_SELF | IN_MOVED_FROM | IN_MOVED_TO)) == -1){
-                                    UTIL_LOG_ERROR_("Failed to add watch to directory '%s'. [%s]", watch->directory, strerror(errno));
-
-                                    return NULL;
-                                }
-
-                                if(linkedList_add(&watches, watch) != ERROR_NO_ERROR){
-                                    return NULL;
-                                }
-                            }
-                        }
-                    }else{
-                        if(event->mask & IN_DELETE){
-                            LinkedListIterator watchIterator;
-                            linkedList_initIterator(&watchIterator, &watches);
-
-                            while(LINKED_LIST_ITERATOR_HAS_NEXT(&watchIterator)){
-                                INOTIFY_Watch* watch =  LINKED_LIST_ITERATOR_NEXT(&watchIterator);
-
-                                if(watch->id == event->wd){
-                                    const uint_fast64_t eventNameLength = strlen(event->name);
-                                    const uint_fast64_t directoryLength = watch->directoryNameLength + eventNameLength + 1;
-
-                                    char* directory = alloca(sizeof(*directory) * (directoryLength + 1));
-                                    memcpy(directory, watch->directory, watch->directoryNameLength);
-                                    memcpy(directory + watch->directoryNameLength ,event->name, eventNameLength)
-                                    ;
-                                    directory[directoryLength - 1] = '/';
-                                    directory[directoryLength] = '\0';
-
-                                    linkedList_initIterator(&watchIterator, &watches);
-                                    while(LINKED_LIST_ITERATOR_HAS_NEXT(&watchIterator)){
-                                        INOTIFY_Watch* _watch =  LINKED_LIST_ITERATOR_NEXT(&watchIterator);
-
-                                        if(strncmp(directory, _watch->directory, directoryLength + 1) == 0){
-                                            if(inotify_rm_watch(watchDescriptor, _watch->id) != 0){
-                                                UTIL_LOG_ERROR(strerror(errno));
-                                            }
-
-                                            if(linkedList_remove(&watches, _watch) != ERROR_NO_ERROR){
-                                                return NULL;
-                                            }
-
-                                            free(_watch->directory);
-                                            free(_watch);
-
-                                            break;
-                                        }
-                                    }
-
-                                    break;
-                                }       
-                            }
-                        }
-                    }
-                }else{
-                    if(event->mask & IN_CREATE){
-                        LinkedListIterator watchIterator;
-                        linkedList_initIterator(&watchIterator, &watches);
-
-                        while(LINKED_LIST_ITERATOR_HAS_NEXT(&watchIterator)){
-                            INOTIFY_Watch* watch =  LINKED_LIST_ITERATOR_NEXT(&watchIterator);
-
-                            if(watch->id == event->wd){
-                                    const uint_fast64_t eventNameLength = strlen(event->name);
-                                    const uint_fast64_t baseDirectoryLength = watch->directoryNameLength - (server->rootDirectoryLength - 1/*Keep the leading '/'.*/);
-                                    const uint_fast64_t symbolicFileLocationLength = baseDirectoryLength + eventNameLength;
-                                                                 
-                                    char* symbolicFileLocation = alloca(sizeof(*symbolicFileLocation) * symbolicFileLocationLength + 1);
-                                    if(symbolicFileLocation == NULL){
-                                        UTIL_LOG_ERROR(util_toErrorString(ERROR_OUT_OF_MEMORY));
-
-                                        return NULL;
-                                    }
-
-                                    memcpy(symbolicFileLocation, watch->directory + (server->rootDirectoryLength - 1), baseDirectoryLength);
-                                    memcpy(symbolicFileLocation + baseDirectoryLength, event->name, eventNameLength);
-                                    symbolicFileLocation[symbolicFileLocationLength] = '\0';
-                                
-                                    const uint_fast64_t fileLocationLength = (server->rootDirectoryLength - 1) + symbolicFileLocationLength;
-
-                                    char* fileLocation = malloc(sizeof(*fileLocation) * (fileLocationLength + 1));
-                                    if(fileLocation == NULL){
-                                        UTIL_LOG_ERROR(util_toErrorString(ERROR_OUT_OF_MEMORY));
-
-                                        return NULL;
-                                    }
-
-                                    memcpy(fileLocation, server->rootDirectory,(server->rootDirectoryLength - 1));
-                                    memcpy(fileLocation + (server->rootDirectoryLength - 1), symbolicFileLocation, symbolicFileLocationLength);
-                                    fileLocation[fileLocationLength] = '\0';
-
-                                    CacheObject* cacheObject;
-                                    if(cache_load(&server->cache, &cacheObject, fileLocation, fileLocationLength, symbolicFileLocation, symbolicFileLocationLength) != ERROR_NO_ERROR){
-                                        return NULL;
-                                    }
-
-                                    break;
-                                }
-                        }
-                    }else{
-                        if(event->mask & IN_MODIFY){
-                            LinkedListIterator watchIterator;
-                            linkedList_initIterator(&watchIterator, &watches);
-
-                            while(LINKED_LIST_ITERATOR_HAS_NEXT(&watchIterator)){
-                                INOTIFY_Watch* watch =  LINKED_LIST_ITERATOR_NEXT(&watchIterator);
-
-                                if(watch->id == event->wd){
-                                    const uint_fast64_t eventNameLength = strlen(event->name);
-                                    const uint_fast64_t baseDirectoryLength = watch->directoryNameLength - (server->rootDirectoryLength - 1/*Keep the leading '/'.*/);
-                                    const uint_fast64_t symbolicFileLocationLength = baseDirectoryLength + eventNameLength;
-                                                                
-                                    char* symbolicFileLocation = alloca(sizeof(*symbolicFileLocation) * symbolicFileLocationLength + 1);
-                                    if(symbolicFileLocation == NULL){
-                                        UTIL_LOG_ERROR(util_toErrorString(ERROR_OUT_OF_MEMORY));
-
-                                        return NULL;
-                                    }
-
-                                    memcpy(symbolicFileLocation, watch->directory + (server->rootDirectoryLength - 1), baseDirectoryLength);
-                                    memcpy(symbolicFileLocation + baseDirectoryLength, event->name, eventNameLength);
-                                    symbolicFileLocation[symbolicFileLocationLength] = '\0';
-                                
-                                    const uint_fast64_t fileLocationLength = (server->rootDirectoryLength - 1) + symbolicFileLocationLength;
-
-                                    char* fileLocation = malloc(sizeof(*fileLocation) * (fileLocationLength + 1));
-                                    if(fileLocation == NULL){
-                                        UTIL_LOG_ERROR(util_toErrorString(ERROR_OUT_OF_MEMORY));
-
-                                        return NULL;
-                                    }
-
-                                    memcpy(fileLocation, server->rootDirectory,(server->rootDirectoryLength - 1));
-                                    memcpy(fileLocation + (server->rootDirectoryLength - 1), symbolicFileLocation, symbolicFileLocationLength);
-                                    fileLocation[fileLocationLength] = '\0';
-
-                                    CacheObject* cacheObject;
-                                    if(cache_get(&server->cache, &cacheObject, symbolicFileLocation, symbolicFileLocationLength) != ERROR_NO_ERROR){
-                                        return NULL;
-                                    }
-
-                                    if(cacheObject != NULL){
-                                        if(cache_remove(&server->cache, cacheObject) != ERROR_NO_ERROR){
-                                            return NULL;
-                                        }
-                                    }
-
-                                    if(cache_load(&server->cache, &cacheObject, fileLocation, fileLocationLength, symbolicFileLocation, symbolicFileLocationLength) != ERROR_NO_ERROR){
-                                        return NULL;
-                                    }
-
-                                    break;
-                                }
-                            }
-                        }else{
-                            if(event->mask & IN_DELETE){
-                                LinkedListIterator watchIterator;
-                                linkedList_initIterator(&watchIterator, &watches);
-
-                                while(LINKED_LIST_ITERATOR_HAS_NEXT(&watchIterator)){
-                                    INOTIFY_Watch* watch =  LINKED_LIST_ITERATOR_NEXT(&watchIterator);
-
-                                    if(watch->id == event->wd){
-                                        const uint_fast64_t eventNameLength = strlen(event->name);
-                                        const uint_fast64_t baseDirectoryLength = watch->directoryNameLength - (server->rootDirectoryLength - 1/*Keep the leading '/'.*/);
-                                        const uint_fast64_t symbolicFileLocationLength = baseDirectoryLength + eventNameLength;
-                                                                    
-                                        char* symbolicFileLocation = malloc(sizeof(*symbolicFileLocation) * symbolicFileLocationLength + 1);
-                                        if(symbolicFileLocation == NULL){
-                                            UTIL_LOG_ERROR(util_toErrorString(ERROR_OUT_OF_MEMORY));
-
-                                            return NULL;
-                                        }
-
-                                        memcpy(symbolicFileLocation, watch->directory + (server->rootDirectoryLength - 1), baseDirectoryLength);
-                                        memcpy(symbolicFileLocation + baseDirectoryLength, event->name, eventNameLength);
-                                        symbolicFileLocation[symbolicFileLocationLength] = '\0';
-                                    
-                                        CacheObject* cacheObject;
-                                        if(cache_get(&server->cache, &cacheObject, symbolicFileLocation, symbolicFileLocationLength) != ERROR_NO_ERROR){
-                                            return NULL;
-                                        }
-
-                                        if(cacheObject != NULL){
-                                            if(cache_remove(&server->cache, cacheObject) != ERROR_NO_ERROR){
-                                                return NULL;
-                                            }
-                                        }
-
-                                        break;
-                                    }
-                                }
-                            }
-                        }
-                    }
-                }
+            if(event->len > 0){
+                server_inotifyEventHandler(server, event);
             }
 
-             eventPointer += sizeof(*event) + event->len;
+            eventPointer += sizeof(*event) + event->len;
          }
     }
 
@@ -407,6 +195,239 @@ THREAD_POOL_RUNNABLE_(server_inotifyWatch, Job, job){
 
         free(watch->directory);
         free(watch);
+    }
+
+    return NULL;
+}
+
+local void* server_inotifyEventHandler(HerderServer* server, struct inotify_event* event){
+    if(event->mask & IN_ISDIR){
+        if(event->mask & IN_CREATE){
+            LinkedListIterator watchIterator;
+            linkedList_initIterator(&watchIterator, &watches);
+
+            while(LINKED_LIST_ITERATOR_HAS_NEXT(&watchIterator)){
+                INOTIFY_Watch* watch =  LINKED_LIST_ITERATOR_NEXT(&watchIterator);
+
+                if(watch->id == event->wd){
+                    const uint_fast64_t sourceDirectoryLength = watch->directoryNameLength;
+                    const uint_fast64_t eventNameLength = strlen(event->name);
+                    const uint_fast64_t directoryLength = sourceDirectoryLength + eventNameLength + 1/*'/'*/;
+
+                    char* dir = malloc(sizeof(dir) * (directoryLength + 1));
+                    if(dir == NULL){
+                        UTIL_LOG_ERROR(util_toErrorString(ERROR_OUT_OF_MEMORY));
+                    }
+
+                    memcpy(dir, watch->directory, sourceDirectoryLength);
+                    memcpy(dir + sourceDirectoryLength, event->name, eventNameLength);
+                    dir[directoryLength - 1] = '/';
+                    dir[directoryLength] = '\0';
+
+                    INOTIFY_Watch* watch = malloc(sizeof(*watch));
+                    if(watch == NULL){
+                        UTIL_LOG_ERROR(util_toErrorString(ERROR_OUT_OF_MEMORY));
+                    }
+
+                    watch->directory = dir;
+                    watch->directoryNameLength = directoryLength;
+
+                    if((watch->id = inotify_add_watch(watchDescriptor, watch->directory, IN_CREATE | IN_DELETE | IN_DELETE_SELF| IN_MOVE_SELF | IN_MOVED_FROM | IN_MOVED_TO)) == -1){
+                        UTIL_LOG_ERROR_("Failed to add watch to directory '%s'. [%s]", watch->directory, strerror(errno));
+
+                        return NULL;
+                    }
+
+                    if(linkedList_add(&watches, watch) != ERROR_NO_ERROR){
+                        return NULL;
+                    }
+                }
+            }
+        }else{
+            if(event->mask & IN_DELETE){
+                LinkedListIterator watchIterator;
+                linkedList_initIterator(&watchIterator, &watches);
+
+                while(LINKED_LIST_ITERATOR_HAS_NEXT(&watchIterator)){
+                    INOTIFY_Watch* watch =  LINKED_LIST_ITERATOR_NEXT(&watchIterator);
+
+                    if(watch->id == event->wd){
+                        const uint_fast64_t eventNameLength = strlen(event->name);
+                        const uint_fast64_t directoryLength = watch->directoryNameLength + eventNameLength + 1;
+
+                        char* directory = alloca(sizeof(*directory) * (directoryLength + 1));
+                        memcpy(directory, watch->directory, watch->directoryNameLength);
+                        memcpy(directory + watch->directoryNameLength ,event->name, eventNameLength)
+                        ;
+                        directory[directoryLength - 1] = '/';
+                        directory[directoryLength] = '\0';
+
+                        linkedList_initIterator(&watchIterator, &watches);
+                        while(LINKED_LIST_ITERATOR_HAS_NEXT(&watchIterator)){
+                            INOTIFY_Watch* _watch =  LINKED_LIST_ITERATOR_NEXT(&watchIterator);
+
+                            if(strncmp(directory, _watch->directory, directoryLength + 1) == 0){
+                                if(inotify_rm_watch(watchDescriptor, _watch->id) != 0){
+                                    UTIL_LOG_ERROR(strerror(errno));
+                                }
+
+                                if(linkedList_remove(&watches, _watch) != ERROR_NO_ERROR){
+                                    return NULL;
+                                }
+
+                                free(_watch->directory);
+                                free(_watch);
+
+                                break;
+                            }
+                        }
+
+                        break;
+                    }       
+                }
+            }
+        }
+    }else{
+        if(event->mask & IN_CREATE){
+            LinkedListIterator watchIterator;
+            linkedList_initIterator(&watchIterator, &watches);
+
+            while(LINKED_LIST_ITERATOR_HAS_NEXT(&watchIterator)){
+                INOTIFY_Watch* watch =  LINKED_LIST_ITERATOR_NEXT(&watchIterator);
+
+                if(watch->id == event->wd){
+                        const uint_fast64_t eventNameLength = strlen(event->name);
+                        const uint_fast64_t baseDirectoryLength = watch->directoryNameLength - (server->rootDirectoryLength - 1/*Keep the leading '/'.*/);
+                        const uint_fast64_t symbolicFileLocationLength = baseDirectoryLength + eventNameLength;
+                                                        
+                        char* symbolicFileLocation = alloca(sizeof(*symbolicFileLocation) * symbolicFileLocationLength + 1);
+                        if(symbolicFileLocation == NULL){
+                            UTIL_LOG_ERROR(util_toErrorString(ERROR_OUT_OF_MEMORY));
+
+                            return NULL;
+                        }
+
+                        memcpy(symbolicFileLocation, watch->directory + (server->rootDirectoryLength - 1), baseDirectoryLength);
+                        memcpy(symbolicFileLocation + baseDirectoryLength, event->name, eventNameLength);
+                        symbolicFileLocation[symbolicFileLocationLength] = '\0';
+                    
+                        const uint_fast64_t fileLocationLength = (server->rootDirectoryLength - 1) + symbolicFileLocationLength;
+
+                        char* fileLocation = malloc(sizeof(*fileLocation) * (fileLocationLength + 1));
+                        if(fileLocation == NULL){
+                            UTIL_LOG_ERROR(util_toErrorString(ERROR_OUT_OF_MEMORY));
+
+                            return NULL;
+                        }
+
+                        memcpy(fileLocation, server->rootDirectory,(server->rootDirectoryLength - 1));
+                        memcpy(fileLocation + (server->rootDirectoryLength - 1), symbolicFileLocation, symbolicFileLocationLength);
+                        fileLocation[fileLocationLength] = '\0';
+
+                        CacheObject* cacheObject;
+                        if(cache_load(&server->cache, &cacheObject, fileLocation, fileLocationLength, symbolicFileLocation, symbolicFileLocationLength) != ERROR_NO_ERROR){
+                            return NULL;
+                        }
+
+                        break;
+                    }
+            }
+        }else{
+            if(event->mask & IN_MODIFY){
+                LinkedListIterator watchIterator;
+                linkedList_initIterator(&watchIterator, &watches);
+
+                while(LINKED_LIST_ITERATOR_HAS_NEXT(&watchIterator)){
+                    INOTIFY_Watch* watch =  LINKED_LIST_ITERATOR_NEXT(&watchIterator);
+
+                    if(watch->id == event->wd){
+                        const uint_fast64_t eventNameLength = strlen(event->name);
+                        const uint_fast64_t baseDirectoryLength = watch->directoryNameLength - (server->rootDirectoryLength - 1/*Keep the leading '/'.*/);
+                        const uint_fast64_t symbolicFileLocationLength = baseDirectoryLength + eventNameLength;
+                                                    
+                        char* symbolicFileLocation = alloca(sizeof(*symbolicFileLocation) * symbolicFileLocationLength + 1);
+                        if(symbolicFileLocation == NULL){
+                            UTIL_LOG_ERROR(util_toErrorString(ERROR_OUT_OF_MEMORY));
+
+                            return NULL;
+                        }
+
+                        memcpy(symbolicFileLocation, watch->directory + (server->rootDirectoryLength - 1), baseDirectoryLength);
+                        memcpy(symbolicFileLocation + baseDirectoryLength, event->name, eventNameLength);
+                        symbolicFileLocation[symbolicFileLocationLength] = '\0';
+                    
+                        const uint_fast64_t fileLocationLength = (server->rootDirectoryLength - 1) + symbolicFileLocationLength;
+
+                        char* fileLocation = malloc(sizeof(*fileLocation) * (fileLocationLength + 1));
+                        if(fileLocation == NULL){
+                            UTIL_LOG_ERROR(util_toErrorString(ERROR_OUT_OF_MEMORY));
+
+                            return NULL;
+                        }
+
+                        memcpy(fileLocation, server->rootDirectory,(server->rootDirectoryLength - 1));
+                        memcpy(fileLocation + (server->rootDirectoryLength - 1), symbolicFileLocation, symbolicFileLocationLength);
+                        fileLocation[fileLocationLength] = '\0';
+
+                        CacheObject* cacheObject;
+                        if(cache_get(&server->cache, &cacheObject, symbolicFileLocation, symbolicFileLocationLength) != ERROR_NO_ERROR){
+                            return NULL;
+                        }
+
+                        if(cacheObject != NULL){
+                            if(cache_remove(&server->cache, cacheObject) != ERROR_NO_ERROR){
+                                return NULL;
+                            }
+                        }
+
+                        if(cache_load(&server->cache, &cacheObject, fileLocation, fileLocationLength, symbolicFileLocation, symbolicFileLocationLength) != ERROR_NO_ERROR){
+                            return NULL;
+                        }
+
+                        break;
+                    }
+                }
+            }else{
+                if(event->mask & IN_DELETE){
+                    LinkedListIterator watchIterator;
+                    linkedList_initIterator(&watchIterator, &watches);
+
+                    while(LINKED_LIST_ITERATOR_HAS_NEXT(&watchIterator)){
+                        INOTIFY_Watch* watch =  LINKED_LIST_ITERATOR_NEXT(&watchIterator);
+
+                        if(watch->id == event->wd){
+                            const uint_fast64_t eventNameLength = strlen(event->name);
+                            const uint_fast64_t baseDirectoryLength = watch->directoryNameLength - (server->rootDirectoryLength - 1/*Keep the leading '/'.*/);
+                            const uint_fast64_t symbolicFileLocationLength = baseDirectoryLength + eventNameLength;
+                                                        
+                            char* symbolicFileLocation = malloc(sizeof(*symbolicFileLocation) * symbolicFileLocationLength + 1);
+                            if(symbolicFileLocation == NULL){
+                                UTIL_LOG_ERROR(util_toErrorString(ERROR_OUT_OF_MEMORY));
+
+                                return NULL;
+                            }
+
+                            memcpy(symbolicFileLocation, watch->directory + (server->rootDirectoryLength - 1), baseDirectoryLength);
+                            memcpy(symbolicFileLocation + baseDirectoryLength, event->name, eventNameLength);
+                            symbolicFileLocation[symbolicFileLocationLength] = '\0';
+                        
+                            CacheObject* cacheObject;
+                            if(cache_get(&server->cache, &cacheObject, symbolicFileLocation, symbolicFileLocationLength) != ERROR_NO_ERROR){
+                                return NULL;
+                            }
+
+                            if(cacheObject != NULL){
+                                if(cache_remove(&server->cache, cacheObject) != ERROR_NO_ERROR){
+                                    return NULL;
+                                }
+                            }
+
+                            break;
+                        }
+                    }
+                }
+            }
+        }
     }
 
     return NULL;
@@ -1149,8 +1170,7 @@ label_return:
         }
 
 	    // server_daemonize(serverWorkingDirectory);
-        signal(SIGPIPE, SIG_IGN);
-
+        
         const uint_fast64_t serverDaemonNameLength = strlen(SERVER_DAEMON_NAME);
         const uint_fast64_t serverDaemonLockFileNameLength = serverWorkingDirectoryLength + serverDaemonNameLength;
 
