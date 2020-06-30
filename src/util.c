@@ -775,7 +775,9 @@ ERROR_CODE util_walkDirectory(LinkedList* list, const char* directory, bool list
     while((directoryEntry = readdir(currentDirectory)) != NULL){
         // Avoid reentering current and parent directory.
         const uint_fast64_t currentEntryLength = strlen(directoryEntry->d_name);
-        if(strncmp(directoryEntry->d_name, ".", currentEntryLength) == 0 || strncmp(directoryEntry->d_name, "..", currentEntryLength) == 0){
+
+        const bool selfOrParent = directoryEntry->d_name[0] == '.';
+        if(selfOrParent || (selfOrParent && directoryEntry->d_name[1] == '.')){
             continue;
         }
 
