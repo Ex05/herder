@@ -21,7 +21,7 @@ inline ERROR_CODE http_initRequest(HTTP_Request* request, const char* url, const
     request->urlLength = urlLength;
     request->requestURL = malloc(sizeof(request->requestURL) * (urlLength + 1));
     if(request->requestURL == NULL){
-        return  ERROR(ERROR_OUT_OF_MEMORY);
+        return ERROR(ERROR_OUT_OF_MEMORY);
     }
 
     memcpy(request->requestURL, url, urlLength);
@@ -32,9 +32,9 @@ inline ERROR_CODE http_initRequest(HTTP_Request* request, const char* url, const
 
 inline ERROR_CODE http_initRequest_(HTTP_Request* request, void* buffer, const uint_fast64_t bufferSize, const HTTP_RequestType requestType){
     memset(request, 0, sizeof(*request));
-    
-    request->data = buffer;    
-    request->bufferSize = bufferSize;    
+
+    request->data = buffer;
+    request->bufferSize = bufferSize; 
 
     ERROR_CODE error;
     error = linkedList_init(&request->headerFields);
@@ -44,23 +44,23 @@ inline ERROR_CODE http_initRequest_(HTTP_Request* request, void* buffer, const u
     return ERROR(error);
 }
 
-inline ERROR_CODE http_initResponse(HTTP_Response* response, void* buffer, const uint_fast64_t bufferSize){    
+inline ERROR_CODE http_initResponse(HTTP_Response* response, void* buffer, const uint_fast64_t bufferSize){
     memset(response, 0, sizeof(*response));
-    
-    response->data = buffer;    
-    response->bufferSize = bufferSize;    
+
+    response->data = buffer;
+    response->bufferSize = bufferSize;
 
     ERROR_CODE error;
     error = linkedList_init(&response->headerFields);
-                
+
     response->statusCode = -1;
 
     return ERROR(error);
 }
 
 inline ERROR_CODE http_initheaderField(HTTP_HeaderField* headerField, char* name, const uint_fast64_t nameLength, char* value, const uint_fast64_t valueLength){
-    headerField->name = name;    
-    headerField->nameLength = nameLength;    
+    headerField->name = name;
+    headerField->nameLength = nameLength;
     headerField->value = value;
     headerField->valueLength = valueLength;
 
@@ -72,10 +72,10 @@ inline ERROR_CODE http_addHeaderField(HTTP_Request* request, char* name, const u
     if(request->headerFields.length == HTTP_MAX_HEADER_FIELDS){
         return ERROR(ERROR_MAX_HEADER_FIELDS_REACHED);
     }
-    
+
     HTTP_HeaderField* headerField = malloc(sizeof(*headerField));
     if(headerField == NULL){
-        return  ERROR(ERROR_OUT_OF_MEMORY);
+        return ERROR(ERROR_OUT_OF_MEMORY);
     }
 
     http_initheaderField(headerField, name, nameLength, value, valueLength);
@@ -91,7 +91,7 @@ inline HTTP_HeaderField* http_getHeaderField(HTTP_Request* request, char* name){
     HTTP_HeaderField* ret = NULL;
         
     LinkedListIterator it;
-    linkedList_initIterator(&it, &request->headerFields);    
+    linkedList_initIterator(&it, &request->headerFields);
     
     const uint_fast64_t nameLength = strlen(name);
     while(LINKED_LIST_ITERATOR_HAS_NEXT(&it)){
@@ -102,8 +102,8 @@ inline HTTP_HeaderField* http_getHeaderField(HTTP_Request* request, char* name){
             
             break;
         }
-    }       
-        
+    }
+
     return ret;
 }
 
@@ -137,7 +137,7 @@ ERROR_CODE http_openConnection(int_fast32_t* sockFD, const char* url, const uint
 
         return ERROR(ERROR_FAILED_TO_RETRIEVE_ADDRESS_INFORMATION);
     }
-    
+
     struct addrinfo* sockInfo;
     // Loop through all returned internet addresses.
     for(sockInfo = serverInfo; sockInfo != NULL; sockInfo = sockInfo->ai_next){
@@ -153,8 +153,8 @@ ERROR_CODE http_openConnection(int_fast32_t* sockFD, const char* url, const uint
             close(*sockFD);
 
             *sockFD = -1;
-            
-            continue;   
+
+            continue;
         }
 
         break;
@@ -185,17 +185,17 @@ ERROR_CODE http_sendRequest(HTTP_Request* request, HTTP_Response* response, cons
         request->httpVersion
     );
 
-    // Content-Length:.
+    // Content-Length.
     char* contentLength = malloc(sizeof(*contentLength) * UTIL_FORMATTED_NUMBER_LENGTH);
     if(contentLength == NULL){
-        return  ERROR(ERROR_OUT_OF_MEMORY);
+        return ERROR(ERROR_OUT_OF_MEMORY);
     }
 
     const uint_fast64_t contentLengthLength = snprintf(contentLength, UTIL_FORMATTED_NUMBER_LENGTH, "%" PRIdFAST64 "", request->dataLength);
 
     char* _contentLength = malloc(sizeof(*_contentLength) * 16);
     if(contentLength == NULL){
-        return  ERROR(ERROR_OUT_OF_MEMORY);
+        return ERROR(ERROR_OUT_OF_MEMORY);
     }
 
     strncpy(_contentLength, "Content-Length", 16);
@@ -203,8 +203,8 @@ ERROR_CODE http_sendRequest(HTTP_Request* request, HTTP_Response* response, cons
     http_addHeaderField(request, _contentLength, 16, contentLength, contentLengthLength);
 
     // HeaderFields.
-    LinkedListIterator it;   
-    linkedList_initIterator(&it, &request->headerFields);    
+    LinkedListIterator it;
+    linkedList_initIterator(&it, &request->headerFields);
 
     while(LINKED_LIST_ITERATOR_HAS_NEXT(&it)){
         HTTP_HeaderField* headerField = LINKED_LIST_ITERATOR_NEXT(&it);
@@ -215,9 +215,9 @@ ERROR_CODE http_sendRequest(HTTP_Request* request, HTTP_Response* response, cons
         );
 
         bufferSize -= writeOffset;
-    }       
-    
-    writeOffset += snprintf(buffer + writeOffset, request->bufferSize - writeOffset, "\r\n");             
+    }
+
+    writeOffset += snprintf(buffer + writeOffset, request->bufferSize - writeOffset, "\r\n");
 
     buffer[writeOffset] = '\0';
 
@@ -229,13 +229,13 @@ ERROR_CODE http_sendRequest(HTTP_Request* request, HTTP_Response* response, cons
     }
 
     // Send request.
-    if(send(connection, buffer, writeOffset, MSG_NOSIGNAL) != (int_fast64_t) writeOffset){        
+    if(send(connection, buffer, writeOffset, MSG_NOSIGNAL) != (int_fast64_t) writeOffset){
         return ERROR_(ERROR_WRITE_ERROR, "Failed to write to socket. '%s'.", strerror(errno));
     }
-    
+
     if(send(connection, request->data, request->dataLength, MSG_NOSIGNAL) != (int_fast64_t) request->dataLength){
         return ERROR_(ERROR_WRITE_ERROR, "Failed to write to socket. '%s'.", strerror(errno));
-    }    
+    }
 
     // Receive response.
     ERROR_CODE error;
@@ -268,9 +268,9 @@ ERROR_CODE http_sendResponse(HTTP_Response* response, const int_fast32_t connect
 
     const uint_fast64_t tTypeLength = strlen(tType);
 
-    char* contentType = malloc(sizeof(*contentType) *  (tTypeLength + 1));
+    char* contentType = malloc(sizeof(*contentType) * (tTypeLength + 1));
     if(contentType == NULL){
-        return  ERROR(ERROR_OUT_OF_MEMORY);
+        return ERROR(ERROR_OUT_OF_MEMORY);
     }
 
     memcpy(contentType, tType, tTypeLength + 1);
@@ -280,7 +280,7 @@ ERROR_CODE http_sendResponse(HTTP_Response* response, const int_fast32_t connect
 
     char* _contentTypeString = malloc(sizeof(_contentTypeString) * (contentTypeLength + 1));
     if(_contentTypeString == NULL){
-        return  ERROR(ERROR_OUT_OF_MEMORY);
+        return ERROR(ERROR_OUT_OF_MEMORY);
     }
 
     memcpy(_contentTypeString, contentTypeString, contentTypeLength);
@@ -288,20 +288,20 @@ ERROR_CODE http_sendResponse(HTTP_Response* response, const int_fast32_t connect
 
     http_addHeaderField((HTTP_Request*) response, contentType, strlen(contentType), _contentTypeString, contentTypeLength);
 
-    // Content-Length:.
+    // Content-Length.
     char* contentLength = malloc(sizeof(*contentLength) * UTIL_FORMATTED_NUMBER_LENGTH);
     if(contentLength == NULL){
-        return  ERROR(ERROR_OUT_OF_MEMORY);
+        return ERROR(ERROR_OUT_OF_MEMORY);
     }
 
     const uint_fast64_t contentLengthLength = snprintf(contentLength, UTIL_FORMATTED_NUMBER_LENGTH, "%" PRIdFAST64 "", response->dataLength);
 
     const char cType[] = "Content-Length";
 
-    const uint_fast64_t _contentLengthLength =  strlen(cType);
+    const uint_fast64_t _contentLengthLength = strlen(cType);
     char* _contentLength = malloc(sizeof(*_contentLength) * (_contentLengthLength + 1));
     if(_contentLength == NULL){
-        return  ERROR(ERROR_OUT_OF_MEMORY);
+        return ERROR(ERROR_OUT_OF_MEMORY);
     }
 
     memcpy(_contentLength, cType, _contentLengthLength + 1);
@@ -312,12 +312,12 @@ ERROR_CODE http_sendResponse(HTTP_Response* response, const int_fast32_t connect
     HTTP_ADD_HEADER_FIELD((*response), Server, serverMessage);
 
     // HeaderFields.
-    LinkedListIterator it;   
-    linkedList_initIterator(&it, &response->headerFields);    
+    LinkedListIterator it;
+    linkedList_initIterator(&it, &response->headerFields);
 
     while(LINKED_LIST_ITERATOR_HAS_NEXT(&it)){
         HTTP_HeaderField* headerField = LINKED_LIST_ITERATOR_NEXT(&it);
-                    
+
         writeOffset += snprintf(buffer + writeOffset, response->bufferSize - writeOffset, "%s: %s\r\n",
         headerField->name, 
         headerField->value
@@ -326,9 +326,9 @@ ERROR_CODE http_sendResponse(HTTP_Response* response, const int_fast32_t connect
         bufferSize -= writeOffset;
     }       
     
-    writeOffset += snprintf(buffer + writeOffset, response->bufferSize - writeOffset, "\r\n");             
+    writeOffset += snprintf(buffer + writeOffset, response->bufferSize - writeOffset, "\r\n");
 
-    buffer[writeOffset] = '\0';  
+    buffer[writeOffset] = '\0';
     
     bufferSize -= writeOffset + 1;
 
@@ -559,7 +559,7 @@ ERROR_CODE http_receiveResponse(HTTP_Response* response, const int_fast32_t conn
 
     int_fast64_t bytesRead; 
     if((bytesRead = read(connection, buffer, response->bufferSize)) == -1){
-        return ERROR(ERROR_READ_ERROR);     
+        return ERROR(ERROR_READ_ERROR);
     }
 
     if(bytesRead == 0){
@@ -619,7 +619,7 @@ ERROR_CODE http_receiveResponse(HTTP_Response* response, const int_fast32_t conn
 
     i++;
 
-    // HeaderFields.       
+    // HeaderFields.
     int_fast64_t posSplitBegin = i;
     int_fast64_t posSplitEnd;
     for(;i < bytesRead; i++){
@@ -651,7 +651,7 @@ ERROR_CODE http_receiveResponse(HTTP_Response* response, const int_fast32_t conn
 
             char* name = malloc(sizeof(*name) * (nameLength + 1));
             if(name == NULL){
-                return  ERROR(ERROR_OUT_OF_MEMORY);
+                return ERROR(ERROR_OUT_OF_MEMORY);
             }
 
             memcpy(name, line, nameLength);
@@ -661,7 +661,7 @@ ERROR_CODE http_receiveResponse(HTTP_Response* response, const int_fast32_t conn
 
             char* value = malloc(sizeof(*value) * (valueLength + 1));
             if(value == NULL){
-                return  ERROR(ERROR_OUT_OF_MEMORY);
+                return ERROR(ERROR_OUT_OF_MEMORY);
             }
 
             memcpy(value, line + lineSplit + 1, valueLength);
@@ -671,7 +671,7 @@ ERROR_CODE http_receiveResponse(HTTP_Response* response, const int_fast32_t conn
 
             posSplitBegin = i + 1;
 
-            if(strncmp(name, "Content-Length:", nameLength) == 0){        
+            if(strncmp(name, "Content-Length:", nameLength) == 0){
                 char* endPtr;
 
                 int_fast64_t contentLength;
@@ -761,7 +761,7 @@ ERROR_CODE http_receiveRequest(HTTP_Request* request, const int_fast32_t connect
 
             request->requestURL = malloc(sizeof(*request->requestURL) * request->urlLength + 1);
             if(request->requestURL == NULL){
-               return  ERROR(ERROR_OUT_OF_MEMORY);
+               return ERROR(ERROR_OUT_OF_MEMORY);
             }
 
             memcpy(request->requestURL, buffer + posSplitBegin, request->urlLength);
@@ -783,7 +783,7 @@ ERROR_CODE http_receiveRequest(HTTP_Request* request, const int_fast32_t connect
         }
     }
 
-    // HeaderFields.       
+    // HeaderFields.
     uint_fast64_t posLineBegin = i;
     for(;i < bytesRead; i++){
         if(buffer[i] == '\n' && buffer[i - 1] == '\r'){
@@ -804,7 +804,7 @@ ERROR_CODE http_receiveRequest(HTTP_Request* request, const int_fast32_t connect
 
             char* name = malloc(sizeof(*name) * nameLength);
             if(name == NULL){
-                return  ERROR(ERROR_OUT_OF_MEMORY);
+                return ERROR(ERROR_OUT_OF_MEMORY);
             }
 
             memcpy(name, line, nameLength);
@@ -826,7 +826,7 @@ ERROR_CODE http_receiveRequest(HTTP_Request* request, const int_fast32_t connect
 
             char* value = malloc(sizeof(*value) * valueLength);
             if(value == NULL){
-                return  ERROR(ERROR_OUT_OF_MEMORY);
+                return ERROR(ERROR_OUT_OF_MEMORY);
             }
 
             memcpy(value, line, valueLength);
@@ -876,7 +876,7 @@ ERROR_CODE http_receiveRequest(HTTP_Request* request, const int_fast32_t connect
 void http_freeHTTP_Request(HTTP_Request* request){
     LinkedListIterator it;
     linkedList_initIterator(&it, &request->headerFields);
-   
+
     while(LINKED_LIST_ITERATOR_HAS_NEXT(&it)){
         HTTP_HeaderField* headerField = LINKED_LIST_ITERATOR_NEXT(&it);
         
@@ -901,7 +901,7 @@ void http_freeHTTP_Response(HTTP_Response* response){
         free(headerField->value);
         free(headerField);
     }       
-            
+
     linkedList_free(&response->headerFields);
 }
 
@@ -932,7 +932,7 @@ HTTP_RequestType http_parseRequestType(const char* const type, const uint_fast64
     switch(util_hashString(type, length)){
         case HASH_GET:{
             ret = REQUEST_TYPE_GET;
-            
+
             break;
         }
         case HASH_POST:{
@@ -942,46 +942,46 @@ HTTP_RequestType http_parseRequestType(const char* const type, const uint_fast64
         }
         case HASH_HEAD:{
             ret = REQUEST_TYPE_HEAD;
-            
+
             break;
         }
         case HASH_PUT:{
             ret = REQUEST_TYPE_PUT;
-            
+
             break;
         }
         case HASH_DELETE:{
             ret = REQUEST_TYPE_DELETE;
-            
+
             break;
         }
         case HASH_TRACE:{
             ret = REQUEST_TYPE_TRACE;
-            
+
             break;
         }
         case HASH_OPTIONS:{
             ret =REQUEST_TYPE_OPTIONS;
-            
+
             break;
         }
         case HASH_CONNECT:{
             ret = REQUEST_TYPE_CONNECT;
-            
+
             break;
         }
         case HASH_PATCH:{
             ret = REQUEST_TYPE_PATCH;
-            
+
             break;
         }
         default:{
             UTIL_LOG_ERROR_("Unknown request type:'%s'.", type);
-            
+
             break;
         }
     }
-    
+
     #undef HASH_GET
     #undef HASH_HEAD
     #undef HASH_POST
@@ -991,7 +991,7 @@ HTTP_RequestType http_parseRequestType(const char* const type, const uint_fast64
     #undef HASH_OPTIONS
     #undef HASH_CONNECT
     #undef HASH_PATCH
-    
+
     return ret;
 }
 
@@ -1045,7 +1045,7 @@ local const char* const HTTP_STATUS_MESSAGE_MAPPING_ARRAY[] = {
     "Too Many Requests",
     "Request Header Fields Too Large",
     "Connection Closed Without Response",
-    "Unavailable For Legal Reasons",    
+    "Unavailable For Legal Reasons",
     "Client Closed Request",
     "Internal Server Error",
     "Not Implemented",
@@ -1157,7 +1157,7 @@ inline void http_setHTTP_Version(HTTP_Response* response, const char version[]){
 }
 
 typedef struct{
-    const char*  name;
+    const char* name;
     const uint_fast64_t length;
 }ContentType;
 
@@ -1181,7 +1181,7 @@ inline const char* http_contentTypeToString(const HTTP_ContentType contentType, 
     return _contentType.name;
 }
 
-// printf("#define HASH_TXT %d\n", util_hashString("txt", 3));     
+// printf("#define HASH_TXT %d\n", util_hashString("txt", 3));
 // printf("#define HASH_HTML %d\n", util_hashString("html", 4)); 
 // printf("#define HASH_CSS %d\n", util_hashString("css", 3));
 // printf("#define HASH_JS %d\n", util_hashString("js", 2));
@@ -1205,39 +1205,39 @@ inline HTTP_ContentType http_getContentType(const char* fileExtension, const uin
     switch(util_hashString(fileExtension, fileExtensionLength)){
         case HASH_CSS :{
           return HTTP_CONTENT_TYPE_TEXT_CSS;
-          
+
           break;
       }
         case HASH_JS :{
           return HTTP_CONTENT_TYPE_APPLICATION_JAVASCRIPT;
-          
+
           break;
       }
         case HASH_PNG :{
           return HTTP_CONTENT_TYPE_IMAGE_PNG;
-          
+
           break;
       }
         case HASH_JPG :{
           return HTTP_CONTENT_TYPE_IMAGE_JPG;
-          
+
           break;
       }
         case HASH_SVG :{
           return HTTP_CONTENT_TYPE_IMAGE_SVG;
-          
+
           break;
-      }            
+      }
       case HASH_ICO:{
           return HTTP_CONTENT_TYPE_IMAGE_ICON;
-          
+
           break;
       }
       case HASH_HTML:
       case HASH_TXT:
       default:{
           return HTTP_CONTENT_TYPE_TEXT_HTML;
-          
+
           break;
       }
   }     
