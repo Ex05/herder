@@ -393,15 +393,33 @@ TEST_TEST_FUNCTION_(linkedList_iteration, LinkedList, list){
     uint8_t buf[4] = {0};
 
     LinkedListIterator it;
-    linkedList_initIterator(&it, list);
 
-    uint_fast64_t i = 0;
-    while(LINKED_LIST_ITERATOR_HAS_NEXT(&it)){
-        buf[i++] = *(uint8_t*) LINKED_LIST_ITERATOR_NEXT(&it);
+    // Test_0.
+    {
+        linkedList_initIterator(&it, list);
+
+        uint_fast64_t i = 0;
+        while(LINKED_LIST_ITERATOR_HAS_NEXT(&it)){
+            buf[i++] = *(uint8_t*) LINKED_LIST_ITERATOR_NEXT(&it);
+        }
+
+        if(buf[0] != 3 || buf[1] != 2 || buf[2] != 1 || buf[3] != 0){
+            return TEST_FAILURE("%s", "Failed to iterate over linked list.");
+        }
     }
 
-    if(buf[0] != 3 || buf[1] != 2 || buf[2] != 1 || buf[3] != 0){
-        return TEST_FAILURE("%s", "Failed to iterate over linked list.");
+    // Test_1.
+    {
+        linkedList_initIterator(&it, list);
+
+        uint_fast64_t i = 0;
+        while(LINKED_LIST_ITERATOR_HAS_NEXT(&it)){
+            buf[i++] = *(uint8_t*) LINKED_LIST_ITERATOR_NEXT(&it);
+        }
+
+        if(buf[0] != 3 || buf[1] != 2 || buf[2] != 1 || buf[3] != 0){
+            return TEST_FAILURE("%s", "Failed to iterate over linked list.");
+        }
     }
 
     return TEST_SUCCESS;
@@ -775,6 +793,18 @@ TEST_TEST_FUNCTION(util_getBaseDirectory){
 
         if(strncmp("/img", baseDirectory, baseDirectoryLength) != 0){
             return TEST_FAILURE("'util_getBaseDirectory' '%s' != '%s'.", baseDirectory, "/img");
+        }
+    }
+
+    // Test_5.
+    {
+        char url[] = "check.proxyradar.com:80";
+
+        char* baseDirectory;
+        uint_fast64_t baseDirectoryLength;
+        __UTIL_SUPPRESS_NEXT_ERROR_OF_TYPE__(ERROR_INVALID_REQUEST_URL);
+        if((error = util_getBaseDirectory(&baseDirectory, &baseDirectoryLength, url, strlen(url))) != ERROR_INVALID_REQUEST_URL){
+            return TEST_FAILURE("Failed to throw an error for path: '%s'. Expected '%s' buit functiion returned '%s'.", url, util_toErrorString(ERROR_INVALID_REQUEST_URL), util_toErrorString(error));
         }
     }
 
@@ -2004,6 +2034,33 @@ TEST_TEST_FUNCTION(server_addContext){
         goto label_free;
     }
 
+    // Test_2.
+    {
+        const char requestURL[] = "check.proxyradar.com:80";
+
+        UTIL_LOG_CONSOLE_(LOG_DEBUG, "Test:'%s'", requestURL);
+
+        http_freeHTTP_Request(&request);
+
+        http_initRequest(&request, requestURL, strlen(requestURL), buffer, 8096, HTTP_VERSION_1_0, REQUEST_TYPE_GET);
+
+        ContextHandler* contextHandler;
+        if((error = server_getContext(&server, &contextHandler, &request)) == ERROR_NO_ERROR){
+            ret = false;
+
+            UTIL_LOG_CONSOLE(LOG_DEBUG, "GET_CONTEXT.");
+
+            goto label_free;
+        }
+
+        if(contextHandler != NULL){
+            ret = false;
+
+            goto label_free;
+        }
+    }
+
+
 label_free:
     http_freeHTTP_Request(&request);    
 
@@ -2204,11 +2261,11 @@ int main(void){
         TEST(herder_constructFilePath);
     TEST_SUIT_END();
 
-/*     TEST_SUIT_BEGIN("server");
+   /* TEST_SUIT_BEGIN("server");
         // Note:(jan) Running the server in valgrind takes to long, probably due to the 'accept' call having to be interrupted in the server loop.
         TEST(server_addContext);
         // Note:(jan) No need to run this, as this was not meant to be an automated test, and needed console output in 'http.c' that is no longer present to be useful.
-        TEST(server_send);
+        // TEST(server_send);
     TEST_SUIT_END(); */
 
     TEST_END();

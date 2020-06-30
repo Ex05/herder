@@ -9,6 +9,8 @@
 
 local ERROR_CODE cache_initCacheObject(CacheObject*, uint8_t*, const uint_fast64_t, char*, const uint_fast64_t, char*, const uint_fast64_t);
 
+local void cache_freeCacheObject(CacheObject*);
+
 inline ERROR_CODE cache_init(Cache* cache, const uint_fast64_t numThreads, const uint_fast64_t size){
     memset(cache, 0, sizeof(*cache));
 
@@ -86,12 +88,14 @@ inline ERROR_CODE cache_get(Cache* cache, CacheObject** cacheObject, char* symbo
 
     LinkedListIterator it;
     linkedList_initIterator(&it, &cache->elements);
-
     while(LINKED_LIST_ITERATOR_HAS_NEXT(&it)){
         CacheObject* o =  LINKED_LIST_ITERATOR_NEXT(&it);
 
         if(strncmp(symbolicFileLocation, o->symbolicFileLocation, symbolicFileLocationLength > o->symbolicFileLocationLength ? symbolicFileLocationLength : o->symbolicFileLocationLength) == 0){
             *cacheObject = o;
+
+            clock_gettime(CLOCK_MONOTONIC, &o->timeLastHit);
+            o->totalHits++;
 
             goto label_return;
         }
@@ -144,15 +148,15 @@ inline ERROR_CODE cache_load(Cache* cache, CacheObject** cacheObject, char* file
         return ERROR(ERROR_FAILED_TO_CLOSE_FILE);
     }
 
-    if(cache->currentSize + (*cacheObject)->size > cache->maxSize){
-        UTIL_LOG_CRITICAL("// TODO:(jan) Remove stuff from cache.");
-    }
-
     pthread_mutex_lock(&cache->lock);
 
     uint_fast64_t i;
     for(i = 0; i < cache->threads; i++){
         sem_wait(&cache->activeAcesses);
+    }
+
+      if(cache->currentSize + (*cacheObject)->size > cache->maxSize){
+        UTIL_LOG_CRITICAL("// TODO:(jan) Remove stuff from cache.");
     }
 
     linkedList_add(&cache->elements, *cacheObject);
@@ -166,6 +170,41 @@ inline ERROR_CODE cache_load(Cache* cache, CacheObject** cacheObject, char* file
     pthread_mutex_unlock(&cache->lock);
 
     return ERROR(ERROR_NO_ERROR);
+}
+
+ERROR_CODE cache_remove(Cache* cache, CacheObject* cacheObject){
+    ERROR_CODE error;
+    
+    pthread_mutex_lock(&cache->lock);
+
+    uint_fast64_t i;
+    for(i = 0; i < cache->threads; i++){
+        sem_wait(&cache->activeAcesses);
+    }
+
+    if((error = linkedList_remove(&cache->elements, cacheObject)) != ERROR_NO_ERROR){
+        return ERROR_(error, "Failed to remove cacheobject '%s' from cache. [%s]", cacheObject->symbolicFileLocation, util_toErrorString(error));
+    }
+
+    cache->currentSize += cacheObject->size;
+    
+    for(; i > 0; i--){
+        sem_post(&cache->activeAcesses);
+    }
+
+    pthread_mutex_unlock(&cache->lock);
+
+    cache_freeCacheObject(cacheObject);
+
+    free(cacheObject);
+    
+    return ERROR(error);
+}
+
+void cache_freeCacheObject(CacheObject* cacheObject){
+    free(cacheObject->data);
+    free(cacheObject->fileLocation);
+    free(cacheObject->symbolicFileLocation);
 }
 
 #endif

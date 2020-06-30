@@ -36,6 +36,7 @@
 #define CONSOLE_CLIENT_USAGE_ARGUMENT_SET_REMOTE_HOST "--setRemoteHost <port>"
 #define CONSOLE_CLIENT_USAGE_ARGUMENT_SET_REMOTE_PORT "--setRemotePort <port>"
 #define CONSOLE_CLIENT_USAGE_ARGUMENT_SHOW_SETTINGS "--showSettings"
+#define CONSOLE_CLIENT_USAGE_ARGUMENT_PLAY "-p, --play"
 
 #define CONSOLE_CLIENT_PROPERTY_IMPORT_DIRECTORY_NAME "importDirectory"
 #define CONSOLE_CLIENT_PROPERTY_REMOTE_HOST_NAME "remoteHost"
@@ -53,8 +54,6 @@ local ERROR_CODE consoleClient_import(Property*, Property*, Property*, const cha
 local ERROR_CODE consoleClient_listAllShows(Property*, Property*);
 
 local ERROR_CODE consoleClient_printShowInfo(Property*, Property*, const char*, const uint_fast64_t);
-
-local ERROR_CODE consoleClient_walkDirectory(LinkedList*, const char*);
 
 local ERROR_CODE consoleClient_extractShowInfo(Property*, Property*, EpisodeInfo*, const bool);
 
@@ -106,6 +105,7 @@ local ERROR_CODE consoleClient_selectYesNo(bool*);
     ARGUMENT_PARSER_ADD_ARGUMENT(SetRemoteHost, 1, "--setRemoteHost");
     ARGUMENT_PARSER_ADD_ARGUMENT(SetRemoteHostPort, 1, "--setRemotePort");
     ARGUMENT_PARSER_ADD_ARGUMENT(ShowSettings, 1, "--showSettings");
+    ARGUMENT_PARSER_ADD_ARGUMENT(Play, 1, "--play");
 
     if((error = argumentParser_parse(&parser, argc, argv)) != ERROR_NO_ERROR){
         if(error == ERROR_NO_VALID_ARGUMENT){
@@ -527,6 +527,25 @@ local ERROR_CODE consoleClient_selectYesNo(bool*);
         goto label_freeProperties;
     }
 
+    // --play.
+    if(argumentParser_contains(&parser, &argumentPlay)){ 
+        if(argumentShowSettings.numValues != 0){
+            UTIL_LOG_CONSOLE(LOG_INFO, "Invalid command. Usage: " CONSOLE_CLIENT_USAGE_ARGUMENT_SHOW_SETTINGS);
+        }else{
+            system("vlc \"file:///home/ex05/herder/library/American_Dad/American_Dad%20-%20Season_01/American_Dad_s01e01_Pilot.avi\" --play-and-exit");
+
+            // Pull all episodes of given show.
+
+            // If we can get feedback on which episode is playing.
+                // Create playlist and play via vlc.
+                // In Playlist directory save last completly played episode
+            // Else play each episode individually. (Might not play nice with reopening of the window?)
+                // In Playlist directory save last completly played episode
+        }
+
+        goto label_freeProperties;
+    }
+
     // --showSettings.
     if(argumentParser_contains(&parser, &argumentShowSettings)){ 
         if(argumentShowSettings.numValues != 0){
@@ -652,7 +671,7 @@ ERROR_CODE consoleClient_import(Property* remoteHost, Property* remotePort, Prop
         goto label_return;
     }
 
-    if((error = consoleClient_walkDirectory(&infos, directory)) != ERROR_NO_ERROR){
+    if((error = util_walkDirectory(&infos, directory, UTIL_FILES_ONLY)) != ERROR_NO_ERROR){
         goto label_return;
     }
 
@@ -665,19 +684,34 @@ ERROR_CODE consoleClient_import(Property* remoteHost, Property* remotePort, Prop
         goto label_freeFiles;
     }
 
-    while(LINKED_LIST_ITERATOR_HAS_NEXT(&it)){
-        EpisodeInfo* info = LINKED_LIST_ITERATOR_NEXT(&it);
+    LinkedList fileInfos;
+    if((error = linkedList_init(&fileInfos)) != ERROR_NO_ERROR){
+        goto label_freeFiles;
+    }
 
-        UTIL_LOG_CONSOLE_(LOG_INFO, "\"%s\"", info->fileName);
+    while(LINKED_LIST_ITERATOR_HAS_NEXT(&it)){        
+        char* path = LINKED_LIST_ITERATOR_NEXT(&it);
+
+        const uint_fast64_t pathLength = strlen(path);
+
+        EpisodeInfo info;
+        mediaLibrary_initEpisodeInfo(&info);
+        info.path = path;                  
+        info.pathLength = pathLength;
+
+        info.fileName = util_getFileName(info.path, info.pathLength);
+        info.fileNameLength = strlen(info.fileName);
+
+        UTIL_LOG_CONSOLE_(LOG_INFO, "\"%s\"", info.fileName);
           
-        if((error = consoleClient_extractShowInfo(remoteHost, remotePort, info, batchImport)) != ERROR_NO_ERROR){
-            UTIL_LOG_CONSOLE_(LOG_ERR, "Failed to extract show info from file: '%s'. [%s]", info->fileName, util_toErrorString(error));
+        if((error = consoleClient_extractShowInfo(remoteHost, remotePort, &info, batchImport)) != ERROR_NO_ERROR){
+            UTIL_LOG_CONSOLE_(LOG_ERR, "Failed to extract show info from file: '%s'. [%s]", info.fileName, util_toErrorString(error));
 
-            linkedList_remove(&infos, info);
-            mediaLibrary_freeEpisodeInfo(info);
-
-            free(info);
+            linkedList_remove(&infos, &info);
+            mediaLibrary_freeEpisodeInfo(&info);
         }
+
+        linkedList_add(&fileInfos, &info);
     }
 
     UTIL_LOG_CONSOLE(LOG_INFO, "Importing:...");
@@ -685,7 +719,7 @@ ERROR_CODE consoleClient_import(Property* remoteHost, Property* remotePort, Prop
     const uint_fast64_t entries = infos.length;
     uint_fast64_t i = 0;
 
-    linkedList_initIterator(&it, &infos);
+    linkedList_initIterator(&it, &fileInfos);
     while(LINKED_LIST_ITERATOR_HAS_NEXT(&it)){
         EpisodeInfo* info = LINKED_LIST_ITERATOR_NEXT(&it);
 
@@ -695,8 +729,7 @@ ERROR_CODE consoleClient_import(Property* remoteHost, Property* remotePort, Prop
             }
 
             mediaLibrary_freeEpisodeInfo(info);
-            free(info);
-
+        
             goto label_freeFiles;
         }else{
             i++;
@@ -705,13 +738,14 @@ ERROR_CODE consoleClient_import(Property* remoteHost, Property* remotePort, Prop
         }
 
         mediaLibrary_freeEpisodeInfo(info);
-        free(info);
     }
 
     __UTIL_SUPPRESS_NEXT_ERROR_OF_TYPE__(ERROR_FAILED_TO_DELETE_DIRECTORY);
     if((error = util_deleteDirectory(directory, true, true)) != ERROR_NO_ERROR){
         goto label_freeFiles;
     }
+
+    linkedList_free(&fileInfos);
 
 label_freeFiles:
     linkedList_free(&infos);
@@ -937,70 +971,6 @@ label_freeUserInput:
     free(userInput);
 
 label_return:
-    return ERROR(error);
-}
-
-ERROR_CODE consoleClient_walkDirectory(LinkedList* list, const char* directory){
-    ERROR_CODE error = ERROR_NO_ERROR;
-
-    DIR* currentDirectory = opendir(directory);
-    if(currentDirectory == NULL){
-        error = ERROR_FAILED_TO_OPEN_DIRECTORY;
-
-        goto label_closeDir;
-    }
-
-    struct dirent* directoryEntry;
-
-    const uint_fast64_t directoryLength = strlen(directory);
-
-    while((directoryEntry = readdir(currentDirectory)) != NULL){
-        // Avoid reentering current and parent directory.
-        const uint_fast64_t currentEntryLength = strlen(directoryEntry->d_name);
-        if(strncmp(directoryEntry->d_name, ".", currentEntryLength) == 0 || strncmp(directoryEntry->d_name, "..", currentEntryLength) == 0){
-            continue;
-        }
-
-        if(directoryEntry->d_type == DT_DIR){                      
-            const uint_fast64_t directoryPathLength = directoryLength + currentEntryLength + 1;  
-
-            char* directoryPath;
-            directoryPath = alloca(sizeof(*directoryPath) * (directoryPathLength + 1));
-            strncpy(directoryPath, directory, directoryLength + 1);     
-
-            util_append(directoryPath + directoryLength, directoryPathLength - 1 - directoryLength, directoryEntry->d_name, currentEntryLength);        
-            directoryPath[directoryPathLength - 1] = '/';
-            directoryPath[directoryPathLength] = '\0';
-          
-            if((error = consoleClient_walkDirectory(list, directoryPath)) != ERROR_NO_ERROR){
-                goto label_closeDir;
-            }
-        }else{                                
-            const uint_fast64_t pathLength = directoryLength + currentEntryLength; 
-
-            char* path;
-            path = malloc(sizeof(*path) * (pathLength + 1));
-            strncpy(path, directory, directoryLength + 1);     
-
-            util_append(path + directoryLength, pathLength - directoryLength, directoryEntry->d_name, currentEntryLength);        
-            path[pathLength] = '\0';
-
-            EpisodeInfo* info = malloc(sizeof(*info));
-            mediaLibrary_initEpisodeInfo(info);
-            info->path = path;                  
-            info->pathLength = pathLength;
-            info->fileName = path + (pathLength - currentEntryLength);
-            info->fileNameLength = currentEntryLength;
-
-            if((error = linkedList_add(list, info)) !=ERROR_NO_ERROR){
-                goto label_closeDir;
-            }
-        }
-    }
-
-label_closeDir:
-    closedir(currentDirectory);
-        
     return ERROR(error);
 }
 

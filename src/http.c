@@ -229,16 +229,12 @@ ERROR_CODE http_sendRequest(HTTP_Request* request, HTTP_Response* response, cons
     }
 
     // Send request.
-    if(write(connection, buffer, writeOffset) != (int_fast64_t) writeOffset){
-        UTIL_LOG_ERROR("Failed to write buffer.");
-        
-        return ERROR(ERROR_WRITE_ERROR);
+    if(send(connection, buffer, writeOffset, MSG_NOSIGNAL) != (int_fast64_t) writeOffset){        
+        return ERROR_(ERROR_WRITE_ERROR, "Failed to write to socket. '%s'.", strerror(errno));
     }
     
-    if(write(connection, request->data, request->dataLength) != (int_fast64_t) request->dataLength){
-        UTIL_LOG_ERROR("Failed to write buffer.");
-        
-        return ERROR(ERROR_WRITE_ERROR);
+    if(send(connection, request->data, request->dataLength, MSG_NOSIGNAL) != (int_fast64_t) request->dataLength){
+        return ERROR_(ERROR_WRITE_ERROR, "Failed to write to socket. '%s'.", strerror(errno));
     }    
 
     // Receive response.
@@ -342,23 +338,17 @@ ERROR_CODE http_sendResponse(HTTP_Response* response, const int_fast32_t connect
     }
 
     // Send response.
-    if(write(connection, buffer, writeOffset) != (int_fast64_t) writeOffset){
-        UTIL_LOG_ERROR("Failed to write buffer.");
-        
-        return ERROR(ERROR_WRITE_ERROR);
+    if(send(connection, buffer, writeOffset, MSG_NOSIGNAL) != (int_fast64_t) writeOffset){
+        return ERROR_(ERROR_WRITE_ERROR, "Failed to write to socket. '%s'.", strerror(errno));
     }
 
     if(!response->staticContent){
-        if(write(connection, response->data, response->dataLength) != (int_fast64_t) response->dataLength){
-            UTIL_LOG_ERROR("Failed to write buffer.");
-            
-            return ERROR(ERROR_WRITE_ERROR);
+        if(send(connection, response->data, response->dataLength, MSG_NOSIGNAL) != (int_fast64_t) response->dataLength){
+            return ERROR_(ERROR_WRITE_ERROR, "Failed to write to socket. '%s'.", strerror(errno));
         }
     }else{
-        if(write(connection, response->cacheObject->data, response->dataLength) != (int_fast64_t) response->dataLength){
-            UTIL_LOG_ERROR("Failed to write buffer.");
-            
-            return ERROR(ERROR_WRITE_ERROR);
+        if(send(connection, response->cacheObject->data, response->dataLength, MSG_NOSIGNAL) != (int_fast64_t) response->dataLength){
+            return ERROR_(ERROR_WRITE_ERROR, "Failed to write to socket. '%s'.", strerror(errno));
         }
     }
 

@@ -3,7 +3,7 @@
 
 // Use print MACROS for types like uint_fast64_t
 #define __STDC_FORMAT_MACROS
- 
+
 #include <inttypes.h>
 #include <stdint.h>
 #include <stdarg.h>
@@ -239,6 +239,11 @@ inline ERROR_CODE util_error(const ERROR_CODE error, const char* file, const int
 
 #define UTIL_UINT16_STRING_LENGTH 5
 
+#define UTIL_DIRECTORIES_ONLY 0
+#define UTIL_FILES_ONLY 1
+
+#include "linkedList.h"
+
 int_fast32_t util_fileExists(const char*);
 
 ERROR_CODE util_blockAlloc(void**, const uint_fast64_t);
@@ -281,6 +286,8 @@ void util_replaceAllChars(char*, const char, const char);
 
 void util_append(char*, const uint_fast64_t, char*, const uint_fast64_t);
 
+int util_hash(uint8_t*, uint_fast64_t);
+
 int util_hashString(const char*, uint_fast64_t);
 
 ERROR_CODE util_createDirectory(const char*);
@@ -318,6 +325,8 @@ ERROR_CODE util_renameFile(char*, char*);
 ERROR_CODE util_renameFileRelative(char*, char*, char*);
 
 ERROR_CODE util_getFileDirectory(char*, char*, const uint_fast64_t);
+
+ERROR_CODE util_walkDirectory(LinkedList*, const char*, bool);
 
 #undef UTIL_MAX_ERROR_MSG_LENGTH
 

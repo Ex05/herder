@@ -477,6 +477,19 @@ inline void util_append(char* a, const uint_fast64_t lengthA, char* b, const uin
     strncat(a, b, lengthB - (lengthA - lengthB));
 }
 
+inline int util_hash(uint8_t* s, uint_fast64_t length){
+    int hash = 0;
+
+    int c;
+    while (length-- != 0){
+        c = *s++;
+
+        hash = c + (hash << 6) + (hash << 16) - hash;
+    }
+
+    return hash;
+}
+
 // sdbm - hash implementation. see(http://www.cse.yorku.ca/~oz/hash.html)
 inline int util_hashString(const char* s, uint_fast64_t length){
     int hash = 0;
@@ -659,7 +672,7 @@ uint_fast64_t i;
 }
 
 inline char* util_getHomeDirectory(void){
-    #ifdef __linux__ 
+    #ifdef __linux__
         char* homeDir = getenv("HOME");
 
         if(homeDir != NULL){
@@ -733,17 +746,81 @@ inline ERROR_CODE util_renameFile(char* file, char* newName){
 }
 
 inline ERROR_CODE util_renameFileRelative(char* dir, char* file, char* newName){
-    const int fd = open(dir, O_RDONLY | O_DIRECTORY);
+    const int fileDescriptor = open(dir, O_RDONLY | O_DIRECTORY);
 
-    if(fd == -1){
+    if(fileDescriptor == -1){
         return ERROR_(ERROR_FAILED_TO_OPEN_DIRECTORY, "'%s'", strerror(errno));
     }
 
-    if(renameat(fd, file, fd, newName) != 0){
+    if(renameat(fileDescriptor, file, fileDescriptor, newName) != 0){
         return ERROR_(ERROR_FAILED_TO_RENAME_FILE, "'%s'", strerror(errno));
     }
 
     return ERROR(ERROR_NO_ERROR);
+}
+
+ERROR_CODE util_walkDirectory(LinkedList* list, const char* directory, bool listItemType){
+    ERROR_CODE error = ERROR_NO_ERROR;
+
+    DIR* currentDirectory = opendir(directory);
+    if(currentDirectory == NULL){
+        error = ERROR_FAILED_TO_OPEN_DIRECTORY;
+
+        goto label_closeDir;
+    }
+
+    const uint_fast64_t directoryLength = strlen(directory);
+
+    struct dirent* directoryEntry;
+    while((directoryEntry = readdir(currentDirectory)) != NULL){
+        // Avoid reentering current and parent directory.
+        const uint_fast64_t currentEntryLength = strlen(directoryEntry->d_name);
+        if(strncmp(directoryEntry->d_name, ".", currentEntryLength) == 0 || strncmp(directoryEntry->d_name, "..", currentEntryLength) == 0){
+            continue;
+        }
+
+        if(directoryEntry->d_type == DT_DIR){                      
+            const uint_fast64_t directoryPathLength = directoryLength + currentEntryLength + 1;  
+
+            char* directoryPath;
+            directoryPath = (listItemType == UTIL_DIRECTORIES_ONLY) ? malloc(sizeof(*directoryPath) * (directoryPathLength + 1)) : alloca(sizeof(*directoryPath) * (directoryPathLength + 1));
+            strncpy(directoryPath, directory, directoryLength + 1);     
+
+            util_append(directoryPath + directoryLength, directoryPathLength - 1 - directoryLength, directoryEntry->d_name, currentEntryLength);        
+            directoryPath[directoryPathLength - 1] = '/';
+            directoryPath[directoryPathLength] = '\0';
+          
+            if(listItemType == UTIL_DIRECTORIES_ONLY){
+                if((error = linkedList_add(list, directoryPath)) !=ERROR_NO_ERROR){
+                    goto label_closeDir;
+                }
+            }
+
+            if((error = util_walkDirectory(list, directoryPath, listItemType)) != ERROR_NO_ERROR){
+                goto label_closeDir;
+            }
+        }else{       
+            if(listItemType == UTIL_FILES_ONLY){
+                const uint_fast64_t pathLength = directoryLength + currentEntryLength; 
+
+                char* path;
+                path = malloc(sizeof(*path) * (pathLength + 1));
+                strncpy(path, directory, directoryLength + 1);     
+
+                util_append(path + directoryLength, pathLength - directoryLength, directoryEntry->d_name, currentEntryLength);        
+                path[pathLength] = '\0';
+
+                if((error = linkedList_add(list, path)) !=ERROR_NO_ERROR){
+                    goto label_closeDir;
+                }
+            }
+        }
+    }
+
+label_closeDir:
+    closedir(currentDirectory);
+        
+    return ERROR(error);
 }
 
 #endif
