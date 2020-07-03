@@ -8,7 +8,6 @@
 #define PROPERTY_IS_NOT_SET(property) (property == NULL)
 #define PROPERTY_IS_SET(property) (property != NULL)
 
-
 typedef struct{
 	uint_fast8_t release;
     uint_fast8_t update;
@@ -23,12 +22,12 @@ typedef struct{
 }PropertyFile;
     
 typedef struct{
-	char* name;
     uint_fast64_t nameOffset;
     uint_fast64_t nameLength;
     uint_fast64_t entryOffset;
     uint_fast64_t dataOffset;
     uint_fast64_t length;
+    char* name;
 }PropertyFileEntry;
  
 typedef struct{
@@ -37,9 +36,9 @@ typedef struct{
 }PropertyPage;
 
 typedef struct{
-    int_fast8_t* buffer;
     PropertyFileEntry* entry;
     PropertyFile* callBack;
+    int_fast8_t* buffer;
 }Property;
 
 ERROR_CODE propertyFile_init(PropertyFile*, const char*);

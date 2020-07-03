@@ -1574,6 +1574,7 @@ inline void server_daemonize(const char* workingDirectory){
         exit(EXIT_SUCCESS);
     }
 
+
     umask(S_IWGRP | S_IWOTH /*022*/);
 
     if(chdir(workingDirectory) != 0){

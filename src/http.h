@@ -130,6 +130,8 @@ typedef struct{
     int8_t* data;
     uint_fast64_t bufferSize;
     uint_fast64_t dataLength;
+    uint_fast64_t getParameterLength;
+    char* getParameter;
 }HTTP_Request;
 
 typedef struct{
