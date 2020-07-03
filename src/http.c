@@ -769,6 +769,17 @@ ERROR_CODE http_receiveRequest(HTTP_Request* request, const int_fast32_t connect
         
             posSplitBegin += posSplitEnd + 1;
 
+            const int_fast64_t getParameterOffset = util_findFirst(request->requestURL, request->urlLength, '?');
+
+            if(getParameterOffset != -1){
+                request->requestURL[getParameterOffset] = '\0';
+
+                request->getParameterLength = request->urlLength - getParameterOffset;
+                request->urlLength = getParameterOffset;
+
+                request->getParameter = request->requestURL + (getParameterOffset + 1);
+            }
+
             // Version.
             posSplitEnd = util_findFirst(buffer, bytesRead, ' ');
 
@@ -1241,7 +1252,7 @@ inline HTTP_ContentType http_getContentType(const char* fileExtension, const uin
           break;
       }
   }     
-    
+
     #undef HASH_TXT 
     #undef HASH_HTML
     #undef HASH_CSS 

@@ -662,7 +662,11 @@ TEST_TEST_FUNCTION(util_findFirst){
     const char s[] = "abcdef012ghi~jklno~p345~qrs";
 
     if(util_findFirst(s, strlen(s), '~') != 12){
-        return TEST_FAILURE("Failed to find fisrt char: '~' in string:'%s'.", s);
+        return TEST_FAILURE("Failed to find fisrt char:'~' in string:'%s'.", s);
+    }
+
+    if(util_findFirst(s, strlen(s), '/') != -1){
+        return TEST_FAILURE("Failed to not find char:'/' in string:'%s'.", s);
     }
 
     return TEST_SUCCESS;
