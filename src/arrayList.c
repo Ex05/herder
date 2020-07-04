@@ -49,7 +49,6 @@ inline ERROR_CODE arrayList_expandList(ArrayList* list){
     list->maxLength = list->expandFunction(list->expansions++, list->maxLength);
 
     void* elements = realloc(list->elements, list->stride * list->maxLength);
-
     // TODO:(jan) Check for 'ENOMEM' to see if the realloc call failed.
     if(elements == NULL){
         return ERROR(ERROR_OUT_OF_MEMORY);

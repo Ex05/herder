@@ -31,6 +31,20 @@
     ERROR(ERROR_NO_ERROR); \
 } while(0)
 
+#define ARRAY_LIST_ADD_PTR(list, value, type) do{ \
+    if((list)->length == (list)->maxLength){ \
+        ERROR_CODE error; \
+        if((error = arrayList_expandList((list))) != ERROR_NO_ERROR){ \
+            UTIL_LOG_CONSOLE(LOG_ERR, util_toErrorString(error)); \
+        } \
+    } \
+     \
+    memcpy(&((type*)(list)->elements)[(list)->length], value, sizeof(type)); \
+    (list)->length++; \
+     \
+    ERROR(ERROR_NO_ERROR); \
+} while(0)
+
 #define ARRAY_LIST_ITERATOR_NEXT(it, type) ARRAY_LIST_GET((it)->list, (it)->index++, type)
 
 #define ARRAY_LIST_EXPAND_FUNCTION(functionName) uint_fast64_t functionName(const uint_fast16_t expansions, const uint_fast64_t previousSize)
