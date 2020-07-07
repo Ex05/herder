@@ -15,6 +15,7 @@
 #include "propertyFile.c"
 #include "mediaLibrary.c"
 #include "herder.c"
+#include "pls.c"
 
 #define CONSOLE_CLIENT_PROGRAM_NAME "herder"
 
@@ -36,7 +37,7 @@
 #define CONSOLE_CLIENT_USAGE_ARGUMENT_SET_REMOTE_HOST "--setRemoteHost <port>"
 #define CONSOLE_CLIENT_USAGE_ARGUMENT_SET_REMOTE_PORT "--setRemotePort <port>"
 #define CONSOLE_CLIENT_USAGE_ARGUMENT_SHOW_SETTINGS "--showSettings"
-#define CONSOLE_CLIENT_USAGE_ARGUMENT_PLAY "-p, --play"
+#define CONSOLE_CLIENT_USAGE_ARGUMENT_PLAY "-p, --play <name>"
 
 #define CONSOLE_CLIENT_PROPERTY_IMPORT_DIRECTORY_NAME "importDirectory"
 #define CONSOLE_CLIENT_PROPERTY_REMOTE_HOST_NAME "remoteHost"
@@ -529,18 +530,31 @@ local ERROR_CODE consoleClient_selectYesNo(bool*);
 
     // --play.
     if(argumentParser_contains(&parser, &argumentPlay)){ 
-        if(argumentShowSettings.numValues != 0){
-            UTIL_LOG_CONSOLE(LOG_INFO, "Invalid command. Usage: " CONSOLE_CLIENT_USAGE_ARGUMENT_SHOW_SETTINGS);
+        if(argumentPlay.numValues != 1){
+            UTIL_LOG_CONSOLE(LOG_INFO, "Invalid command. Usage: " CONSOLE_CLIENT_USAGE_ARGUMENT_PLAY);
         }else{
-            system("vlc \"file:///home/ex05/herder/library/American_Dad/American_Dad%20-%20Season_01/American_Dad_s01e01_Pilot.avi\" --play-and-exit");
+            Show show;
+            if((error = medialibrary_initShow(&show, argumentPlay.values[0], argumentPlay.valueLengths[0])) != ERROR_NO_ERROR){
+                goto label_freeProperties;
+            }
 
-            // Pull all episodes of given show.
+            if((error = herder_pullShowInfo(remoteHost, remotePort, &show)) != ERROR_NO_ERROR){
+                goto label_freeProperties;
+            }
 
-            // If we can get feedback on which episode is playing.
-                // Create playlist and play via vlc.
-                // In Playlist directory save last completly played episode
-            // Else play each episode individually. (Might not play nice with reopening of the window?)
-                // In Playlist directory save last completly played episode
+            #define PLAYLIST_FILE_NAME "/tmp/herder_playList.pls"
+
+            if((error = pls_savePlayList(libraryDirectory, PLAYLIST_FILE_NAME, &show)) != ERROR_NO_ERROR){
+                mediaLibrary_freeShow(&show);
+
+                goto label_freeProperties;
+            }
+
+            mediaLibrary_freeShow(&show);
+
+            system("vlc \"" PLAYLIST_FILE_NAME "\" --play-and-exit");
+
+            #undef PLAYLIST_FILE_NAME
         }
 
         goto label_freeProperties;

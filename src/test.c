@@ -337,6 +337,34 @@ TEST_TEST_FUNCTION(arraylist_get){
     return TEST_SUCCESS;
 }
 
+TEST_TEST_FUNCTION(arraylist_expand){
+    ArrayList list;
+    arrayList_init(&list, 1, sizeof(uint8_t), arrayList_defaultExpandFunction);
+
+    ARRAY_LIST_ADD(&list, 0, uint8_t);
+    ARRAY_LIST_ADD(&list, 1, uint8_t);
+    ARRAY_LIST_ADD(&list, 2, uint8_t);
+    ARRAY_LIST_ADD(&list, 3, uint8_t);
+
+    uint8_t buf[4] = {0};
+
+    ArrayListIterator it;
+    arrayList_initIterator(&it, &list);
+
+    uint_fast64_t i = 0;
+    while(ARRAY_LIST_ITERATOR_HAS_NEXT(&it)){
+        buf[i++] = ARRAY_LIST_ITERATOR_NEXT(&it, uint8_t);
+    }
+
+    if(buf[0] != 0 || buf[1] != 1 || buf[2] != 2 || buf[3] != 3){
+        return TEST_FAILURE("%s", "Failed to iterate over array list.");
+    }
+
+    arrayList_free(&list);
+
+    return TEST_SUCCESS;
+}
+
 // arguemntParser.c
 TEST_TEST_FUNCTION(argumentParser_parse){
     ERROR_CODE error;
