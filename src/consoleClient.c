@@ -74,6 +74,8 @@ local ERROR_CODE consoleClient_selectEpisode(Episode**, Season*);
 
 local ERROR_CODE consoleClient_selectYesNo(bool*);
 
+local ERROR_CODE consoleClient_addEpisode(Property*, Property*, Property*, const char*, const uint_fast64_t);
+
 // TODO:(jan) Make custom entry point for the client build, so we won't have to use 'main'.
 #ifndef TEST_BUILD
 	int main(const int argc, const char** argv){
@@ -211,57 +213,9 @@ local ERROR_CODE consoleClient_selectYesNo(bool*);
                 if(!util_fileExists(argumentAdd.values[0]) || util_isDirectory(argumentAdd.values[0])){
                     UTIL_LOG_CONSOLE_(LOG_INFO, "ERROR: '%s' is not a falid file.", argumentAdd.values[0]);
                 }else{
-                    EpisodeInfo info;
-                    if((error = mediaLibrary_initEpisodeInfo(&info)) != ERROR_NO_ERROR){
-                        UTIL_LOG_CONSOLE_(LOG_ERR, "Failed to add '%s' to library. [%s]", argumentAdd.values[0],  util_toErrorString(error));
+                    if((error = consoleClient_addEpisode(remoteHost, remotePort, libraryDirectory, argumentAdd.values[0], argumentAdd.valueLengths[0])) != ERROR_NO_ERROR){
+                        UTIL_LOG_CONSOLE_(LOG_ERR, "Failed to add file'%s' to library. '%s'", argumentAdd.values[0], util_toErrorString(error));
                     }
-
-                    LinkedList shows;
-                    if((error = linkedList_init(&shows)) != ERROR_NO_ERROR){
-                       UTIL_LOG_CONSOLE_(LOG_ERR, "Failed to add '%s' to library. [%s]", argumentAdd.values[0],  util_toErrorString(error));
-                    }
-
-                    if((error = herder_pullShowList(&shows, remoteHost, remotePort)) != ERROR_NO_ERROR){
-                         UTIL_LOG_CONSOLE_(LOG_ERR, "Failed to add '%s' to library. [%s]", argumentAdd.values[0],  util_toErrorString(error));
-                    }                    
-
-                    char* path = alloca(sizeof(*path) * (argumentAdd.valueLengths[0] + 1));
-                    memcpy(path, argumentAdd.values[0], argumentAdd.valueLengths[0] + 1);
-
-                    info.path = path;
-                    info.pathLength = argumentAdd.valueLengths[0];
-
-                    char* fileName = util_getFileName(info.path, info.pathLength);
-                    const uint_fast64_t fileNameLength = strlen(fileName);
-
-                    util_getFileExtension(&info.fileExtension, &info.fileExtensionLength, fileName,fileNameLength);
-
-                    mediaLibrary_extractEpisodeInfo(&info, &shows, fileName, fileNameLength);
-
-                    // Because 'mediaLibrary_extractEpisodeInfo' operates on and destroys the given filename, we have to restore our complete file path.
-                    memcpy(path, argumentAdd.values[0], argumentAdd.valueLengths[0] + 1);
-
-                    if((error = herder_addEpisode(remoteHost, remotePort, libraryDirectory, &info)) != ERROR_NO_ERROR){
-                           UTIL_LOG_CONSOLE_(LOG_ERR, "Failed to add '%s' to library. [%s]", argumentAdd.values[0],  util_toErrorString(error));
-                    }else{
-                        UTIL_LOG_CONSOLE_(LOG_INFO, "Successfully added '%s' to the library.", argumentAdd.values[0]);
-                    }
-
-                    // Free show list.
-                    LinkedListIterator it;
-                    linkedList_initIterator(&it, &shows);
-
-                    while(LINKED_LIST_ITERATOR_HAS_NEXT(&it)){
-                        Show* show = LINKED_LIST_ITERATOR_NEXT(&it);
-                        
-                        mediaLibrary_freeShow(show);
-                        free(show);
-                    }
-
-                    linkedList_free(&shows);
-
-                    free(info.showName);
-                    free(info.name);
                 }
             }else{
                 UTIL_LOG_CONSOLE(LOG_ERR, util_toErrorString(ERROR_PROPERTY_NOT_SET));
@@ -1462,6 +1416,70 @@ local ERROR_CODE consoleClient_selectYesNo(bool* selection){
 
 label_freeUserInput:
     free(userInput);
+
+    return ERROR(error);
+}
+
+ERROR_CODE consoleClient_addEpisode(Property* remoteHost, Property* remotePort, Property* libraryDirectory, const char* path, const uint_fast64_t pathLength){
+    ERROR_CODE error;
+
+    EpisodeInfo info;
+    if((error = mediaLibrary_initEpisodeInfo(&info)) != ERROR_NO_ERROR){
+        UTIL_LOG_CONSOLE_(LOG_ERR, "Failed to add '%s' to library. [%s]", path,  util_toErrorString(error));
+    }
+
+    LinkedList shows;
+    if((error = linkedList_init(&shows)) != ERROR_NO_ERROR){
+        UTIL_LOG_CONSOLE_(LOG_ERR, "Failed to add '%s' to library. [%s]", path,  util_toErrorString(error));
+    }
+
+    if((error = herder_pullShowList(&shows, remoteHost, remotePort)) != ERROR_NO_ERROR){
+        UTIL_LOG_CONSOLE_(LOG_ERR, "Failed to add '%s' to library. [%s]", path,  util_toErrorString(error));
+    }                    
+
+    info.path = alloca(sizeof(*info.path) * (pathLength + 1));
+    memcpy(info.path, path, pathLength + 1);
+
+    info.pathLength = pathLength;
+
+    char* fileName = util_getFileName(info.path, info.pathLength);
+    const uint_fast64_t fileNameLength = strlen(fileName);
+
+    util_getFileExtension(&info.fileExtension, &info.fileExtensionLength, fileName, fileNameLength);
+
+    if((error = mediaLibrary_extractEpisodeInfo(&info, &shows, fileName, fileNameLength)) != ERROR_NO_ERROR){
+        if(info.showName == NULL){
+            UTIL_LOG_CONSOLE(LOG_INFO, "Failed to extract show name from file.");
+        }
+
+        goto label_freeShowList;
+    }
+
+    // Because 'mediaLibrary_extractEpisodeInfo' operates on and destroys the given filename, we have to create a copy of our complete file path.
+    memcpy(info.path, path, pathLength + 1);
+
+    if((error = herder_addEpisode(remoteHost, remotePort, libraryDirectory, &info)) != ERROR_NO_ERROR){
+        UTIL_LOG_CONSOLE_(LOG_ERR, "Failed to add '%s' to library. [%s]", path,  util_toErrorString(error));
+    }else{
+        UTIL_LOG_CONSOLE_(LOG_INFO, "Successfully added '%s' to the library.", path);
+    }
+
+    // Free show list.
+    LinkedListIterator it;
+label_freeShowList:
+    linkedList_initIterator(&it, &shows);
+
+    while(LINKED_LIST_ITERATOR_HAS_NEXT(&it)){
+        Show* show = LINKED_LIST_ITERATOR_NEXT(&it);
+        
+        mediaLibrary_freeShow(show);
+        free(show);
+    }
+
+    linkedList_free(&shows);
+
+    free(info.showName);
+    free(info.name);
 
     return ERROR(error);
 }
