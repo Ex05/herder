@@ -8,7 +8,7 @@
 
 #define ARRAY_LIST_ITERATOR_HAS_NEXT(it)(arrayList_iteratorHasNext(it))
 
-#define ARRAY_LIST_INIT_FIXED_SIZE_HEAP_LIST(list, initialSize, stride) do{ \
+#define ARRAY_LIST_INIT_FIXED_SIZE_STACK_LIST(list, initialSize, stride) do{ \
     arrayList_init_(list, initialSize, stride, NULL);\
     list->elements = alloca(stride * list->maxLength);\
 } while(0)

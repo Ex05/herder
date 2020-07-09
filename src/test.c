@@ -225,9 +225,9 @@ TEST_TEST_FUNCTION(arraylist_iteration){
     return TEST_SUCCESS;
 }
 
-TEST_TEST_FUNCTION(arraylist_fixedSizedHeapList){
+TEST_TEST_FUNCTION(arraylist_fixedSizedStackList){
     ArrayList list;
-    ARRAY_LIST_INIT_FIXED_SIZE_HEAP_LIST((&list), 4, sizeof(uint8_t));
+    ARRAY_LIST_INIT_FIXED_SIZE_STACK_LIST((&list), 4, sizeof(uint8_t));
 
     ARRAY_LIST_ADD(&list, 0, uint8_t);
     ARRAY_LIST_ADD(&list, 1, uint8_t);
@@ -245,7 +245,7 @@ TEST_TEST_FUNCTION(arraylist_fixedSizedHeapList){
     }
 
     if(buf[0] != 0 || buf[1] != 1 || buf[2] != 2 || buf[3] != 3){
-        return TEST_FAILURE("%s", "Failed to create fix sized heap list.");
+        return TEST_FAILURE("%s", "Failed to create fix sized stack list.");
     }
 
     return TEST_SUCCESS;
@@ -255,7 +255,7 @@ TEST_TEST_FUNCTION(arraylist_get){
     // Test_0.
     {
         ArrayList list;
-        ARRAY_LIST_INIT_FIXED_SIZE_HEAP_LIST((&list), 4, sizeof(uint8_t));
+        ARRAY_LIST_INIT_FIXED_SIZE_STACK_LIST((&list), 4, sizeof(uint8_t));
 
         ARRAY_LIST_ADD(&list, 0, uint8_t);
         ARRAY_LIST_ADD(&list, 1, uint8_t);
@@ -276,7 +276,7 @@ TEST_TEST_FUNCTION(arraylist_get){
         };
 
         ArrayList list;
-        ARRAY_LIST_INIT_FIXED_SIZE_HEAP_LIST((&list), 4, sizeof(struct testStruct));
+        ARRAY_LIST_INIT_FIXED_SIZE_STACK_LIST((&list), 4, sizeof(struct testStruct));
 
         struct testStruct b2 = {1, 'c'};
         struct testStruct b3 = {2, 'd'};
@@ -308,7 +308,7 @@ TEST_TEST_FUNCTION(arraylist_get){
         };
 
         ArrayList list;
-        ARRAY_LIST_INIT_FIXED_SIZE_HEAP_LIST((&list), 4, sizeof(struct testStruct));
+        ARRAY_LIST_INIT_FIXED_SIZE_STACK_LIST((&list), 4, sizeof(struct testStruct));
 
         struct testStruct b2 = {1, 'c'};
         struct testStruct* b3 = malloc(sizeof(struct testStruct));
@@ -2277,7 +2277,7 @@ int main(void){
 
     TEST_SUIT_BEGIN("arrayList");
         TEST(arraylist_iteration);
-        TEST(arraylist_fixedSizedHeapList);
+        TEST(arraylist_fixedSizedStackList);
         TEST(arraylist_get);
     TEST_SUIT_END();
 
