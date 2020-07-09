@@ -643,9 +643,6 @@ ERROR_CODE consoleClient_import(Property* remoteHost, Property* remotePort, Prop
         goto label_return;
     }
 
-    LinkedListIterator it;
-    linkedList_initIterator(&it, &infos);
-
     if(LINKED_LIST_IS_EMPTY(&infos)){
         UTIL_LOG_CONSOLE_(LOG_INFO, "No files recorgnised for import in '%s'.", directory);
 
@@ -657,29 +654,30 @@ ERROR_CODE consoleClient_import(Property* remoteHost, Property* remotePort, Prop
         goto label_freeFiles;
     }
 
-    while(LINKED_LIST_ITERATOR_HAS_NEXT(&it)){        
-        char* path = LINKED_LIST_ITERATOR_NEXT(&it);
+    LinkedListIterator fileIterator;
+    linkedList_initIterator(&fileIterator, &infos);
+    while(LINKED_LIST_ITERATOR_HAS_NEXT(&fileIterator)){        
+        char* path = LINKED_LIST_ITERATOR_NEXT(&fileIterator);
 
         const uint_fast64_t pathLength = strlen(path);
 
-        EpisodeInfo info;
-        mediaLibrary_initEpisodeInfo(&info);
-        info.path = path;                  
-        info.pathLength = pathLength;
+        EpisodeInfo* info = alloca(sizeof(*info));
+        mediaLibrary_initEpisodeInfo(info);
+        info->path = path;                  
+        info->pathLength = pathLength;
 
-        info.fileName = util_getFileName(info.path, info.pathLength);
-        info.fileNameLength = strlen(info.fileName);
+        info->fileName = util_getFileName(info->path, info->pathLength);
+        info->fileNameLength = strlen(info->fileName);
 
-        UTIL_LOG_CONSOLE_(LOG_INFO, "\"%s\"", info.fileName);
+        UTIL_LOG_CONSOLE_(LOG_INFO, "\"%s\"", info->fileName);
           
-        if((error = consoleClient_extractShowInfo(remoteHost, remotePort, &info, batchImport)) != ERROR_NO_ERROR){
-            UTIL_LOG_CONSOLE_(LOG_ERR, "Failed to extract show info from file: '%s'. [%s]", info.fileName, util_toErrorString(error));
+        if((error = consoleClient_extractShowInfo(remoteHost, remotePort, info, batchImport)) != ERROR_NO_ERROR){
+            UTIL_LOG_CONSOLE_(LOG_ERR, "Failed to extract show info from file: '%s'. [%s]", info->fileName, util_toErrorString(error));
 
-            linkedList_remove(&infos, &info);
-            mediaLibrary_freeEpisodeInfo(&info);
+            goto label_freeFiles;
         }
 
-        linkedList_add(&fileInfos, &info);
+        linkedList_add(&fileInfos, info);
     }
 
     UTIL_LOG_CONSOLE(LOG_INFO, "Importing:...");
@@ -687,16 +685,15 @@ ERROR_CODE consoleClient_import(Property* remoteHost, Property* remotePort, Prop
     const uint_fast64_t entries = infos.length;
     uint_fast64_t i = 0;
 
-    linkedList_initIterator(&it, &fileInfos);
-    while(LINKED_LIST_ITERATOR_HAS_NEXT(&it)){
-        EpisodeInfo* info = LINKED_LIST_ITERATOR_NEXT(&it);
+    LinkedListIterator episodeInfoIterator;
+    linkedList_initIterator(&episodeInfoIterator, &fileInfos);
+    while(LINKED_LIST_ITERATOR_HAS_NEXT(&episodeInfoIterator)){
+        EpisodeInfo* info = LINKED_LIST_ITERATOR_NEXT(&episodeInfoIterator);
 
         if((error = herder_addEpisode(remoteHost, remotePort, libraryDirectory, info)) != ERROR_NO_ERROR){
             if(error != ERROR_DUPLICATE_ENTRY){
                 UTIL_LOG_CONSOLE_(LOG_ERR, "Failed to add Episode: '%s'. [%s]", info->fileName, util_toErrorString(error));
             }
-
-            mediaLibrary_freeEpisodeInfo(info);
         
             goto label_freeFiles;
         }else{
@@ -1447,16 +1444,13 @@ ERROR_CODE consoleClient_addEpisode(Property* remoteHost, Property* remotePort, 
 
     util_getFileExtension(&info.fileExtension, &info.fileExtensionLength, fileName, fileNameLength);
 
-    if((error = mediaLibrary_extractEpisodeInfo(&info, &shows, fileName, fileNameLength)) != ERROR_NO_ERROR){
-        if(info.showName == NULL){
-            UTIL_LOG_CONSOLE(LOG_INFO, "Failed to extract show name from file.");
+   if((error = consoleClient_extractShowInfo(remoteHost, remotePort, &info, false)) != ERROR_NO_ERROR){
+            UTIL_LOG_CONSOLE_(LOG_ERR, "Failed to extract show info from file: '%s'. [%s]", info.fileName, util_toErrorString(error));
+
+            goto label_freeShowList;
         }
 
-        goto label_freeShowList;
-    }
-
-    // Because 'mediaLibrary_extractEpisodeInfo' operates on and destroys the given filename, we have to create a copy of our complete file path.
-    memcpy(info.path, path, pathLength + 1);
+    UTIL_LOG_CONSOLE(LOG_INFO, "Importing:...");
 
     if((error = herder_addEpisode(remoteHost, remotePort, libraryDirectory, &info)) != ERROR_NO_ERROR){
         UTIL_LOG_CONSOLE_(LOG_ERR, "Failed to add '%s' to library. [%s]", path,  util_toErrorString(error));
