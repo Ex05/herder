@@ -321,6 +321,8 @@ inline ERROR_CODE mediaLibrary_extractEpisodeInfo(EpisodeInfo* info, LinkedList*
 }
 
 inline ERROR_CODE mediaLibrary_extractEpisodeName(EpisodeInfo* info, char* fileName, uint_fast64_t fileNameLength){
+    fileName = util_trim(fileName, fileNameLength);
+
     char* s;
     while((s = strstr(fileName, "__")) != NULL){
         util_stringCopy(s, s + 1, strlen(s));
@@ -514,7 +516,7 @@ label_continue:
         }
         strncpy(info->showName, mostLikely->name, mostLikely->nameLength + 1);
         info->showNameLength = mostLikely->nameLength;
-
+        
         // Remove show name from file name.
         char* lowerCaseFileName = alloca(sizeof(*lowerCaseFileName) * (fileNameLength + 1));
         strncpy(lowerCaseFileName, fileName, fileNameLength + 1);
@@ -523,7 +525,6 @@ label_continue:
         char* lowerCaseShowName = alloca(sizeof(*lowerCaseShowName) * (mostLikely->nameLength + 1));
         strncpy(lowerCaseShowName, mostLikely->name, mostLikely->nameLength + 1);
         util_toLowerChase(lowerCaseShowName);
-        util_replaceAllChars(lowerCaseShowName, ' ', '_');
 
         char* beginIndex = strstr(lowerCaseFileName, lowerCaseShowName);
 
@@ -533,6 +534,18 @@ label_continue:
             const bool leadingWordDelimiterPresent = (fileName + offset)[mostLikely->nameLength] == '_';
 
             util_stringCopy(fileName + offset, (fileName + offset + (leadingWordDelimiterPresent? 1 : 0)) + mostLikely->nameLength, strlen(fileName + offset) + 1 - mostLikely->nameLength - (leadingWordDelimiterPresent? 1 : 0));
+        }else{
+            util_replaceAllChars(lowerCaseShowName, ' ', '_');
+
+            beginIndex = strstr(lowerCaseFileName, lowerCaseShowName);
+
+            if(beginIndex != NULL){
+                const intptr_t offset = beginIndex - lowerCaseFileName ;
+
+                const bool leadingWordDelimiterPresent = (fileName + offset)[mostLikely->nameLength] == '_';
+
+                util_stringCopy(fileName + offset, (fileName + offset + (leadingWordDelimiterPresent? 1 : 0)) + mostLikely->nameLength, strlen(fileName + offset) + 1 - mostLikely->nameLength - (leadingWordDelimiterPresent? 1 : 0));
+            }
         }
 
         return ERROR(ERROR_NO_ERROR);
