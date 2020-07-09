@@ -770,29 +770,32 @@ inline ERROR_CODE consoleClient_printShowInfo(Property* remoteHost, Property* re
 
     UTIL_LOG_CONSOLE_(LOG_INFO, "%s:", show.name);
 
-    LinkedListIterator seasonIterator;
-    linkedList_initIterator(&seasonIterator, &show.seasons);
+    Season** seasons = alloca(sizeof(*seasons) * show.seasons.length);
+    if((error = mediaLibrary_sortSeasons(&seasons, &show.seasons)) != ERROR_NO_ERROR){
+        goto label_freeShow;
+    }
 
-    bool showEmpty = true;
-    while(LINKED_LIST_ITERATOR_HAS_NEXT(&seasonIterator)){
-        showEmpty = false;
+    if(show.seasons.length == 0){
+        UTIL_LOG_CONSOLE(LOG_INFO, "\tEmpty.");
+    }
 
-        Season* season = LINKED_LIST_ITERATOR_NEXT(&seasonIterator);
+    register uint_fast64_t i;    
+    for(i = 0; i < show.seasons.length; i++){
+        Season* season = seasons[i];
+
+        Episode** episodes = alloca(sizeof(*episodes) * season->episodes.length);
+        if((error = mediaLibrary_sortEpisodes(&episodes, &season->episodes)) != ERROR_NO_ERROR){
+            goto label_freeShow;
+        }
 
         UTIL_LOG_CONSOLE_(LOG_INFO, "\tSeason: %02" PRIuFAST16 ".", season->number);
 
-        LinkedListIterator episodeIterator;
-        linkedList_initIterator(&episodeIterator, &season->episodes);
-
-        while(LINKED_LIST_ITERATOR_HAS_NEXT(&episodeIterator)){
-            Episode* episode = LINKED_LIST_ITERATOR_NEXT(&episodeIterator);
+        register uint_fast64_t j;
+        for(j = 0; j < season->episodes.length; j++){            
+            Episode* episode = episodes[j];
 
             UTIL_LOG_CONSOLE_(LOG_INFO, "\t\t  -> %02" PRIuFAST16 ": '%s'.", episode->number, episode->name);
         }
-    }
-
-    if(showEmpty){
-        UTIL_LOG_CONSOLE(LOG_INFO, "\tEmpty.");
     }
 
 label_freeShow:
