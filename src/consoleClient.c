@@ -89,7 +89,7 @@ local ERROR_CODE consoleClient_addEpisode(Property*, Property*, Property*, const
     if((error = argumentParser_init(&parser)) != ERROR_NO_ERROR){
         goto label_free;
     }
-    
+
     ARGUMENT_PARSER_ADD_ARGUMENT(Help, 3, "-?", "-h", "--help");
     ARGUMENT_PARSER_ADD_ARGUMENT(AddShow, 1, "--addShow");
     ARGUMENT_PARSER_ADD_ARGUMENT(RemoveShow, 1, "--removeShow");
@@ -112,7 +112,7 @@ local ERROR_CODE consoleClient_addEpisode(Property*, Property*, Property*, const
 
     if((error = argumentParser_parse(&parser, argc, argv)) != ERROR_NO_ERROR){
         if(error == ERROR_NO_VALID_ARGUMENT){
-            UTIL_LOG_CONSOLE(LOG_ERR, "No valid command line arguments.\nUse '" CONSOLE_CLIENT_USAGE_ARGUMENT_HELP "' to display a help message.");    
+            UTIL_LOG_CONSOLE(LOG_ERR, "No valid command line arguments.\nUse '" CONSOLE_CLIENT_USAGE_ARGUMENT_HELP "' to display a help message.");
 
             goto label_free;
         }else{
@@ -131,7 +131,7 @@ local ERROR_CODE consoleClient_addEpisode(Property*, Property*, Property*, const
     char* propertyFilePath = alloca(sizeof(*propertyFilePath) * (propertyFilePathLength + 1));
     strncpy(propertyFilePath, userHome, userHomeLength);
     strncpy(propertyFilePath + userHomeLength, "/herder/settings", 17);
-    
+
     if(!util_fileExists(propertyFilePath)){
         if(propertyFile_create(propertyFilePath, 8) != ERROR_NO_ERROR){
             goto label_free;
@@ -221,7 +221,7 @@ local ERROR_CODE consoleClient_addEpisode(Property*, Property*, Property*, const
                 UTIL_LOG_CONSOLE(LOG_ERR, util_toErrorString(ERROR_PROPERTY_NOT_SET));
             }
         }
-        
+
         goto label_freeProperties;
     }
 
@@ -249,7 +249,7 @@ local ERROR_CODE consoleClient_addEpisode(Property*, Property*, Property*, const
                 UTIL_LOG_CONSOLE(LOG_INFO, "Invalid command. Usage: " CONSOLE_CLIENT_USAGE_ARGUMENT_IMPORT);
             }
         }
-        
+
         goto label_freeProperties;
     }
 
@@ -277,7 +277,7 @@ local ERROR_CODE consoleClient_addEpisode(Property*, Property*, Property*, const
                 UTIL_LOG_CONSOLE(LOG_INFO, "Invalid command. Usage: " CONSOLE_CLIENT_USAGE_ARGUMENT_BATCH_IMPORT);
             }
         }
-        
+
         goto label_freeProperties;
     }
 
@@ -295,7 +295,7 @@ local ERROR_CODE consoleClient_addEpisode(Property*, Property*, Property*, const
                 UTIL_LOG_CONSOLE(LOG_ERR, util_toErrorString(ERROR_PROPERTY_NOT_SET));
             }
         }
-        
+
         goto label_freeProperties;
     }
 
@@ -313,7 +313,7 @@ local ERROR_CODE consoleClient_addEpisode(Property*, Property*, Property*, const
                 UTIL_LOG_CONSOLE(LOG_ERR, util_toErrorString(ERROR_PROPERTY_NOT_SET));
             }
         }
-        
+
         goto label_freeProperties;
     }
 
@@ -331,7 +331,7 @@ local ERROR_CODE consoleClient_addEpisode(Property*, Property*, Property*, const
                 UTIL_LOG_CONSOLE(LOG_ERR, util_toErrorString(ERROR_PROPERTY_NOT_SET));
             }
         }
-        
+
         goto label_freeProperties;
     }
 
@@ -349,7 +349,7 @@ local ERROR_CODE consoleClient_addEpisode(Property*, Property*, Property*, const
                 UTIL_LOG_CONSOLE(LOG_ERR, util_toErrorString(ERROR_PROPERTY_NOT_SET));
             }
         }
-        
+
         goto label_freeProperties;
     }
 
@@ -367,7 +367,7 @@ local ERROR_CODE consoleClient_addEpisode(Property*, Property*, Property*, const
                 UTIL_LOG_CONSOLE(LOG_ERR, util_toErrorString(ERROR_PROPERTY_NOT_SET));
             }
         }
-        
+
         goto label_freeProperties;
     }
 
@@ -385,7 +385,7 @@ local ERROR_CODE consoleClient_addEpisode(Property*, Property*, Property*, const
                 UTIL_LOG_CONSOLE(LOG_ERR, util_toErrorString(ERROR_PROPERTY_NOT_SET));
             }
         }
-        
+
         goto label_freeProperties;
     }
 
@@ -404,7 +404,7 @@ local ERROR_CODE consoleClient_addEpisode(Property*, Property*, Property*, const
                 UTIL_LOG_CONSOLE(LOG_ERR, util_toErrorString(ERROR_PROPERTY_NOT_SET));
             }
         }
-        
+
         goto label_freeProperties;
     }
 
@@ -449,7 +449,7 @@ local ERROR_CODE consoleClient_addEpisode(Property*, Property*, Property*, const
                 UTIL_LOG_CONSOLE_(LOG_INFO, "Successfully set '%s' to '%s'", CONSOLE_CLIENT_PROPERTY_REMOTE_HOST_NAME, argumentSetRemoteHost.values[0]);
             }
         }
-        
+
         goto label_freeProperties;
     }
 
@@ -478,7 +478,7 @@ local ERROR_CODE consoleClient_addEpisode(Property*, Property*, Property*, const
                 UTIL_LOG_CONSOLE_(LOG_INFO, "Successfully set '%s' to '%s'", CONSOLE_CLIENT_PROPERTY_REMOTE_PORT_NAME, argumentSetRemoteHostPort.values[0]);
             }
         }
-        
+
         goto label_freeProperties;
     }
 
@@ -524,7 +524,7 @@ local ERROR_CODE consoleClient_addEpisode(Property*, Property*, Property*, const
             UTIL_LOG_CONSOLE_(LOG_INFO, "RemotePorrt: %" PRIuFAST64 ".", PROPERTY_IS_SET(remotePort) ? util_byteArrayTo_uint64(remotePort->buffer) : 0);
             UTIL_LOG_CONSOLE_(LOG_INFO, "LibraryDirectory: %s.", PROPERTY_IS_SET(libraryDirectory) ? (char*) libraryDirectory->buffer : "NULL");
         }
-        
+
         goto label_freeProperties;
     }
 
@@ -611,7 +611,7 @@ inline ERROR_CODE consoleClient_listShows(Property* remoteHost, Property* remote
     uint_fast64_t i = 0;
     while(LINKED_LIST_ITERATOR_HAS_NEXT(&it)){
         Show* show = LINKED_LIST_ITERATOR_NEXT(&it);
-        
+
         UTIL_LOG_CONSOLE_(LOG_INFO, "%02" PRIuFAST64 ":'%s'.", i, show->name);
         i++;
 
@@ -656,14 +656,14 @@ ERROR_CODE consoleClient_import(Property* remoteHost, Property* remotePort, Prop
 
     LinkedListIterator fileIterator;
     linkedList_initIterator(&fileIterator, &infos);
-    while(LINKED_LIST_ITERATOR_HAS_NEXT(&fileIterator)){        
+    while(LINKED_LIST_ITERATOR_HAS_NEXT(&fileIterator)){
         char* path = LINKED_LIST_ITERATOR_NEXT(&fileIterator);
 
         const uint_fast64_t pathLength = strlen(path);
 
         EpisodeInfo* info = alloca(sizeof(*info));
         mediaLibrary_initEpisodeInfo(info);
-        info->path = path;                  
+        info->path = path;
         info->pathLength = pathLength;
 
         info->fileName = util_getFileName(info->path, info->pathLength);
@@ -694,12 +694,12 @@ ERROR_CODE consoleClient_import(Property* remoteHost, Property* remotePort, Prop
             if(error != ERROR_DUPLICATE_ENTRY){
                 UTIL_LOG_CONSOLE_(LOG_ERR, "Failed to add Episode: '%s'. [%s]", info->fileName, util_toErrorString(error));
             }
-        
+
             goto label_freeFiles;
         }else{
             i++;
-            
-            UTIL_LOG_CONSOLE_(LOG_INFO, " %" PRIdFAST64 "/%" PRIdFAST64 " Successfully added '%s'. to library.",  i, entries, info->fileName);
+
+            UTIL_LOG_CONSOLE_(LOG_INFO, " %" PRIdFAST64 "/%" PRIdFAST64 " Successfully added '%s'. to library.", i, entries, info->fileName);
         }
 
         mediaLibrary_freeEpisodeInfo(info);
@@ -739,7 +739,7 @@ inline ERROR_CODE consoleClient_listAllShows(Property* remoteHost, Property* rem
     uint_fast64_t i = 0;
     while(LINKED_LIST_ITERATOR_HAS_NEXT(&it)){
         Show* show = LINKED_LIST_ITERATOR_NEXT(&it);
-        
+
         if((error = consoleClient_printShowInfo(remoteHost, remotePort, show->name, show->nameLength)) != ERROR_NO_ERROR){
             UTIL_LOG_CONSOLE(LOG_ERR, util_toErrorString(error));
         }
@@ -779,7 +779,7 @@ inline ERROR_CODE consoleClient_printShowInfo(Property* remoteHost, Property* re
         UTIL_LOG_CONSOLE(LOG_INFO, "\tEmpty.");
     }
 
-    register uint_fast64_t i;    
+    register uint_fast64_t i;
     for(i = 0; i < show.seasons.length; i++){
         Season* season = seasons[i];
 
@@ -791,7 +791,7 @@ inline ERROR_CODE consoleClient_printShowInfo(Property* remoteHost, Property* re
         UTIL_LOG_CONSOLE_(LOG_INFO, "\tSeason: %02" PRIuFAST16 ".", season->number);
 
         register uint_fast64_t j;
-        for(j = 0; j < season->episodes.length; j++){            
+        for(j = 0; j < season->episodes.length; j++){
             Episode* episode = episodes[j];
 
             UTIL_LOG_CONSOLE_(LOG_INFO, "\t\t  -> %02" PRIuFAST16 ": '%s'.", episode->number, episode->name);
@@ -827,7 +827,7 @@ label_extractShowInfo:
         if((error = herder_addShow(remoteHost, remotePort, userInput, userInputLength)) != ERROR_NO_ERROR){
             goto label_freeUserInput;
         }
-        
+
         free(episodeInfo->name);
         free(userInput);
 
@@ -967,7 +967,7 @@ ERROR_CODE consoleClient_rename(Property* remoteHost, Property* remotePort, Prop
     UTIL_LOG_CONSOLE_(LOG_DEBUG, "Selected:[Episode:%" PRIdFAST16 " '%s'].", selectedEpisode->number, selectedEpisode->name);
 
     UTIL_LOG_CONSOLE(LOG_INFO, "Please enter a new episode name.");
-    
+
     char* newEpisodeName;
     int_fast64_t newEpisodeNameLength;
 
@@ -1001,17 +1001,17 @@ label_yesNo:
     }
 
 label_freeNewName:
-    free(newEpisodeName);       
+    free(newEpisodeName);
 
     mediaLibrary_freeShow(selectedShow);
-    
+
     free(selectedShow);
 
 label_return:
     return ERROR(error);
 }
 
-local ERROR_CODE consoleClient_renameEpisode(Property* remoteHost, Property* remotePort, Property* libraryDirectory, const char* oldName, const uint_fast64_t oldNameLength, const char* newName,  const uint_fast64_t newNameLength){
+local ERROR_CODE consoleClient_renameEpisode(Property* remoteHost, Property* remotePort, Property* libraryDirectory, const char* oldName, const uint_fast64_t oldNameLength, const char* newName, const uint_fast64_t newNameLength){
     ERROR_CODE error;
 
     LinkedList shows;
@@ -1047,7 +1047,7 @@ label_freeShows:
 
     while(LINKED_LIST_ITERATOR_HAS_NEXT(&it)){
         Show* show = LINKED_LIST_ITERATOR_NEXT(&it);
-        
+
         mediaLibrary_freeShow(show);
         free(show);
     }
@@ -1108,14 +1108,14 @@ label_yesNo:
 
 label_freeNewName:
     mediaLibrary_freeShow(selectedShow);
-    
+
     free(selectedShow);
 
 label_return:
     return ERROR(error);
 }
 
-local ERROR_CODE consoleClient_removeEpisode(Property* remoteHost, Property* remotePort, Property* libraryDirectory, const char* episodeName,  const uint_fast64_t episodeNameLength){
+local ERROR_CODE consoleClient_removeEpisode(Property* remoteHost, Property* remotePort, Property* libraryDirectory, const char* episodeName, const uint_fast64_t episodeNameLength){
     ERROR_CODE error;
 
     LinkedList shows;
@@ -1150,7 +1150,7 @@ label_freeShows:
 
     while(LINKED_LIST_ITERATOR_HAS_NEXT(&it)){
         Show* show = LINKED_LIST_ITERATOR_NEXT(&it);
-        
+
         mediaLibrary_freeShow(show);
         free(show);
     }
@@ -1192,7 +1192,7 @@ local ERROR_CODE consoleClient_selectShow(Property* remoteHost, Property* remote
     int_fast64_t i = 0;
     while(LINKED_LIST_ITERATOR_HAS_NEXT(&it)){
         Show* show = LINKED_LIST_ITERATOR_NEXT(&it);
-        
+
         UTIL_LOG_CONSOLE_(LOG_INFO, "%02" PRIuFAST64 ":'%s'.", i, show->name);
         i++;
     }
@@ -1290,7 +1290,7 @@ local ERROR_CODE consoleClient_selectSeason(Property* remoteHost, Property* remo
     for(j = 0; j < show->seasons.length; j++){
         UTIL_LOG_CONSOLE_(LOG_INFO, "\t%" PRIuFAST16 ".", seasons[j]->number);
     }
-    
+
     UTIL_LOG_CONSOLE(LOG_INFO, "Please select a season.");
 
     char* userInput;
@@ -1329,7 +1329,7 @@ label_invalidUserInput:
     goto label_selectSeason;
 
 label_return:
-    free(userInput);  
+    free(userInput);
 
     return ERROR(error);
 }
@@ -1346,7 +1346,7 @@ local ERROR_CODE consoleClient_selectEpisode(Episode** episode, Season* season){
     for(j = 0; j < season->episodes.length; j++){
          UTIL_LOG_CONSOLE_(LOG_INFO, "\t%" PRIuFAST16 ":'%s'", episodes[j]->number, episodes[j]->name);
     }
-    
+
     UTIL_LOG_CONSOLE(LOG_INFO, "Please select an episode.");
 
     char* userInput;
@@ -1385,9 +1385,9 @@ label_invalidUserInput:
     goto label_selectSeason;
 
 label_return:
-    free(userInput);  
+    free(userInput);
 
-    return ERROR(error);    
+    return ERROR(error); 
 }
 
 local ERROR_CODE consoleClient_selectYesNo(bool* selection){
@@ -1402,7 +1402,7 @@ local ERROR_CODE consoleClient_selectYesNo(bool* selection){
 
     util_toLowerChase(userInput);
 
-    if(strncmp(userInput, "no", 3) == 0 || strncmp(userInput, "n", 2) == 0){        
+    if(strncmp(userInput, "no", 3) == 0 || strncmp(userInput, "n", 2) == 0){
         *selection = false;
     }else{
         if(userInputLength != 0 && strncmp(userInput, "yes", 4) != 0 && strncmp(userInput, "y", 2) != 0){
@@ -1425,17 +1425,17 @@ ERROR_CODE consoleClient_addEpisode(Property* remoteHost, Property* remotePort, 
 
     EpisodeInfo info;
     if((error = mediaLibrary_initEpisodeInfo(&info)) != ERROR_NO_ERROR){
-        UTIL_LOG_CONSOLE_(LOG_ERR, "Failed to add '%s' to library. [%s]", path,  util_toErrorString(error));
+        goto label_freeInfo;
     }
 
     LinkedList shows;
     if((error = linkedList_init(&shows)) != ERROR_NO_ERROR){
-        UTIL_LOG_CONSOLE_(LOG_ERR, "Failed to add '%s' to library. [%s]", path,  util_toErrorString(error));
+        goto label_freeInfo;
     }
 
     if((error = herder_pullShowList(&shows, remoteHost, remotePort)) != ERROR_NO_ERROR){
-        UTIL_LOG_CONSOLE_(LOG_ERR, "Failed to add '%s' to library. [%s]", path,  util_toErrorString(error));
-    }                    
+        goto label_freeShowList;
+    }
 
     info.path = alloca(sizeof(*info.path) * (pathLength + 1));
     memcpy(info.path, path, pathLength + 1);
@@ -1445,13 +1445,13 @@ ERROR_CODE consoleClient_addEpisode(Property* remoteHost, Property* remotePort, 
     char* fileName = util_getFileName(info.path, info.pathLength);
     const uint_fast64_t fileNameLength = strlen(fileName);
 
-    util_getFileExtension(&info.fileExtension, &info.fileExtensionLength, fileName, fileNameLength);
+    if((error = util_getFileExtension(&info.fileExtension, &info.fileExtensionLength, fileName, fileNameLength)) != ERROR_NO_ERROR){
+        goto label_freeShowList;
+    }
 
-   if((error = consoleClient_extractShowInfo(remoteHost, remotePort, &info, false)) != ERROR_NO_ERROR){
-            UTIL_LOG_CONSOLE_(LOG_ERR, "Failed to extract show info from file: '%s'. [%s]", info.fileName, util_toErrorString(error));
-
-            goto label_freeShowList;
-        }
+    if((error = consoleClient_extractShowInfo(remoteHost, remotePort, &info, false)) != ERROR_NO_ERROR){
+        goto label_freeShowList;
+    }
 
     UTIL_LOG_CONSOLE(LOG_INFO, "Importing:...");
 
@@ -1468,13 +1468,14 @@ label_freeShowList:
 
     while(LINKED_LIST_ITERATOR_HAS_NEXT(&it)){
         Show* show = LINKED_LIST_ITERATOR_NEXT(&it);
-        
+
         mediaLibrary_freeShow(show);
         free(show);
     }
 
     linkedList_free(&shows);
 
+label_freeInfo:
     free(info.showName);
     free(info.name);
 
