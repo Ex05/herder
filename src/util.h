@@ -246,11 +246,13 @@ inline ERROR_CODE util_error(const ERROR_CODE error, const char* file, const int
 
 int_fast32_t util_fileExists(const char*);
 
+int_fast32_t util_directoryExists(const char*);
+
 ERROR_CODE util_blockAlloc(void**, const uint_fast64_t);
 
 ERROR_CODE util_unMap(void*, const uint_fast64_t);
 
-void util_concatenate(char*, const uint_fast64_t, const char*, const uint_fast64_t, const char*, const uint_fast64_t);
+ERROR_CODE util_concatenate(char*, const char*, const uint_fast64_t, const char*, const uint_fast64_t);
 
 uint_fast16_t util_byteArrayTo_uint16(const int8_t*);
 

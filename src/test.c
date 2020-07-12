@@ -1066,10 +1066,10 @@ TEST_TEST_FUNCTION(util_renameFile){
     #define TEST_FILE_NAME "/tmp/herder_util_test_renameFile_XXXXXX"
     #define TEST_FILE_NEW_NAME "/tmp/herder_util_test_renameFile.xmpe"
 
-    char* filePath = malloc(sizeof(*filePath) * (strlen(TEST_FILE_NAME) + 1));
+    char* filePath = alloca(sizeof(*filePath) * (strlen(TEST_FILE_NAME) + 1));
     strcpy(filePath, TEST_FILE_NAME);
     
-    char* newFileName = malloc(sizeof(*newFileName) * (strlen(TEST_FILE_NEW_NAME) + 1));
+    char* newFileName = alloca(sizeof(*newFileName) * (strlen(TEST_FILE_NEW_NAME) + 1));
     strcpy(newFileName, TEST_FILE_NEW_NAME);
 
     #undef TEST_FILE_NAME
@@ -1095,9 +1095,6 @@ TEST_TEST_FUNCTION(util_renameFile){
     if(util_deleteFile(newFileName) != ERROR_NO_ERROR){
         return TEST_FAILURE("Failed to delete file:'%s'.", newFileName);
     }
-
-    free(filePath);
-    free(newFileName);
 
     return TEST_SUCCESS;
 }
@@ -1174,6 +1171,413 @@ TEST_TEST_FUNCTION(util_getFileDirectory){
 
     if(strcmp(dir, "/home/user") != 0){
         return TEST_FAILURE("File directory '%s' != '%s'.", dir, "/home/user");
+    }
+
+    return TEST_SUCCESS;
+}
+
+TEST_TEST_FUNCTION(util_fileExists){
+    #define TEST_FILE_NAME "/tmp/herder_util_test_fileExists_XXXXXX"
+    #define TEST_FILE_NEW_NAME "/tmp/herder_util_test_fileExists.tmp"
+
+    char* filePath = alloca(sizeof(*filePath) * (strlen(TEST_FILE_NAME) + 1));
+    strcpy(filePath, TEST_FILE_NAME);
+    
+    char* newFileName = alloca(sizeof(*newFileName) * (strlen(TEST_FILE_NEW_NAME) + 1));
+    strcpy(newFileName, TEST_FILE_NEW_NAME);
+    
+    #undef TEST_FILE_NAME
+    
+    const int fileDescriptor = mkstemp(filePath);
+    if(fileDescriptor < 1){
+        return TEST_FAILURE("Failed to create temporary file '%s' [%s].", filePath, strerror(errno));
+    }
+
+    close(fileDescriptor);
+
+    ERROR_CODE error;
+    if((error = util_renameFile(filePath, newFileName)) != ERROR_NO_ERROR){
+        return TEST_FAILURE("Failed to rename file: '%s'. '%s'.", filePath, util_toErrorString(error));
+    }
+
+    // Test_0.
+    {
+        if(!util_fileExists(newFileName)){
+            return TEST_FAILURE("Failed to confirm file:'%s' exists.", filePath);
+        } 
+    }
+
+    // Test_1.
+    {
+        if(util_fileExists(filePath)){
+            return TEST_FAILURE("Failed to confirm file:'%s' exists.", filePath);
+        } 
+    }
+
+    if(util_deleteFile(newFileName) != ERROR_NO_ERROR){
+        return TEST_FAILURE("Failed to delete file:'%s'.", newFileName);
+    }
+
+    return TEST_SUCCESS;
+}
+
+TEST_TEST_FUNCTION(util_blockAlloc){
+    ERROR_CODE error;
+
+    void* buffer;
+    if((error = util_blockAlloc(&buffer, 2048)) != ERROR_NO_ERROR){
+        return TEST_FAILURE("Failed to allocate buffer. '%s'.", util_toErrorString(error));
+    }
+
+    if((error = util_unMap(buffer, 2048)) != ERROR_NO_ERROR){
+        return TEST_FAILURE("Failed to free buffer. '%s'.", util_toErrorString(error));
+    }
+
+    return TEST_SUCCESS;
+}
+
+TEST_TEST_FUNCTION(util_concatenate){
+    char a[] = "01234";
+    char b[] = "56789";
+
+    char c[11];
+
+    ERROR_CODE error;
+    if((error = util_concatenate(c, a, strlen(a), b, strlen(b) + 1)) !=  ERROR_NO_ERROR){
+        return TEST_FAILURE("Failed to concatenate strings. '%s'.", util_toErrorString(error));
+    }
+
+    if(strncmp(c, "0123456789", 11) != 0){
+        return TEST_FAILURE("Failed to concatenate strings. '%s' != '0123456789'.", c);
+    }
+
+    return TEST_SUCCESS;
+}
+
+TEST_TEST_FUNCTION(util_stringCopy){
+    char a[] = "012345";
+
+    char b[7] = {0};
+
+    util_stringCopy(a, b, strlen(a) + 1);
+
+    if(strncmp(a, b, strlen(a) + 1) != 0){
+        return TEST_FAILURE("Failed to copy string. '%s' != '012345'.", b);
+    }
+
+    return TEST_SUCCESS;
+}
+
+TEST_TEST_FUNCTION(util_fileCopy){
+    #define TEST_FILE_NAME "/tmp/herder_util_test_fileExists_XXXXXX"
+    #define TEST_FILE_NEW_NAME "/tmp/herder_util_test_fileExists.tmp"
+
+    char* filePath = alloca(sizeof(*filePath) * (strlen(TEST_FILE_NAME) + 1));
+    strcpy(filePath, TEST_FILE_NAME);
+    
+    char* newFileName = alloca(sizeof(*newFileName) * (strlen(TEST_FILE_NEW_NAME) + 1));
+    strcpy(newFileName, TEST_FILE_NEW_NAME);    
+    
+    const int fileDescriptor = mkstemp(filePath);
+    if(fileDescriptor < 1){
+        return TEST_FAILURE("Failed to create temporary file:'%s' [%s].", filePath, strerror(errno));
+    }
+
+    const int_fast64_t bufferLength = strlen(TEST_FILE_NAME) + 1;
+    char* buffer = alloca(sizeof(*buffer) * bufferLength);
+    strncpy(buffer, TEST_FILE_NAME, bufferLength);
+
+    if(write(fileDescriptor, buffer, sizeof(char) * bufferLength) != bufferLength){
+        return TEST_FAILURE("Failed to write to temporary file:'%s'.", filePath);
+    }
+
+    close(fileDescriptor);
+
+    ERROR_CODE error;
+    if((error = util_fileCopy(filePath, newFileName)) != ERROR_NO_ERROR){
+        return TEST_FAILURE("Failed to copy file from '%s' to '%s'.", filePath, newFileName);
+    }
+
+    if(!util_fileExists(newFileName)){
+        return TEST_FAILURE("Failed to copy file file:'%s' does not exist.", newFileName);
+    } 
+
+    int fd = open(newFileName, O_RDONLY);
+
+    if(fd == 0){
+        return TEST_FAILURE("Failed to open file:'%s'.", newFileName);
+    }
+
+    memset(buffer, 0, bufferLength);
+
+    if(read(fd, buffer, sizeof(char) * bufferLength) != (ssize_t) (sizeof(char) * bufferLength)){
+        return TEST_FAILURE("Failed to read from file:'%s'.", newFileName);
+    }
+
+    close(fd);
+
+    if(strncmp(buffer, TEST_FILE_NAME, bufferLength) != 0){
+        return TEST_FAILURE("'%s' != '%s'.", buffer, TEST_FILE_NAME);
+    }
+
+    if(util_deleteFile(filePath) != ERROR_NO_ERROR){
+        return TEST_FAILURE("Failed to delete file:'%s'.", filePath);
+    }
+
+    if(util_deleteFile(newFileName) != ERROR_NO_ERROR){
+        return TEST_FAILURE("Failed to delete file:'%s'.", newFileName);
+    }
+
+    #undef TEST_FILE_NAME
+
+    return TEST_SUCCESS;
+}
+
+TEST_TEST_FUNCTION(util_deleteFile){
+    #define TEST_FILE_NAME "/tmp/herder_util_test_deleteFile_XXXXXX"
+    
+    char* filePath = alloca(sizeof(*filePath) * (strlen(TEST_FILE_NAME) + 1));
+    strcpy(filePath, TEST_FILE_NAME);
+        
+    #undef TEST_FILE_NAME
+    
+    const int fileDescriptor = mkstemp(filePath);
+    if(fileDescriptor < 1){
+        return TEST_FAILURE("Failed to create temporary file '%s' [%s].", filePath, strerror(errno));
+    }
+
+    close(fileDescriptor);
+
+    ERROR_CODE error;
+    if((error = util_deleteFile(filePath)) != ERROR_NO_ERROR){
+        return TEST_FAILURE("Failed to delete file:'%s'. '%s'", filePath, util_toErrorString(error));
+    }
+
+    return TEST_SUCCESS;
+}
+
+TEST_TEST_FUNCTION(util_deleteDirectory){
+    // Test_0.
+    {
+        #define TMP_DIRECTORY_NAME "/tmp/herder_util_test_deleteDirectory_0_XXXXXX"
+    
+        char* tmpPath = alloca(sizeof(*tmpPath) * (strlen(TMP_DIRECTORY_NAME) + 1));
+        strcpy(tmpPath, TMP_DIRECTORY_NAME);
+            
+        #undef TMP_DIRECTORY_NAME
+        
+        const char* dir = mkdtemp(tmpPath);
+
+        if(dir == NULL){
+            return TEST_FAILURE("Failed to create unique directory name. '%s'", strerror(errno));
+        }
+        
+        ERROR_CODE error;
+        if((error = util_deleteDirectory(dir, false, false)) != ERROR_NO_ERROR){
+            return TEST_FAILURE("Failed to delete directory '%s' [%s].", dir, util_toErrorString(error));
+        }
+        
+        if(util_directoryExists(dir)){
+            return TEST_FAILURE("Failed to delete directory:'%s'.", dir);
+        }
+    }
+
+    // Test_1.
+    {
+        #define TMP_DIRECTORY_NAME "/tmp/herder_util_test_deleteDirectory_1_XXXXXX"
+    
+        char* tmpPath = alloca(sizeof(*tmpPath) * (strlen(TMP_DIRECTORY_NAME) + 1));
+        strcpy(tmpPath, TMP_DIRECTORY_NAME);
+            
+        #undef TMP_DIRECTORY_NAME
+        
+        const char* dir = mkdtemp(tmpPath);
+
+        if(dir == NULL){
+            return TEST_FAILURE("Failed to create unique directory name. '%s'", strerror(errno));
+        }
+        
+        ERROR_CODE error;
+        if((error = util_deleteDirectory(dir, true, false)) != ERROR_NO_ERROR){
+            return TEST_FAILURE("Failed to delete directory '%s' [%s].", dir, util_toErrorString(error));
+        }
+        
+        if(!util_directoryExists(dir)){
+            return TEST_FAILURE("Failed to delete directory:'%s'.", dir);
+        }
+
+        if((error = util_deleteDirectory(dir, false, false)) != ERROR_NO_ERROR){
+            return TEST_FAILURE("Failed to delete directory '%s' [%s].", dir, util_toErrorString(error));
+        }
+
+        // TODO: Add directory into tmp dir.
+    }
+
+    // Test_2.
+    {
+        #define TMP_DIRECTORY_NAME "/tmp/herder_util_test_deleteDirectory_2_XXXXXX"
+    
+        char* tmpPath = alloca(sizeof(*tmpPath) * (strlen(TMP_DIRECTORY_NAME) + 1));
+        strcpy(tmpPath, TMP_DIRECTORY_NAME);
+            
+        #undef TMP_DIRECTORY_NAME
+        
+        const char* dir = mkdtemp(tmpPath);
+
+        if(dir == NULL){
+            return TEST_FAILURE("Failed to create unique directory name. '%s'", strerror(errno));
+        }
+        
+        ERROR_CODE error;
+        if((error = util_deleteDirectory(dir, false, true)) != ERROR_NO_ERROR){
+            return TEST_FAILURE("Failed to delete directory '%s' [%s].", dir, util_toErrorString(error));
+        }
+        
+        if(util_directoryExists(dir)){
+            return TEST_FAILURE("Failed to delete directory:'%s'.", dir);
+        }
+
+        // TODO: Add tmp file into tmp dir.
+    }
+
+    return TEST_SUCCESS;
+}
+
+TEST_TEST_FUNCTION(util_hash){
+    char a[] = "0123456789";
+    char b[] = "0132456780";
+
+    const int32_t hash = util_hash((uint8_t*) a, sizeof(*a) * strlen(a));
+
+    if(hash != util_hash((uint8_t*) a, sizeof(*a) * strlen(a))){
+        return TEST_FAILURE("Failed to hash '%s'.", a);
+    }
+
+    if(hash == util_hash((uint8_t*) b, sizeof(*b) * strlen(b))){
+        return TEST_FAILURE("Failed to hash collision for '%s' and '%s'.", a, b);
+    }
+
+    return TEST_SUCCESS;
+}
+
+TEST_TEST_FUNCTION(util_createDirectory){
+    #define TMP_DIRECTORY_NAME "/tmp/herder_util_test_deleteDirectory_0_XXXXXX"
+
+    char* tmpPath = alloca(sizeof(*tmpPath) * (strlen(TMP_DIRECTORY_NAME) + 1));
+    strcpy(tmpPath, TMP_DIRECTORY_NAME);
+        
+    #undef TMP_DIRECTORY_NAME
+    
+    const char* dir = mkdtemp(tmpPath);
+
+    if(dir == NULL){
+        return TEST_FAILURE("Failed to create unique directory name. '%s'", strerror(errno));
+    }
+    
+    ERROR_CODE error;
+    if((error = util_deleteDirectory(dir, false, false)) != ERROR_NO_ERROR){
+        return TEST_FAILURE("Failed to delete directory '%s' [%s].", dir, util_toErrorString(error));
+    }
+
+    if((error = util_createDirectory(dir)) != ERROR_NO_ERROR){
+        return TEST_FAILURE("Failed to create directory '%s' [%s].", dir, util_toErrorString(error));
+    }
+
+    if(!util_directoryExists(dir)){
+        return TEST_FAILURE("Failed to delete directory:'%s'.", dir);
+    }
+
+    if((error = util_deleteDirectory(dir, false, false)) != ERROR_NO_ERROR){
+        return TEST_FAILURE("Failed to delete directory '%s' [%s].", dir, util_toErrorString(error));
+    }
+
+    return TEST_SUCCESS;
+}
+
+TEST_TEST_FUNCTION(util_createAllDirectories){
+    const char dir[] = "/tmp/util_createAllDirectories/0/1/2/3/";
+    const uint_fast64_t dirLength = strlen(dir);
+
+    ERROR_CODE error;
+    if((error = util_createAllDirectories(dir, dirLength)) != ERROR_NO_ERROR){
+        return TEST_FAILURE("Failed to create directory structure '%s' [%s].", dir, util_toErrorString(error));
+    }
+    
+    if(!util_directoryExists("/tmp/util_createAllDirectories/0/1/2/3/")){
+        return TEST_FAILURE("Failed to delete directory:'%s'.", "/tmp/util_createAllDirectories");
+    }
+
+   if((error = util_deleteDirectory("/tmp/util_createAllDirectories/", false, false)) != ERROR_NO_ERROR){
+        return TEST_FAILURE("Failed to delete directory '%s' [%s].", "/tmp/util_createAllDirectories", util_toErrorString(error));
+    }
+
+    return TEST_SUCCESS;
+}
+
+TEST_TEST_FUNCTION(util_isDirectory){
+    // Test_0.
+    {
+        #define TMP_DIRECTORY_NAME "/tmp/herder_util_test_isDirectory_0_XXXXXX"
+
+        char* tmpPath = alloca(sizeof(*tmpPath) * (strlen(TMP_DIRECTORY_NAME) + 1));
+        strcpy(tmpPath, TMP_DIRECTORY_NAME);
+            
+        #undef TMP_DIRECTORY_NAME
+        
+        const char* dir = mkdtemp(tmpPath);
+
+        if(dir == NULL){
+            return TEST_FAILURE("Failed to create unique directory name. '%s'", strerror(errno));
+        }
+        
+        if(!util_isDirectory(dir)){
+            return TEST_FAILURE("Failed to identify directory '%s'.", dir);
+        }
+
+        ERROR_CODE error;
+        if((error = util_deleteDirectory(dir, false, false)) != ERROR_NO_ERROR){
+            return TEST_FAILURE("Failed to delete directory '%s' [%s].", dir, util_toErrorString(error));
+        }
+    }
+
+    // Test_1.
+    {
+        #define TEST_FILE_NAME "/tmp/herder_util_test_isDirectory_1_XXXXXX"
+    
+        char* filePath = alloca(sizeof(*filePath) * (strlen(TEST_FILE_NAME) + 1));
+        strcpy(filePath, TEST_FILE_NAME);
+            
+        #undef TEST_FILE_NAME
+        
+        const int fileDescriptor = mkstemp(filePath);
+        if(fileDescriptor < 1){
+            return TEST_FAILURE("Failed to create temporary file '%s' [%s].", filePath, strerror(errno));
+        }
+
+        close(fileDescriptor);
+
+        if(util_isDirectory(filePath)){
+            return TEST_FAILURE("Failed to identify directory '%s'.", filePath);
+        }
+
+        ERROR_CODE error;
+        if((error = util_deleteFile(filePath)) != ERROR_NO_ERROR){
+            return TEST_FAILURE("Failed to delete file:'%s'. '%s'", filePath, util_toErrorString(error));
+        }
+    }
+
+    return TEST_SUCCESS;
+}
+
+TEST_TEST_FUNCTION(util_startsWith){
+    const char a[] = "0123456789";
+
+    if(!util_startsWith(a, '0')){
+        return TEST_FAILURE("Error '%c' = '%c'.", a[0], '0');
+    }
+
+    if(util_startsWith(a, 'a')){
+        return TEST_FAILURE("Error '%c' != '%c'.", a[0], 'a');
     }
 
     return TEST_SUCCESS;
@@ -2291,11 +2695,13 @@ int main(void){
         TEST(util_byteArrayTo_uint16);
         TEST(util_byteArrayTo_uint32);
         TEST(util_byteArrayTo_uint64);
+
         // Integer to ByteArray conversions.
         TEST(util_uint16ToByteArray);
         TEST(util_uint32ToByteArray);
         TEST(util_uint64ToByteArray); 
         TEST(util_formatNumber);
+
         // String utils.
         TEST(util_findFirst);
         TEST(util_findFirst_s);
@@ -2307,12 +2713,27 @@ int main(void){
         TEST(util_append);
         TEST(util_stringToInt);
         TEST(util_getFileExtension);
+        TEST(util_concatenate);
+        TEST(util_stringCopy);
+        TEST(util_startsWith);
 
+        // File I/O.
         TEST(util_getBaseDirectory);
         TEST(util_getFileName);
         TEST(util_renameFile);
         TEST(util_renameFileRelative);                
         TEST(util_getFileDirectory);
+        TEST(util_fileExists);
+        TEST(util_fileCopy);
+        TEST(util_deleteFile);
+        TEST(util_deleteDirectory);
+        TEST(util_createDirectory);
+        TEST(util_createAllDirectories);
+        TEST(util_isDirectory);
+
+        // Other.
+        TEST(util_hash);
+        TEST(util_blockAlloc);
     TEST_SUIT_END();
 
     TEST_SUIT_BEGIN("argumentParser");

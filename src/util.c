@@ -133,6 +133,12 @@ inline int_fast32_t util_fileExists(const char *file){
     return stat(file, &st) == 0;
 }
 
+inline int_fast32_t util_directoryExists(const char* dir){
+    struct stat st = {0};
+
+    return stat(dir, &st) == 0 && S_ISDIR(st.st_mode);
+}
+
 inline ERROR_CODE util_blockAlloc(void** buffer, const uint_fast64_t length){
     *buffer = mmap(NULL, length, PROT_NONE, MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
 
@@ -155,12 +161,12 @@ inline ERROR_CODE util_unMap(void* buffer, const uint_fast64_t length){
     return ERROR(ERROR_NO_ERROR);
 }
 
-inline void util_concatenate(char* dst, const uint_fast64_t lengthDst, const char* a, const uint_fast64_t lengthA, const char* b, const uint_fast64_t lengthB) {
+inline ERROR_CODE util_concatenate(char* dst, const char* a, const uint_fast64_t lengthA, const char* b, const uint_fast64_t lengthB) {
 	strncpy(dst, a, lengthA);
 
-	if(lengthDst - lengthA > 0){
-		strncpy(dst + lengthA, b, lengthB);
-    }
+	strncpy(dst + lengthA, b, lengthB);
+    
+    return ERROR(ERROR_NO_ERROR);
 }
 
 inline uint_fast16_t util_byteArrayTo_uint16(const int8_t* buffer){
@@ -329,12 +335,12 @@ label_return:
 }
 
 inline uint_fast32_t util_getFileSystemBlockSize(const char* path){
-        struct statvfs stat;
-        if(statvfs(path, &stat) == 0){
-            return stat.f_bsize;
-        }else{
-            return 8192;
-        }
+    struct statvfs stat;
+    if(statvfs(path, &stat) == 0){
+        return stat.f_bsize;
+    }else{
+        return 8192;
+    }
 }
 
 inline ERROR_CODE util_deleteFile(const char* file){
@@ -387,10 +393,6 @@ ERROR_CODE util_deleteDirectory(const char* directory, const bool preserveRoot, 
             if((error = util_deleteDirectory(directoryPath, false, emptyDirectoriesOnly)) != ERROR_NO_ERROR){
                 goto label_closeDir;
             }
-
-            if(rmdir(directoryPath) != 0){
-                return ERROR_(ERROR_FAILED_TO_DELETE_DIRECTORY, "%s", strerror(errno));
-            }
         }else{                                
             const uint_fast64_t filePathLength = directoryLength + currentEntryLength;  
 
@@ -402,7 +404,7 @@ ERROR_CODE util_deleteDirectory(const char* directory, const bool preserveRoot, 
             util_append(filePath + directoryLength, filePathLength - directoryLength, directoryEntry->d_name, currentEntryLength);   
             filePath[filePathLength] = '\0';
 
-            if(!preserveRoot && (emptyDirectoriesOnly && isDirectoryEmpty != 0)){
+            if(emptyDirectoriesOnly && isDirectoryEmpty != 0){
                 if((error = util_deleteFile(filePath)) != ERROR_NO_ERROR){
                     goto label_closeDir;
                 }
@@ -410,6 +412,12 @@ ERROR_CODE util_deleteDirectory(const char* directory, const bool preserveRoot, 
         }
     }
 
+    if(!preserveRoot && !(emptyDirectoriesOnly && isDirectoryEmpty != 0)){
+        if(rmdir(directory) != 0){
+            return ERROR_(ERROR_FAILED_TO_DELETE_DIRECTORY, "Dir:'%s'. [%s]", directory, strerror(errno));
+        }
+    }
+    
 label_closeDir:
     closedir(currentDirectory);
         
@@ -492,16 +500,7 @@ inline int util_hash(uint8_t* s, uint_fast64_t length){
 
 // sdbm - hash implementation. see(http://www.cse.yorku.ca/~oz/hash.html)
 inline int util_hashString(const char* s, uint_fast64_t length){
-    int hash = 0;
-
-    int c;
-    while (length-- != 0){
-        c = *s++;
-
-        hash = c + (hash << 6) + (hash << 16) - hash;
-    }
-
-    return hash;
+    return util_hash((uint8_t*) s, length);
 }
 
 inline ERROR_CODE util_createDirectory(const char* directory){
