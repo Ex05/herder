@@ -17,7 +17,7 @@ inline ERROR_CODE que_enque(Que* que, void* value){
     if(value == NULL){
         return -1;
     }
-    
+
     if(que->tail == NULL){
         QueElement* queElement = malloc(sizeof(*queElement));
         if(queElement == NULL){
@@ -25,9 +25,9 @@ inline ERROR_CODE que_enque(Que* que, void* value){
         }
 
         que_initQueElement(queElement, value);
-        
+
         que->tail = que->head = queElement;
-    }            
+    }
     else{
         QueElement* queElement = malloc(sizeof(*queElement));
         if(queElement == NULL){
@@ -35,13 +35,13 @@ inline ERROR_CODE que_enque(Que* que, void* value){
         }
 
         que_initQueElement(queElement, value);
-        
+
         QueElement* next = queElement;
-        
+
         que->head->next = next;
         que->head = next;
     }
-        
+
     que->len++;
 
     return ERROR(ERROR_NO_ERROR);
@@ -51,23 +51,23 @@ inline void* que_deque(Que* que){
     if(que->tail == NULL){
         return NULL;
     }
-    
+
     QueElement* tail = que->tail;
-    
-    void* value = tail->value;   
-     
+
+    void* value = tail->value;
+
     que->tail = tail->next;
-            
+
     que_freeQueElement(tail);
-            
+
     que->len--;
-    
+
     return value;
 }
 
 inline void que_initQueElement(QueElement* queElement, void* value){
-    queElement->next = NULL;        
-    queElement->value = value; 
+    queElement->next = NULL;
+    queElement->value = value;
 }
 
 inline void que_freeQueElement(QueElement* queElement){

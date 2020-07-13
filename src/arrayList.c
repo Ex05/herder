@@ -21,7 +21,7 @@ inline void arrayList_init_(ArrayList* list, const uint_fast64_t initialSize, co
     list->maxLength = initialSize;
 }
 
-inline ERROR_CODE arrayList_init(ArrayList* list, const uint_fast64_t initialSize, const uint_fast64_t stride, ArrayList_ExpandFunction expandFunction){    
+inline ERROR_CODE arrayList_init(ArrayList* list, const uint_fast64_t initialSize, const uint_fast64_t stride, ArrayList_ExpandFunction expandFunction){
     arrayList_init_(list, initialSize, stride, expandFunction);
 
     list->elements = malloc(stride * list->maxLength);
@@ -34,7 +34,7 @@ inline ERROR_CODE arrayList_init(ArrayList* list, const uint_fast64_t initialSiz
 }
 
 inline ERROR_CODE arrayList_initFixedSizeList(ArrayList* list, const uint_fast64_t size, const uint_fast64_t stride){
-    arrayList_init_(list, size, stride,  NULL);
+    arrayList_init_(list, size, stride, NULL);
 
     list->elements = malloc(stride * list->maxLength);
 
@@ -55,7 +55,7 @@ inline ERROR_CODE arrayList_expandList(ArrayList* list){
     }else{
         list->elements = elements;
     }
-   
+
    return ERROR(ERROR_NO_ERROR);
 }
 
@@ -72,8 +72,8 @@ inline int_fast32_t arrayList_iteratorHasNext(ArrayListIterator* it){
     return it->index < it->list->length;
 }
 
-inline void arrayList_free(ArrayList* list){        
-    free(list->elements);    
+inline void arrayList_free(ArrayList* list){
+    free(list->elements);
 }
 
 #endif

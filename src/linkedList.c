@@ -86,28 +86,28 @@ inline ERROR_CODE linkedList_remove(LinkedList* list, void* data){
 LinkedListIterator it;
 linkedList_initIterator(&it, list);
 
-Node* prev = NULL;    
+Node* prev = NULL;
 while(LINKED_LIST_ITERATOR_HAS_NEXT(&it)){
     Node* current = linkedList_iteratorNextNode(&it);
     
     if(current->data == data){
         // If the searched element is the only one in the list.
-        if(prev == NULL){               
+        if(prev == NULL){
             free(list->tail);
 
             list->length--;
             
-            list->tail = NULL;                
+            list->tail = NULL;
         }else{
         prev->next = current->next;
                     
         list->length--;
                     
-        free(current);               
+        free(current);
         }    
     }
-    
-    prev = current;                    
+
+    prev = current;
 }
 */
 }

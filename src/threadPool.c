@@ -8,44 +8,44 @@ local void* threadPool_threadFunc(void*);
 // TODO:(jan) Cleanup error handling in 'threadpool_init' .
 inline ERROR_CODE threadPool_init(ThreadPool* threadPool, const uint_fast16_t numWorkers){
     threadPool->numWorkers = numWorkers;
-    
+
     threadPool->threads = malloc(sizeof(pthread_t) * numWorkers);
     if(threadPool->threads == NULL){
         return ERROR(ERROR_OUT_OF_MEMORY);
     }
 
-    if(threadPool->threads == NULL){        
+    if(threadPool->threads == NULL){
         return ERROR(ERROR_OUT_OF_MEMORY);
     }
-          
+
     if(sem_init(&threadPool->numJobs, 0, 0)){
         UTIL_LOG_ERROR("Failed to initialise 'semaphore'.");
 
-        free(threadPool->threads);       
+        free(threadPool->threads);
 
         return ERROR(ERROR_PTHREAD_SEMAPHOR_INITIALISATION_FAILED);
     }
-    
+
      if(pthread_mutex_init(&threadPool->lock, NULL)){
         UTIL_LOG_ERROR("Failed to initialise 'pthread_mutex'.");
-                        
-        free(threadPool->threads);       
-     
+
+        free(threadPool->threads);
+
         return ERROR(ERROR_PTHREAD_MUTEX_INITIALISATION_FAILED);
     }
-    
+
     ERROR_CODE error;
     if((error = que_init(&threadPool->jobQue)) != ERROR_NO_ERROR){
         return ERROR(error);
     }
-    
+
      uint_fast16_t i;
      for(i = 0; i < numWorkers; i++){
         if(pthread_create(&threadPool->threads[i], NULL, threadPool_threadFunc, threadPool) != 0){
             UTIL_LOG_ERROR("Failed to create thread.");
 
-            free(threadPool->threads);       
-        
+            free(threadPool->threads);
+
             return ERROR(ERROR_PTHREAD_THREAD_CREATION_FAILED);
         }
      }
@@ -76,13 +76,13 @@ inline void threadPool_free(ThreadPool* threadPool){
         
     sem_destroy(&threadPool->numJobs);
     pthread_mutex_destroy(&threadPool->lock);
-    
+
     Job* job;
     while((job = que_deque(&threadPool->jobQue)) != NULL){
         free(job);
     }   
 
-    free(threadPool->threads);            
+    free(threadPool->threads);
 }
 
 ERROR_CODE threadPool_run(ThreadPool* threadPool, Runnable* runnable, void* data){
@@ -92,12 +92,12 @@ ERROR_CODE threadPool_run(ThreadPool* threadPool, Runnable* runnable, void* data
     if(job == NULL){
         return ERROR(ERROR_OUT_OF_MEMORY);
     }
-        
+
     job->runnable = runnable;
     job->data = data;
-            
+
     que_enque(&threadPool->jobQue, job);
-        
+
     pthread_mutex_unlock(&threadPool->lock);
     
     sem_post(&threadPool->numJobs);
@@ -106,8 +106,8 @@ ERROR_CODE threadPool_run(ThreadPool* threadPool, Runnable* runnable, void* data
 }
 
 void* threadPool_threadFunc(void* data){
-    ThreadPool* threadPool = (ThreadPool*) data;    
-    
+    ThreadPool* threadPool = (ThreadPool*) data;
+
     void* httpProcessingBuffer;
     if(util_blockAlloc(&httpProcessingBuffer, HTTP_PROCESSING_BUFFER_SIZE) != ERROR_NO_ERROR){
         return NULL;
@@ -115,7 +115,7 @@ void* threadPool_threadFunc(void* data){
 
     for(;;){
         sem_wait(&threadPool->numJobs);
-        
+
         int alive;
         if(sem_getvalue(&threadPool->alive, &alive) == -1){
             UTIL_LOG_ERROR_("Invalid semaphore value '%d'.", alive);
@@ -124,16 +124,16 @@ void* threadPool_threadFunc(void* data){
         if(alive != 0){
             break;
         }
-   
-        pthread_mutex_lock(&threadPool->lock);  
 
-        Job* job = que_deque(&threadPool->jobQue);    
-        
+        pthread_mutex_lock(&threadPool->lock);
+
+        Job* job = que_deque(&threadPool->jobQue);
+
         pthread_mutex_unlock(&threadPool->lock);
-        
+
         if(job == NULL){
             UTIL_LOG_WARNING("Can't execute 'NULL' job.");
-            
+
             continue;
         }
         

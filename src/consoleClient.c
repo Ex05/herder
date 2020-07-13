@@ -1387,7 +1387,7 @@ label_invalidUserInput:
 label_return:
     free(userInput);
 
-    return ERROR(error); 
+    return ERROR(error);
 }
 
 local ERROR_CODE consoleClient_selectYesNo(bool* selection){

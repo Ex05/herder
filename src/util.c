@@ -129,7 +129,7 @@ inline const char* util_toErrorString(const ERROR_CODE errorCode){
 
 inline int_fast32_t util_fileExists(const char *file){
     struct stat st = {0};
-    
+
     return stat(file, &st) == 0;
 }
 
@@ -165,7 +165,7 @@ inline ERROR_CODE util_concatenate(char* dst, const char* a, const uint_fast64_t
 	strncpy(dst, a, lengthA);
 
 	strncpy(dst + lengthA, b, lengthB);
-    
+
     return ERROR(ERROR_NO_ERROR);
 }
 
@@ -216,7 +216,7 @@ inline int8_t* util_uint64ToByteArray(int8_t* buffer, const uint_fast64_t value)
     buffer[3] = (value >> 32) & 0XFF;
     buffer[4] = (value >> 24) & 0XFF;
     buffer[5] = (value >> 16) & 0XFF;
-    buffer[6] = (value >>  8) & 0XFF;
+    buffer[6] = (value >> 8) & 0XFF;
     buffer[7] = value & 0XFF;
 
     return buffer;
@@ -232,8 +232,8 @@ inline void util_stringCopy(char* a, char* b, uint_fast64_t length){
     memmove(a, b, length);
 }
 
-inline int_fast64_t util_findFirst(const char* s, const uint_fast64_t length, const char c) {    
-    int_fast64_t i;    
+inline int_fast64_t util_findFirst(const char* s, const uint_fast64_t length, const char c) {
+    int_fast64_t i;
     for (i = 0; i < (int_fast64_t) length; i++){
         if(*(s + i) == c){
             return i;
@@ -259,8 +259,8 @@ inline int_fast64_t util_findFirst_s(const char* buffer, const uint_fast64_t buf
     return -1;
 }
 
-inline int_fast64_t util_findLast(const char* s, const uint_fast64_t length, const char c) {    
-    int_fast64_t i;    
+inline int_fast64_t util_findLast(const char* s, const uint_fast64_t length, const char c) {
+    int_fast64_t i;
     for (i = length - 1; i >= 0; i--){
         if(*(s + i) == c){
             return i;
@@ -318,7 +318,7 @@ inline ERROR_CODE util_fileCopy(const char* src, const char* dst){
 
             break;
         }
-        
+
         if(feof(srcFile) != 0){
             break;
         }
@@ -379,29 +379,29 @@ ERROR_CODE util_deleteDirectory(const char* directory, const bool preserveRoot, 
         if(directoryEntry->d_type == DT_DIR){
             isDirectoryEmpty += 1;
 
-            const uint_fast64_t directoryPathLength = directoryLength + currentEntryLength + 1;  
+            const uint_fast64_t directoryPathLength = directoryLength + currentEntryLength + 1;
 
             char* directoryPath;
             directoryPath = alloca(sizeof(*directoryPath) * (directoryPathLength + 1));
-            strncpy(directoryPath, directory, directoryLength);     
+            strncpy(directoryPath, directory, directoryLength);
             directoryPath[directoryLength] = '\0';
 
-            util_append(directoryPath + directoryLength, directoryPathLength - 1 - directoryLength, directoryEntry->d_name, currentEntryLength);        
+            util_append(directoryPath + directoryLength, directoryPathLength - 1 - directoryLength, directoryEntry->d_name, currentEntryLength);
             directoryPath[directoryPathLength - 1] = '/';
             directoryPath[directoryPathLength] = '\0';
           
             if((error = util_deleteDirectory(directoryPath, false, emptyDirectoriesOnly)) != ERROR_NO_ERROR){
                 goto label_closeDir;
             }
-        }else{                                
-            const uint_fast64_t filePathLength = directoryLength + currentEntryLength;  
+        }else{
+            const uint_fast64_t filePathLength = directoryLength + currentEntryLength;
 
             char* filePath;
             filePath = alloca(sizeof(*filePath) * (filePathLength + 1));
-            strncpy(filePath, directory, directoryLength);     
+            strncpy(filePath, directory, directoryLength);
             filePath[directoryLength] = '\0';
 
-            util_append(filePath + directoryLength, filePathLength - directoryLength, directoryEntry->d_name, currentEntryLength);   
+            util_append(filePath + directoryLength, filePathLength - directoryLength, directoryEntry->d_name, currentEntryLength);
             filePath[filePathLength] = '\0';
 
             if(emptyDirectoriesOnly && isDirectoryEmpty != 0){
@@ -601,7 +601,7 @@ inline ERROR_CODE util_getBaseDirectory(char** baseDirectory, uint_fast64_t* bas
 inline ERROR_CODE util_replace(char* buffer, const uint_fast64_t bufferLength, uint_fast64_t* srcStringLength, const char* a, const uint_fast64_t stringLengthA, const char* b, const uint_fast64_t stringLengthB){
     int_fast64_t searchOffset = 0;
     int_fast64_t offset = 0;
-    while((offset = util_findFirst_s(buffer + searchOffset, *srcStringLength - offset, a, stringLengthA)) != -1){        
+    while((offset = util_findFirst_s(buffer + searchOffset, *srcStringLength - offset, a, stringLengthA)) != -1){
         searchOffset += offset;
         // We can replace the string inplace.
         if(stringLengthB == stringLengthA){
@@ -702,11 +702,11 @@ inline ERROR_CODE util_getCurrentWorkingDirectory(char* dir, const uint_fast64_t
     if(getcwd(dir, dirLength) == NULL){
         return ERROR_(ERROR_ERROR, "%s", strerror(errno));
     }
-    
-    return ERROR(ERROR_NO_ERROR);    
+
+    return ERROR(ERROR_NO_ERROR);
 }
 
-inline ERROR_CODE util_getFileExtension(char** extension, uint_fast64_t* fileExtensionLength,  char* fileName, const uint_fast64_t fileNameLength){
+inline ERROR_CODE util_getFileExtension(char** extension, uint_fast64_t* fileExtensionLength, char* fileName, const uint_fast64_t fileNameLength){
     const int_fast64_t fileExtensionOffset = util_findLast(fileName, fileNameLength, '.');
 
     if(fileExtensionOffset == -1){
@@ -780,17 +780,17 @@ ERROR_CODE util_walkDirectory(LinkedList* list, const char* directory, bool list
             continue;
         }
 
-        if(directoryEntry->d_type == DT_DIR){                      
-            const uint_fast64_t directoryPathLength = directoryLength + currentEntryLength + 1;  
+        if(directoryEntry->d_type == DT_DIR){
+            const uint_fast64_t directoryPathLength = directoryLength + currentEntryLength + 1;
 
             char* directoryPath;
             directoryPath = (listItemType == UTIL_DIRECTORIES_ONLY) ? malloc(sizeof(*directoryPath) * (directoryPathLength + 1)) : alloca(sizeof(*directoryPath) * (directoryPathLength + 1));
-            strncpy(directoryPath, directory, directoryLength + 1);     
+            strncpy(directoryPath, directory, directoryLength + 1);
 
-            util_append(directoryPath + directoryLength, directoryPathLength - 1 - directoryLength, directoryEntry->d_name, currentEntryLength);        
+            util_append(directoryPath + directoryLength, directoryPathLength - 1 - directoryLength, directoryEntry->d_name, currentEntryLength);
             directoryPath[directoryPathLength - 1] = '/';
             directoryPath[directoryPathLength] = '\0';
-          
+
             if(listItemType == UTIL_DIRECTORIES_ONLY){
                 if((error = linkedList_add(list, directoryPath)) !=ERROR_NO_ERROR){
                     goto label_closeDir;
@@ -800,15 +800,15 @@ ERROR_CODE util_walkDirectory(LinkedList* list, const char* directory, bool list
             if((error = util_walkDirectory(list, directoryPath, listItemType)) != ERROR_NO_ERROR){
                 goto label_closeDir;
             }
-        }else{       
+        }else{
             if(listItemType == UTIL_FILES_ONLY){
-                const uint_fast64_t pathLength = directoryLength + currentEntryLength; 
+                const uint_fast64_t pathLength = directoryLength + currentEntryLength;
 
                 char* path;
                 path = malloc(sizeof(*path) * (pathLength + 1));
-                strncpy(path, directory, directoryLength + 1);     
+                strncpy(path, directory, directoryLength + 1);
 
-                util_append(path + directoryLength, pathLength - directoryLength, directoryEntry->d_name, currentEntryLength);        
+                util_append(path + directoryLength, pathLength - directoryLength, directoryEntry->d_name, currentEntryLength);
                 path[pathLength] = '\0';
 
                 if((error = linkedList_add(list, path)) !=ERROR_NO_ERROR){
@@ -820,7 +820,7 @@ ERROR_CODE util_walkDirectory(LinkedList* list, const char* directory, bool list
 
 label_closeDir:
     closedir(currentDirectory);
-        
+
     return ERROR(error);
 }
 

@@ -34,13 +34,13 @@ inline ERROR_CODE http_initRequest_(HTTP_Request* request, void* buffer, const u
     memset(request, 0, sizeof(*request));
 
     request->data = buffer;
-    request->bufferSize = bufferSize; 
+    request->bufferSize = bufferSize;
 
     ERROR_CODE error;
     error = linkedList_init(&request->headerFields);
 
     request->type = requestType;
-    
+
     return ERROR(error);
 }
 
@@ -96,10 +96,10 @@ inline HTTP_HeaderField* http_getHeaderField(HTTP_Request* request, char* name){
     const uint_fast64_t nameLength = strlen(name);
     while(LINKED_LIST_ITERATOR_HAS_NEXT(&it)){
         HTTP_HeaderField* headerField = LINKED_LIST_ITERATOR_NEXT(&it);
-        
+
         if(strncasecmp(name, headerField->name, nameLength) == 0){
             ret = headerField;
-            
+
             break;
         }
     }
@@ -120,7 +120,7 @@ ERROR_CODE http_openConnection(int_fast32_t* sockFD, const char* url, const uint
     struct addrinfo addressHints = {0};
     // AF_INET6 == force IPv6.
     // Aparently the linux subsystem for Windoof does not like AF_UNSPEC & returns '0.0.0.0' for every getaddrinfo call if we do not force IPv4 via 'AF_INET'.
-    addressHints.ai_family = AF_INET; 
+    addressHints.ai_family = AF_INET;
     addressHints.ai_socktype = SOCK_STREAM;
 
     // Convert port to service string.
@@ -208,7 +208,7 @@ ERROR_CODE http_sendRequest(HTTP_Request* request, HTTP_Response* response, cons
 
     while(LINKED_LIST_ITERATOR_HAS_NEXT(&it)){
         HTTP_HeaderField* headerField = LINKED_LIST_ITERATOR_NEXT(&it);
-                    
+
         writeOffset += snprintf(buffer + writeOffset, request->bufferSize - writeOffset, "%s: %s\r\n",
         headerField->name, 
         headerField->value
@@ -324,7 +324,7 @@ ERROR_CODE http_sendResponse(HTTP_Response* response, const int_fast32_t connect
         );
 
         bufferSize -= writeOffset;
-    }       
+    }
     
     writeOffset += snprintf(buffer + writeOffset, response->bufferSize - writeOffset, "\r\n");
 
@@ -557,7 +557,7 @@ HTTP_StatusCode http_translateStatusCode(const int_fast16_t statusCode){
 ERROR_CODE http_receiveResponse(HTTP_Response* response, const int_fast32_t connection){
     char* buffer = (char*) response->data;
 
-    int_fast64_t bytesRead; 
+    int_fast64_t bytesRead;
     if((bytesRead = read(connection, buffer, response->bufferSize)) == -1){
         return ERROR(ERROR_READ_ERROR);
     }
@@ -565,7 +565,7 @@ ERROR_CODE http_receiveResponse(HTTP_Response* response, const int_fast32_t conn
     if(bytesRead == 0){
         return ERROR(ERROR_EMPTY_RESPONSE);
     }else if(bytesRead ==(int_fast64_t) response->bufferSize){
-        return ERROR(ERROR_MAX_MESSAGE_SIZE_EXCEEDED); 
+        return ERROR(ERROR_MAX_MESSAGE_SIZE_EXCEEDED);
     }else if(bytesRead < 3/*RequestType*/ + 3/*Spaces*/ + 2/*Line delimiter*/ + 1/*RequestURL*/ + 8/*Version*/){
         return ERROR(ERROR_INSUFICIENT_MESSAGE_LENGTH);
     }
@@ -593,7 +593,7 @@ ERROR_CODE http_receiveResponse(HTTP_Response* response, const int_fast32_t conn
             posSplitEnd = util_findFirst(buffer + posSplitBegin, bytesRead, ' ');
 
             const char* const statusCode = buffer + posSplitBegin;
-                    
+
             errno = 0;
 
             char* endPtr;
@@ -766,7 +766,7 @@ ERROR_CODE http_receiveRequest(HTTP_Request* request, const int_fast32_t connect
 
             memcpy(request->requestURL, buffer + posSplitBegin, request->urlLength);
             request->requestURL[request->urlLength] = '\0';
-        
+
             posSplitBegin += posSplitEnd + 1;
 
             const int_fast64_t getParameterOffset = util_findFirst(request->requestURL, request->urlLength, '?');
@@ -890,12 +890,12 @@ void http_freeHTTP_Request(HTTP_Request* request){
 
     while(LINKED_LIST_ITERATOR_HAS_NEXT(&it)){
         HTTP_HeaderField* headerField = LINKED_LIST_ITERATOR_NEXT(&it);
-        
+
         free(headerField->name);
         free(headerField->value);
         free(headerField);
-    }       
-            
+    }
+
     free(request->requestURL);
     
     linkedList_free(&request->headerFields);
@@ -907,16 +907,16 @@ void http_freeHTTP_Response(HTTP_Response* response){
    
     while(LINKED_LIST_ITERATOR_HAS_NEXT(&it)){
         HTTP_HeaderField* headerField = LINKED_LIST_ITERATOR_NEXT(&it);
-        
+
         free(headerField->name);
         free(headerField->value);
         free(headerField);
-    }       
+    }
 
     linkedList_free(&response->headerFields);
 }
 
-/*  
+/*
     printf("#define HASH_GET %d\n", util_hashString("GET"));
     printf("#define HASH_HEAD %d\n", util_hashString("HEAD"));
     printf("#define HASH_POST %d\n", util_hashString("POST"));
@@ -925,7 +925,7 @@ void http_freeHTTP_Response(HTTP_Response* response){
     printf("#define HASH_TRACE %d\n", util_hashString("TRACE"));
     printf("#define HASH_OPTIONS %d\n", util_hashString("OPTIONS"));
     printf("#define HASH_CONNECT %d\n", util_hashString("CONNECT"));
-    printf("#define HASH_PATCH %d\n", util_hashString("PATCH")); 
+    printf("#define HASH_PATCH %d\n", util_hashString("PATCH"));
 */
 HTTP_RequestType http_parseRequestType(const char* const type, const uint_fast64_t length){
     #define HASH_GET 591093270
@@ -939,7 +939,7 @@ HTTP_RequestType http_parseRequestType(const char* const type, const uint_fast64
     #define HASH_PATCH 867751912
 
     HTTP_RequestType ret = REQUEST_TYPE_UNKNOWN;
-        
+
     switch(util_hashString(type, length)){
         case HASH_GET:{
             ret = REQUEST_TYPE_GET;
@@ -948,7 +948,7 @@ HTTP_RequestType http_parseRequestType(const char* const type, const uint_fast64
         }
         case HASH_POST:{
             ret = REQUEST_TYPE_POST;
-            
+
             break;
         }
         case HASH_HEAD:{
@@ -1193,7 +1193,7 @@ inline const char* http_contentTypeToString(const HTTP_ContentType contentType, 
 }
 
 // printf("#define HASH_TXT %d\n", util_hashString("txt", 3));
-// printf("#define HASH_HTML %d\n", util_hashString("html", 4)); 
+// printf("#define HASH_HTML %d\n", util_hashString("html", 4));
 // printf("#define HASH_CSS %d\n", util_hashString("css", 3));
 // printf("#define HASH_JS %d\n", util_hashString("js", 2));
 // printf("#define HASH_JPG %d\n", util_hashString("jpg", 3));
@@ -1251,7 +1251,7 @@ inline HTTP_ContentType http_getContentType(const char* fileExtension, const uin
 
           break;
       }
-  }     
+  }
 
     #undef HASH_TXT 
     #undef HASH_HTML

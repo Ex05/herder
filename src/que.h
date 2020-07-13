@@ -11,7 +11,7 @@ typedef struct queElement{
 typedef struct{
         QueElement* head;
         QueElement* tail;
-        uint_fast64_t len; 
+        uint_fast64_t len;
 }Que;
 
 ERROR_CODE que_init(Que*);

@@ -162,7 +162,7 @@ ERROR_CODE mediaLibrary_init(MediaLibrary* library, const char* libraryLocation,
                 goto label_return;
             }
 
-            char* showName; 
+            char* showName;
             showName = alloca(sizeof(*showName) * (showNameLength + 1));
 
             if((error = mediaLibrary_readShowName(file, &showName, showNameLength)) != ERROR_NO_ERROR){
@@ -208,7 +208,7 @@ ERROR_CODE mediaLibrary_init(MediaLibrary* library, const char* libraryLocation,
                 goto label_return;
             }
 
-            char* episodeName; 
+            char* episodeName;
             episodeName = alloca(sizeof(*episodeName) * (episodeNameLength + 1));
 
             if((error = mediaLibrary_readEpisodeName(file, &episodeName, episodeNameLength)) != ERROR_NO_ERROR){
@@ -221,7 +221,7 @@ ERROR_CODE mediaLibrary_init(MediaLibrary* library, const char* libraryLocation,
                 goto label_return;
             }
 
-            char* fileExtension; 
+            char* fileExtension;
             fileExtension = alloca(sizeof(*fileExtension) * (fileExtensionLength + 1));
 
             if((error = mediaLibrary_readFileExtension(file, &fileExtension, fileExtensionLength)) != ERROR_NO_ERROR){
@@ -457,7 +457,7 @@ ERROR_CODE mediaLibrary_extractShowName(EpisodeInfo* info, LinkedList* shows, ch
         }while(c != '\0' && !mediaLibrary_isCharcterWordDelimiter(c));
 
         if(endIndex == 1){
-            goto label_continue; 
+            goto label_continue;
         }
 
         if(endIndex > 2){
@@ -529,7 +529,7 @@ label_continue:
         char* beginIndex = strstr(lowerCaseFileName, lowerCaseShowName);
 
         if(beginIndex != NULL){
-            const intptr_t offset = beginIndex - lowerCaseFileName ;
+            const intptr_t offset = beginIndex - lowerCaseFileName;
 
             const bool leadingWordDelimiterPresent = (fileName + offset)[mostLikely->nameLength] == '_';
 
@@ -540,7 +540,7 @@ label_continue:
             beginIndex = strstr(lowerCaseFileName, lowerCaseShowName);
 
             if(beginIndex != NULL){
-                const intptr_t offset = beginIndex - lowerCaseFileName ;
+                const intptr_t offset = beginIndex - lowerCaseFileName;
 
                 const bool leadingWordDelimiterPresent = (fileName + offset)[mostLikely->nameLength] == '_';
 
@@ -878,7 +878,7 @@ ERROR_CODE medialibrary_removeShowFrromLibraryFile(MediaLibrary* library, const 
             goto label_return;
         }
 
-        char* showName; 
+        char* showName;
         showName = alloca(sizeof(*showName) * (showNameLength + 1));
 
         if((error = mediaLibrary_readShowName(file, &showName, showNameLength)) != ERROR_NO_ERROR){
@@ -989,7 +989,7 @@ ERROR_CODE medialibrary_removeShowFrromLibraryFile(MediaLibrary* library, const 
     }
 
     char* noWhiteSpaceShowName = alloca(sizeof(*noWhiteSpaceShowName) * (showLength + 1/*'/'*/ + 1));
-    strncpy(noWhiteSpaceShowName, show, showLength + 1); 
+    strncpy(noWhiteSpaceShowName, show, showLength + 1);
     util_replaceAllChars(noWhiteSpaceShowName, ' ', '_');
     noWhiteSpaceShowName[showLength] = '/';
 
@@ -1004,7 +1004,7 @@ ERROR_CODE medialibrary_removeShowFrromLibraryFile(MediaLibrary* library, const 
     return ERROR(util_deleteDirectory(showPath, false, false));
 }
 
-inline ERROR_CODE medialibrary_getShow(MediaLibrary* library, Show** show,  const char* name, const uint_fast64_t nameLength){
+inline ERROR_CODE medialibrary_getShow(MediaLibrary* library, Show** show, const char* name, const uint_fast64_t nameLength){
     char* noneWhiteSpaceName = alloca(sizeof(*noneWhiteSpaceName) * (nameLength + 1));
     strncpy(noneWhiteSpaceName, name, nameLength + 1);
 

@@ -513,7 +513,7 @@ ERROR_CODE propertyFile_removeProperty(Property* property){
 
                 // Clear data on disk.
                 if(fseek(file, property->entry->dataOffset, SEEK_SET) != 0){
-                    return ERROR_(ERROR_WRITE_ERROR, "Failed to move file pointer to property data on disk. '%s'.", strerror(errno)); 
+                    return ERROR_(ERROR_WRITE_ERROR, "Failed to move file pointer to property data on disk. '%s'.", strerror(errno));
                 }
 
                 if(fwrite(writeBuffer, 1, property->entry->length, file) != property->entry->length){

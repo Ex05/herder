@@ -15,7 +15,7 @@ ERROR_CODE herder_pullShowList(LinkedList* shows, Property* remoteHost, Property
     char* host = (char*) remoteHost->buffer;
     uint_fast16_t port = util_byteArrayTo_uint64(remotePort->buffer);
 
-    void* httpProcessingBuffer;    
+    void* httpProcessingBuffer;
     if((error = util_blockAlloc(&httpProcessingBuffer, HTTP_PROCESSING_BUFFER_SIZE)) != ERROR_NO_ERROR){
         goto label_unMap;
     }
@@ -114,7 +114,7 @@ ERROR_CODE herder_addShow(Property* remoteHost, Property* remotePort, const char
     HTTP_ADD_HEADER_FIELD(request, Host, host);
 
     util_uint64ToByteArray(request.data + request.dataLength, showNameLength);
-    request.dataLength += sizeof(uint64_t);   
+    request.dataLength += sizeof(uint64_t);
 
     memcpy(request.data + request.dataLength, showName, showNameLength);
     request.dataLength += showNameLength;
@@ -186,7 +186,7 @@ ERROR_CODE herder_removeShow(Property* remoteHost, Property* remotePort, const c
     HTTP_ADD_HEADER_FIELD(request, Host, host);
 
     util_uint64ToByteArray(request.data + request.dataLength, showNameLength);
-    request.dataLength += sizeof(uint64_t);   
+    request.dataLength += sizeof(uint64_t);
 
     memcpy(request.data + request.dataLength, showName, showNameLength);
     request.dataLength += showNameLength;
@@ -207,7 +207,7 @@ ERROR_CODE herder_removeShow(Property* remoteHost, Property* remotePort, const c
     }else{
         if(response.dataLength != sizeof(uint64_t)){
             error = ERROR_INVALID_CONTENT_LENGTH;
-        }else{            
+        }else{
             error = returnCode;
         }
     }
@@ -253,14 +253,14 @@ ERROR_CODE herder_addEpisode(Property* remoteHost, Property* remotePort, Propert
 
     // ShowName.
     util_uint64ToByteArray(request.data + request.dataLength, episodeInfo->showNameLength);
-    request.dataLength += sizeof(uint64_t);   
+    request.dataLength += sizeof(uint64_t);
 
     memcpy(request.data + request.dataLength, episodeInfo->showName, episodeInfo->showNameLength);
     request.dataLength += episodeInfo->showNameLength;
 
     // EpisodeName.
     util_uint64ToByteArray(request.data + request.dataLength, episodeInfo->nameLength);
-    request.dataLength += sizeof(uint64_t);   
+    request.dataLength += sizeof(uint64_t);
 
     memcpy(request.data + request.dataLength, episodeInfo->name, episodeInfo->nameLength);
     request.dataLength += episodeInfo->nameLength;
@@ -271,11 +271,11 @@ ERROR_CODE herder_addEpisode(Property* remoteHost, Property* remotePort, Propert
 
     // Episode.
     util_uint16ToByteArray(request.data + request.dataLength, episodeInfo->episode);
-    request.dataLength += sizeof(uint16_t);   
+    request.dataLength += sizeof(uint16_t);
 
     // FileExtension.
     util_uint16ToByteArray(request.data + request.dataLength, episodeInfo->fileExtensionLength);
-    request.dataLength += sizeof(uint16_t);   
+    request.dataLength += sizeof(uint16_t);
 
     memcpy(request.data + request.dataLength, episodeInfo->fileExtension, episodeInfo->fileExtensionLength);
     request.dataLength += episodeInfo->showNameLength;
@@ -289,7 +289,7 @@ ERROR_CODE herder_addEpisode(Property* remoteHost, Property* remotePort, Propert
     http_closeConnection(socketFD);
 
     uint_fast64_t readOffset = 0;
-    
+
     error = util_byteArrayTo_uint64(response.data + readOffset);
     readOffset += sizeof(uint64_t);
 
@@ -297,7 +297,7 @@ ERROR_CODE herder_addEpisode(Property* remoteHost, Property* remotePort, Propert
         if(error == ERROR_NAME_MISSMATCH || ERROR_DUPLICATE_ENTRY){
             UTIL_LOG_CONSOLE_(LOG_ERR, "Failed to add Season:%02" PRIdFAST16 " Episode:%02" PRIdFAST16 " of '%s' to the library, an entry for this episode %s. [%s]", episodeInfo->season, episodeInfo->episode, episodeInfo->showName, error == ERROR_NAME_MISSMATCH ? "with a different name is already present" : "is already present.", util_toErrorString(error));
         }
-        
+
         goto label_freeRequest;
     }
 
@@ -373,7 +373,7 @@ ERROR_CODE herder_removeEpisode(Property* remoteHost, Property* remotePort, Prop
 
     // ShowName.
     util_uint64ToByteArray(request.data + request.dataLength, episodeInfo->showNameLength);
-    request.dataLength += sizeof(uint64_t);   
+    request.dataLength += sizeof(uint64_t);
 
     memcpy(request.data + request.dataLength, episodeInfo->showName, episodeInfo->showNameLength);
     request.dataLength += episodeInfo->showNameLength;
@@ -384,7 +384,7 @@ ERROR_CODE herder_removeEpisode(Property* remoteHost, Property* remotePort, Prop
 
     // Episode.
     util_uint16ToByteArray(request.data + request.dataLength, episodeInfo->episode);
-    request.dataLength += sizeof(uint16_t);   
+    request.dataLength += sizeof(uint16_t);
 
     HTTP_Response response;
     http_initResponse(&response, httpProcessingBuffer, HTTP_PROCESSING_BUFFER_SIZE);
@@ -484,7 +484,7 @@ ERROR_CODE herder_extractShowInfo(Property* remoteHost, Property* remotePort, Ep
     HTTP_ADD_HEADER_FIELD(request, Host, host);
 
     util_uint64ToByteArray(request.data + request.dataLength, fileNameLength);
-    request.dataLength += sizeof(uint64_t);   
+    request.dataLength += sizeof(uint64_t);
 
     memcpy(request.data + request.dataLength, fileName, fileNameLength);
     request.dataLength += fileNameLength;
@@ -521,7 +521,7 @@ ERROR_CODE herder_extractShowInfo(Property* remoteHost, Property* remotePort, Ep
                 readOffset += episodeInfo->showNameLength;
             }else{
                 episodeInfo->showName = NULL;
-            }            
+            }
 
             episodeInfo->nameLength = util_byteArrayTo_uint64(response.data + readOffset);
             readOffset += sizeof(uint64_t);
@@ -592,14 +592,14 @@ ERROR_CODE herder_add(Property* remoteHost, Property* remotePort, Property* libr
 
     // ShowName.
     util_uint64ToByteArray(request.data + request.dataLength, episodeInfo->showNameLength);
-    request.dataLength += sizeof(uint64_t);   
+    request.dataLength += sizeof(uint64_t);
 
     memcpy(request.data + request.dataLength, episodeInfo->showName, episodeInfo->showNameLength);
     request.dataLength += episodeInfo->showNameLength;
 
     // EpisodeName.
     util_uint64ToByteArray(request.data + request.dataLength, episodeInfo->nameLength);
-    request.dataLength += sizeof(uint64_t);   
+    request.dataLength += sizeof(uint64_t);
 
     memcpy(request.data + request.dataLength, episodeInfo->name, episodeInfo->nameLength);
     request.dataLength += episodeInfo->nameLength;
@@ -610,11 +610,11 @@ ERROR_CODE herder_add(Property* remoteHost, Property* remotePort, Property* libr
 
     // Episode.
     util_uint16ToByteArray(request.data + request.dataLength, episodeInfo->episode);
-    request.dataLength += sizeof(uint16_t);   
+    request.dataLength += sizeof(uint16_t);
 
     // FileExtension.
     util_uint16ToByteArray(request.data + request.dataLength, episodeInfo->fileExtensionLength);
-    request.dataLength += sizeof(uint16_t);   
+    request.dataLength += sizeof(uint16_t);
 
     memcpy(request.data + request.dataLength, episodeInfo->fileExtension, episodeInfo->fileExtensionLength);
     request.dataLength += episodeInfo->showNameLength;
@@ -628,7 +628,7 @@ ERROR_CODE herder_add(Property* remoteHost, Property* remotePort, Property* libr
     http_closeConnection(socketFD);
 
     uint_fast64_t readOffset = 0;
-    
+
     error = util_byteArrayTo_uint64(response.data + readOffset);
     readOffset += sizeof(uint64_t);
 
@@ -636,7 +636,7 @@ ERROR_CODE herder_add(Property* remoteHost, Property* remotePort, Property* libr
         if(error == ERROR_NAME_MISSMATCH || ERROR_DUPLICATE_ENTRY){
             UTIL_LOG_CONSOLE_(LOG_ERR, "Failed to add Season:%02" PRIdFAST16 " Episode:%02" PRIdFAST16 " of '%s' to the library, an entry for this episode %s. [%s]", episodeInfo->season, episodeInfo->episode, episodeInfo->showName, error == ERROR_NAME_MISSMATCH ? "with a different name is already present" : "is already present.", util_toErrorString(error));
         }
-        
+
         goto label_freeRequest;
     }
 
@@ -668,7 +668,7 @@ ERROR_CODE herder_add(Property* remoteHost, Property* remotePort, Property* libr
     if(util_deleteFile(episodeInfo->path) != ERROR_NO_ERROR){
         goto label_freeRequest;
     }
-    
+
     // TODO: Inform server that something went wrong and stuff should be removed from the library in case of failed file copy. (jan - 2018.11.28)
 
 label_freeRequest:
@@ -681,7 +681,7 @@ label_unMap:
     if(util_unMap(httpProcessingBuffer, HTTP_PROCESSING_BUFFER_SIZE) != ERROR_NO_ERROR){
         UTIL_LOG_ERROR(util_toErrorString(ERROR_FAILED_TO_UNMAP_MEMORY));
     }
-    
+
     return ERROR(error);
 }
 
@@ -735,7 +735,7 @@ ERROR_CODE herder_pullShowInfo(Property* remoteHost, Property* remotePort, Show*
     HTTP_ADD_HEADER_FIELD(request, Host, host);
 
     util_uint64ToByteArray(request.data + request.dataLength, show->nameLength);
-    request.dataLength += sizeof(uint64_t);   
+    request.dataLength += sizeof(uint64_t);
 
     memcpy(request.data + request.dataLength, show->name, show->nameLength + 1);
     request.dataLength += show->nameLength + 1;
@@ -762,7 +762,7 @@ ERROR_CODE herder_pullShowInfo(Property* remoteHost, Property* remotePort, Show*
         uint_fast64_t numSeasons = util_byteArrayTo_uint64(response.data + readOffset);
         readOffset += sizeof(uint64_t);
 
-        if(numSeasons != 0){                
+        if(numSeasons != 0){
             for( ; numSeasons > 0; numSeasons--){
                 // Season_Number.
                 const uint_fast16_t seasonNumber = util_byteArrayTo_uint16(response.data + readOffset);
@@ -773,7 +773,7 @@ ERROR_CODE herder_pullShowInfo(Property* remoteHost, Property* remotePort, Show*
                 if((error = medialibrary_initSeason(season, seasonNumber)) != ERROR_NO_ERROR){
                     goto label_freeRequest;
                 }
-                
+
                 if((error = linkedList_add(&show->seasons, season)) != ERROR_NO_ERROR){
                     goto label_freeRequest;
                 }
@@ -871,22 +871,22 @@ ERROR_CODE herder_renameEpisode(Property* remoteHost, Property* remotePort, Prop
 
     // Show_Name.
     util_uint64ToByteArray(request.data + request.dataLength, info->nameLength);
-    request.dataLength += sizeof(uint64_t);   
+    request.dataLength += sizeof(uint64_t);
 
     memcpy(request.data + request.dataLength, info->showName, info->nameLength + 1);
     request.dataLength += info->nameLength + 1;
 
     // Season_Number.
     util_uint16ToByteArray(request.data + request.dataLength, info->season);
-    request.dataLength += sizeof(uint16_t);   
+    request.dataLength += sizeof(uint16_t);
 
     // Episode_Number.
     util_uint16ToByteArray(request.data + request.dataLength, info->episode);
-    request.dataLength += sizeof(uint16_t);   
+    request.dataLength += sizeof(uint16_t);
 
     // New Episode_Name.
     util_uint64ToByteArray(request.data + request.dataLength, newEpisodeNameLength);
-    request.dataLength += sizeof(uint64_t);   
+    request.dataLength += sizeof(uint64_t);
 
     memcpy(request.data + request.dataLength, newEpisodeName, newEpisodeNameLength + 1);
     request.dataLength += newEpisodeNameLength + 1;

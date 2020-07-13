@@ -73,7 +73,7 @@ inline ERROR_CODE argumentParser_parse(ArgumentParser* parser, const int numArgu
 
     LinkedListIterator it;
     register int i;
-    for(i = 0; i < numArguments; i++){        
+    for(i = 0; i < numArguments; i++){
         linkedList_initIterator(&it, &parser->arguments);
         while(LINKED_LIST_ITERATOR_HAS_NEXT(&it)){
             Argument* argument = LINKED_LIST_ITERATOR_NEXT(&it);
@@ -126,7 +126,7 @@ inline ERROR_CODE argumentParser_parse(ArgumentParser* parser, const int numArgu
                                     }
 
                                     argument->values = values;
-                                    
+
                                     void* valueLengths = realloc(argument->valueLengths, sizeof(*argument->valueLengths) * (argument->numValues + 1));
 
                                     if(valueLengths == NULL){

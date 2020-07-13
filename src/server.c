@@ -1065,7 +1065,7 @@ label_return:
         const char* userHome = util_getHomeDirectory();
         const uint_fast64_t userHomeLength = strlen(userHome);
 
-        const uint_fast64_t serverWorkingDirectoryLength = userHomeLength + 15/*/herder/daemon/*/ ;
+        const uint_fast64_t serverWorkingDirectoryLength = userHomeLength + 15/*/herder/daemon/*/;
         char* serverWorkingDirectory = alloca(sizeof(*serverWorkingDirectory) * (serverWorkingDirectoryLength + 1));
         strncpy(serverWorkingDirectory, userHome, userHomeLength);
         strncpy(serverWorkingDirectory + userHomeLength, "/herder/daemon/", 16);
@@ -1578,7 +1578,7 @@ inline void server_daemonize(const char* workingDirectory){
     umask(S_IWGRP | S_IWOTH /*022*/);
 
     if(chdir(workingDirectory) != 0){
-        UTIL_LOG_ERROR("Failed to change working directory."); 
+        UTIL_LOG_ERROR("Failed to change working directory.");
     }
 
     int_fast32_t fileDescriptor;
@@ -1602,19 +1602,19 @@ inline void server_daemonize(const char* workingDirectory){
     action.sa_flags = SA_SIGINFO;
 
     if(sigaction(SIGINT, &action, NULL) != 0) {
-		UTIL_LOG_WARNING("Failed to append signal handler. [SIGINT]"); 
+		UTIL_LOG_WARNING("Failed to append signal handler. [SIGINT]");
     }
 
     if(sigaction(SIGPIPE, &action, NULL) != 0) {
-		UTIL_LOG_WARNING("Failed to append signal handler. [SIGPIPE]"); 
+		UTIL_LOG_WARNING("Failed to append signal handler. [SIGPIPE]");
     }
 
     if(sigaction(SIGHUP, &action, NULL) != 0) {
-		UTIL_LOG_WARNING("Failed to append signal handler. [SIGHUP]"); 
+		UTIL_LOG_WARNING("Failed to append signal handler. [SIGHUP]");
 	}
 
     if(sigaction(SIGTERM, &action, NULL) != 0) {
-		UTIL_LOG_WARNING("Failed to append signal handler. [SIGTERM]"); 
+		UTIL_LOG_WARNING("Failed to append signal handler. [SIGTERM]");
 	}
 }
 
