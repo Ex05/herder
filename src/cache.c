@@ -14,11 +14,11 @@ local void cache_freeCacheObject(CacheObject*);
 inline ERROR_CODE cache_init(Cache* cache, const uint_fast64_t numThreads, const uint_fast64_t size){
     memset(cache, 0, sizeof(*cache));
 
-    if(sem_init(&cache->activeAcesses, 0, numThreads)){        
+    if(sem_init(&cache->activeAcesses, 0, numThreads)){
         return ERROR(ERROR_PTHREAD_SEMAPHOR_INITIALISATION_FAILED);
     }
 
-    if(pthread_mutex_init(&cache->lock, NULL)){     
+    if(pthread_mutex_init(&cache->lock, NULL)){
         return ERROR(ERROR_PTHREAD_MUTEX_INITIALISATION_FAILED);
     }
 
@@ -43,7 +43,7 @@ inline ERROR_CODE cache_initCacheObject(CacheObject* cacheObject, uint8_t* data,
     cacheObject->symbolicFileLocation = malloc(sizeof(*cacheObject->symbolicFileLocation) * (symbolicFileLocationLength + 1));
 
     if(cacheObject->symbolicFileLocation == NULL){
-        return  ERROR(ERROR_OUT_OF_MEMORY);
+        return ERROR(ERROR_OUT_OF_MEMORY);
     }
 
     memcpy(cacheObject->symbolicFileLocation, symbolicFileLocation, symbolicFileLocationLength);
@@ -67,7 +67,7 @@ inline void cache_free(Cache* cache){
     linkedList_initIterator(&it, &cache->elements);
 
     while(LINKED_LIST_ITERATOR_HAS_NEXT(&it)){
-        CacheObject* cacheObject =  LINKED_LIST_ITERATOR_NEXT(&it);
+        CacheObject* cacheObject = LINKED_LIST_ITERATOR_NEXT(&it);
 
         free(cacheObject->data);
         free(cacheObject->fileLocation);
@@ -83,19 +83,23 @@ inline void cache_free(Cache* cache){
     pthread_mutex_destroy(&cache->lock);
 }
 
-inline ERROR_CODE cache_get(Cache* cache, CacheObject** cacheObject, char* symbolicFileLocation, const uint_fast64_t symbolicFileLocationLength){    
+inline ERROR_CODE cache_get(Cache* cache, CacheObject** cacheObject, char* symbolicFileLocation, const uint_fast64_t symbolicFileLocationLength){
+    ERROR_CODE error = ERROR_ENTRY_NOT_FOUND;
+
     sem_wait(&cache->activeAcesses);
 
     LinkedListIterator it;
     linkedList_initIterator(&it, &cache->elements);
     while(LINKED_LIST_ITERATOR_HAS_NEXT(&it)){
-        CacheObject* o =  LINKED_LIST_ITERATOR_NEXT(&it);
+        CacheObject* o = LINKED_LIST_ITERATOR_NEXT(&it);
 
         if(strncmp(symbolicFileLocation, o->symbolicFileLocation, symbolicFileLocationLength > o->symbolicFileLocationLength ? symbolicFileLocationLength : o->symbolicFileLocationLength) == 0){
             *cacheObject = o;
 
             clock_gettime(CLOCK_MONOTONIC, &o->timeLastHit);
             o->totalHits++;
+
+            error = ERROR_NO_ERROR;
 
             goto label_return;
         }
@@ -104,7 +108,7 @@ inline ERROR_CODE cache_get(Cache* cache, CacheObject** cacheObject, char* symbo
 label_return:
     sem_post(&cache->activeAcesses);
 
-    return ERROR(ERROR_NO_ERROR);
+    return ERROR(error);
 }
 
 inline ERROR_CODE cache_load(Cache* cache, CacheObject** cacheObject, char* fileLocation, const uint_fast64_t fileLocationLength, char* symbolicFileLocation, const uint_fast64_t symbolicFileLocationLength){
@@ -127,7 +131,7 @@ inline ERROR_CODE cache_load(Cache* cache, CacheObject** cacheObject, char* file
 
     uint8_t* data = malloc(sizeof(*data) * fileSize);
     if(data == NULL){
-        return  ERROR(ERROR_OUT_OF_MEMORY);
+        return ERROR(ERROR_OUT_OF_MEMORY);
     }
 
     if(fread(data, sizeof(uint8_t), fileSize, file) != fileSize){
@@ -162,11 +166,11 @@ inline ERROR_CODE cache_load(Cache* cache, CacheObject** cacheObject, char* file
     linkedList_add(&cache->elements, *cacheObject);
 
     cache->currentSize += (*cacheObject)->size;
-    
+
     for(; i > 0; i--){
         sem_post(&cache->activeAcesses);
     }
-    
+
     pthread_mutex_unlock(&cache->lock);
 
     return ERROR(ERROR_NO_ERROR);
@@ -174,7 +178,7 @@ inline ERROR_CODE cache_load(Cache* cache, CacheObject** cacheObject, char* file
 
 ERROR_CODE cache_remove(Cache* cache, CacheObject* cacheObject){
     ERROR_CODE error;
-    
+
     pthread_mutex_lock(&cache->lock);
 
     uint_fast64_t i;
@@ -187,7 +191,7 @@ ERROR_CODE cache_remove(Cache* cache, CacheObject* cacheObject){
     }
 
     cache->currentSize += cacheObject->size;
-    
+
     for(; i > 0; i--){
         sem_post(&cache->activeAcesses);
     }
@@ -197,7 +201,7 @@ ERROR_CODE cache_remove(Cache* cache, CacheObject* cacheObject){
     cache_freeCacheObject(cacheObject);
 
     free(cacheObject);
-    
+
     return ERROR(error);
 }
 

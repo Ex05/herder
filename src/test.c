@@ -163,7 +163,7 @@ void test_testSuitEnd(void){
     // Unused.
 }
 
-void test_test(test_testFunction func, const char* name){    
+void test_test(test_testFunction func, const char* name){
     TestSuit* testSuit = ARRAY_LIST_GET_PTR(&testSuits, testSuits.length - 1, TestSuit);
 
     Test test = {0};
@@ -177,7 +177,7 @@ void test_test(test_testFunction func, const char* name){
     ERROR_CODE error = ERROR_NO_ERROR;
     if(testSuit->constructFunction != NULL && testSuit->noSetup != TEST_NO_SETUP_FLAG){
         if((error = testSuit->constructFunction(&testSuit->data)) != ERROR_NO_ERROR){
-            test.failed = true;       
+            test.failed = true;
         }
     }
 
@@ -191,7 +191,7 @@ void test_test(test_testFunction func, const char* name){
         } 
     }
 
-    ARRAY_LIST_ADD(&testSuit->testedFunctions, test, Test);  
+    ARRAY_LIST_ADD(&testSuit->testedFunctions, test, Test);
 
     testSuit->noSetup = 0;
 }
@@ -264,7 +264,7 @@ TEST_TEST_FUNCTION(arraylist_get){
 
         uint8_t ret;
         if((ret = ARRAY_LIST_GET(&list, 1, uint8_t)) != 1){
-            return TEST_FAILURE("Return value '%" PRIu8 " != '%" PRIu8  "'.", ret, 1);
+            return TEST_FAILURE("Return value '%" PRIu8 " != '%" PRIu8 "'.", ret, 1);
         }
     }
 
@@ -580,12 +580,12 @@ TEST_TEST_FUNCTION(util_byteArrayTo_uint16){
     #elif __BYTE_ORDER == __PDP_ENDIAN
         ERROR: PDP/mixed endianes is not supported at the moment.
     #else
-        ERROR: Your system architectures endianes is not supported at the moment.    
+        ERROR: Your system architectures endianes is not supported at the moment.
     #endif
 
         uint16_t ret;
         if((ret = util_byteArrayTo_uint16(buf)) != val){
-            return TEST_FAILURE("Return value '%" PRIu16 " != '%" PRIu16  "'.", ret, val);
+            return TEST_FAILURE("Return value '%" PRIu16 " != '%" PRIu16 "'.", ret, val);
         }
     }
 
@@ -620,12 +620,12 @@ TEST_TEST_FUNCTION(util_byteArrayTo_uint32){
     #elif __BYTE_ORDER == __PDP_ENDIAN
         ERROR: PDP/mixed endianes is not supported at the moment.
     #else
-        ERROR: Your system architectures endianes is not supported at the moment.    
+        ERROR: Your system architectures endianes is not supported at the moment.
     #endif
 
         uint32_t ret;
         if((ret = util_byteArrayTo_uint32(buf)) != val){
-            return TEST_FAILURE("Return value '%" PRIu32 " != '%" PRIu32  "'.", ret, val);
+            return TEST_FAILURE("Return value '%" PRIu32 " != '%" PRIu32 "'.", ret, val);
         }
     }
 
@@ -669,12 +669,12 @@ TEST_TEST_FUNCTION(util_byteArrayTo_uint64){
     #elif __BYTE_ORDER == __PDP_ENDIAN
         ERROR: PDP/mixed endianes is not supported at the moment.
     #else
-        ERROR: Your system architectures endianes is not supported at the moment.    
+        ERROR: Your system architectures endianes is not supported at the moment.
     #endif
 
         uint64_t ret;
         if((ret = util_byteArrayTo_uint64(buf)) != val){
-            return TEST_FAILURE("Return value '%" PRIu64 " != '%" PRIu64  "'.", ret, val);
+            return TEST_FAILURE("Return value '%" PRIu64 " != '%" PRIu64 "'.", ret, val);
         }
     }
 
@@ -698,7 +698,7 @@ TEST_TEST_FUNCTION(util_uint16ToByteArray){
     
         uint16_t ret;
         if((ret = util_byteArrayTo_uint16(util_uint16ToByteArray(buf, val))) != val){
-            return TEST_FAILURE("Return value '%" PRIu16 " != '%" PRIu16  "'.", ret, val);
+            return TEST_FAILURE("Return value '%" PRIu16 " != '%" PRIu16 "'.", ret, val);
         }
     }
 
@@ -719,10 +719,10 @@ TEST_TEST_FUNCTION(util_uint32ToByteArray){
     uint_fast64_t i;
     for(i = 0; i < sizeof(testData) / sizeof(testData[0]); i++){
         const uint32_t val = testData[i];
-    
+
         uint32_t ret;
         if((ret = util_byteArrayTo_uint32(util_uint32ToByteArray(buf, val))) != val){
-            return TEST_FAILURE("Return value '%" PRIu32 " != '%" PRIu32  "'.", ret, val);
+            return TEST_FAILURE("Return value '%" PRIu32 " != '%" PRIu32 "'.", ret, val);
         }
     }
 
@@ -747,7 +747,7 @@ TEST_TEST_FUNCTION(util_uint64ToByteArray){
     
         uint64_t ret;
         if((ret = util_byteArrayTo_uint64(util_uint64ToByteArray(buf, val))) != val){
-            return TEST_FAILURE("Return value '%" PRIu64 " != '%" PRIu64  "'.", ret, val);
+            return TEST_FAILURE("Return value '%" PRIu64 " != '%" PRIu64 "'.", ret, val);
         }
     }
 
@@ -809,7 +809,7 @@ TEST_TEST_FUNCTION(util_replace){
     if((error = util_replace(a, 64, &stringLength, "$errorCode", strlen("$errorCode"), "404", strlen("404"))) != ERROR_NO_ERROR){
         return TEST_FAILURE("Failed to replace char in string:'%s'. '%s'.", a, util_toErrorString(error));
     }
-    
+
     if(strcmp(a, "--404--404--") != 0){
         return TEST_FAILURE("Return value '%s' != '--404--404--'.", a);
     }
@@ -842,7 +842,7 @@ TEST_TEST_FUNCTION(util_getBaseDirectory){
     // Test_2.
     {
         char url[] = "/extractShowInfo";
-        
+
         char* baseDirectory;
         uint_fast64_t baseDirectoryLength;
         if((error = util_getBaseDirectory(&baseDirectory, &baseDirectoryLength, url, strlen(url))) != ERROR_NO_ERROR){
@@ -861,7 +861,7 @@ TEST_TEST_FUNCTION(util_getBaseDirectory){
     // Test_3.
     {
         char url[] = "/git.html";
-        
+
         char* baseDirectory;
         uint_fast64_t baseDirectoryLength;
         if((error = util_getBaseDirectory(&baseDirectory, &baseDirectoryLength, url, strlen(url))) != ERROR_NO_ERROR){
@@ -998,7 +998,7 @@ TEST_TEST_FUNCTION(util_replaceAllChars){
 TEST_TEST_FUNCTION(util_append){
     char a[11] = {'1', '2', '3', '4', '5'};
     char b[] = "67890";
-    
+
     util_append(a, strlen(a), b, strlen(b));
 
     if(strncmp(a, "1234567890", 11) != 0){
@@ -1040,7 +1040,7 @@ TEST_TEST_FUNCTION(util_getFileExtension){
 
     char a[] = "The_Big_Bang_Theory_s10e05_the_hot_tub_contamination.mkv";
     char b[] = "The_Big_Bang_Theory_s10e05_the_hot_tub_contamination";
-    
+
     char* fileExtension;
     uint_fast64_t fileExtensionLength;
 
@@ -1068,7 +1068,7 @@ TEST_TEST_FUNCTION(util_renameFile){
 
     char* filePath = alloca(sizeof(*filePath) * (strlen(TEST_FILE_NAME) + 1));
     strcpy(filePath, TEST_FILE_NAME);
-    
+
     char* newFileName = alloca(sizeof(*newFileName) * (strlen(TEST_FILE_NEW_NAME) + 1));
     strcpy(newFileName, TEST_FILE_NEW_NAME);
 
@@ -1087,7 +1087,7 @@ TEST_TEST_FUNCTION(util_renameFile){
     if(util_fileExists(filePath)){
         return TEST_FAILURE("Failed to rename file to:'%s'.", filePath);
     } 
-    
+
     if(!util_fileExists(newFileName)){
         return TEST_FAILURE("Failed to rename file to:'%s'.", newFileName);
     }
@@ -1108,7 +1108,7 @@ TEST_TEST_FUNCTION(util_renameFileRelative){
 
     char* dir = malloc(sizeof(*dir) * (strlen(TEST_DIR_NAME) + 1));
     strcpy(dir, TEST_DIR_NAME);
-        
+
     char* fileName = malloc(sizeof(*fileName) * (strlen(TEST_FILE_NAME) + 1));
     strcpy(fileName, TEST_FILE_NAME);
 
@@ -1182,12 +1182,12 @@ TEST_TEST_FUNCTION(util_fileExists){
 
     char* filePath = alloca(sizeof(*filePath) * (strlen(TEST_FILE_NAME) + 1));
     strcpy(filePath, TEST_FILE_NAME);
-    
+
     char* newFileName = alloca(sizeof(*newFileName) * (strlen(TEST_FILE_NEW_NAME) + 1));
     strcpy(newFileName, TEST_FILE_NEW_NAME);
-    
+
     #undef TEST_FILE_NAME
-    
+
     const int fileDescriptor = mkstemp(filePath);
     if(fileDescriptor < 1){
         return TEST_FAILURE("Failed to create temporary file '%s' [%s].", filePath, strerror(errno));
@@ -1274,10 +1274,10 @@ TEST_TEST_FUNCTION(util_fileCopy){
 
     char* filePath = alloca(sizeof(*filePath) * (strlen(TEST_FILE_NAME) + 1));
     strcpy(filePath, TEST_FILE_NAME);
-    
+
     char* newFileName = alloca(sizeof(*newFileName) * (strlen(TEST_FILE_NEW_NAME) + 1));
-    strcpy(newFileName, TEST_FILE_NEW_NAME);    
-    
+    strcpy(newFileName, TEST_FILE_NEW_NAME);
+
     const int fileDescriptor = mkstemp(filePath);
     if(fileDescriptor < 1){
         return TEST_FAILURE("Failed to create temporary file:'%s' [%s].", filePath, strerror(errno));
@@ -1335,12 +1335,12 @@ TEST_TEST_FUNCTION(util_fileCopy){
 
 TEST_TEST_FUNCTION(util_deleteFile){
     #define TEST_FILE_NAME "/tmp/herder_util_test_deleteFile_XXXXXX"
-    
+
     char* filePath = alloca(sizeof(*filePath) * (strlen(TEST_FILE_NAME) + 1));
     strcpy(filePath, TEST_FILE_NAME);
         
     #undef TEST_FILE_NAME
-    
+
     const int fileDescriptor = mkstemp(filePath);
     if(fileDescriptor < 1){
         return TEST_FAILURE("Failed to create temporary file '%s' [%s].", filePath, strerror(errno));
@@ -1360,23 +1360,23 @@ TEST_TEST_FUNCTION(util_deleteDirectory){
     // Test_0.
     {
         #define TMP_DIRECTORY_NAME "/tmp/herder_util_test_deleteDirectory_0_XXXXXX"
-    
+
         char* tmpPath = alloca(sizeof(*tmpPath) * (strlen(TMP_DIRECTORY_NAME) + 1));
         strcpy(tmpPath, TMP_DIRECTORY_NAME);
-            
+
         #undef TMP_DIRECTORY_NAME
-        
+
         const char* dir = mkdtemp(tmpPath);
 
         if(dir == NULL){
             return TEST_FAILURE("Failed to create unique directory name. '%s'", strerror(errno));
         }
-        
+
         ERROR_CODE error;
         if((error = util_deleteDirectory(dir, false, false)) != ERROR_NO_ERROR){
             return TEST_FAILURE("Failed to delete directory '%s' [%s].", dir, util_toErrorString(error));
         }
-        
+
         if(util_directoryExists(dir)){
             return TEST_FAILURE("Failed to delete directory:'%s'.", dir);
         }
@@ -1388,20 +1388,20 @@ TEST_TEST_FUNCTION(util_deleteDirectory){
     
         char* tmpPath = alloca(sizeof(*tmpPath) * (strlen(TMP_DIRECTORY_NAME) + 1));
         strcpy(tmpPath, TMP_DIRECTORY_NAME);
-            
+
         #undef TMP_DIRECTORY_NAME
-        
+
         const char* dir = mkdtemp(tmpPath);
 
         if(dir == NULL){
             return TEST_FAILURE("Failed to create unique directory name. '%s'", strerror(errno));
         }
-        
+
         ERROR_CODE error;
         if((error = util_deleteDirectory(dir, true, false)) != ERROR_NO_ERROR){
             return TEST_FAILURE("Failed to delete directory '%s' [%s].", dir, util_toErrorString(error));
         }
-        
+
         if(!util_directoryExists(dir)){
             return TEST_FAILURE("Failed to delete directory:'%s'.", dir);
         }
@@ -1416,23 +1416,23 @@ TEST_TEST_FUNCTION(util_deleteDirectory){
     // Test_2.
     {
         #define TMP_DIRECTORY_NAME "/tmp/herder_util_test_deleteDirectory_2_XXXXXX"
-    
+
         char* tmpPath = alloca(sizeof(*tmpPath) * (strlen(TMP_DIRECTORY_NAME) + 1));
         strcpy(tmpPath, TMP_DIRECTORY_NAME);
-            
+
         #undef TMP_DIRECTORY_NAME
-        
+
         const char* dir = mkdtemp(tmpPath);
 
         if(dir == NULL){
             return TEST_FAILURE("Failed to create unique directory name. '%s'", strerror(errno));
         }
-        
+
         ERROR_CODE error;
         if((error = util_deleteDirectory(dir, false, true)) != ERROR_NO_ERROR){
             return TEST_FAILURE("Failed to delete directory '%s' [%s].", dir, util_toErrorString(error));
         }
-        
+
         if(util_directoryExists(dir)){
             return TEST_FAILURE("Failed to delete directory:'%s'.", dir);
         }
@@ -1465,15 +1465,15 @@ TEST_TEST_FUNCTION(util_createDirectory){
 
     char* tmpPath = alloca(sizeof(*tmpPath) * (strlen(TMP_DIRECTORY_NAME) + 1));
     strcpy(tmpPath, TMP_DIRECTORY_NAME);
-        
+
     #undef TMP_DIRECTORY_NAME
-    
+
     const char* dir = mkdtemp(tmpPath);
 
     if(dir == NULL){
         return TEST_FAILURE("Failed to create unique directory name. '%s'", strerror(errno));
     }
-    
+
     ERROR_CODE error;
     if((error = util_deleteDirectory(dir, false, false)) != ERROR_NO_ERROR){
         return TEST_FAILURE("Failed to delete directory '%s' [%s].", dir, util_toErrorString(error));
@@ -1502,7 +1502,7 @@ TEST_TEST_FUNCTION(util_createAllDirectories){
     if((error = util_createAllDirectories(dir, dirLength)) != ERROR_NO_ERROR){
         return TEST_FAILURE("Failed to create directory structure '%s' [%s].", dir, util_toErrorString(error));
     }
-    
+
     if(!util_directoryExists("/tmp/util_createAllDirectories/0/1/2/3/")){
         return TEST_FAILURE("Failed to delete directory:'%s'.", "/tmp/util_createAllDirectories");
     }
@@ -1521,15 +1521,15 @@ TEST_TEST_FUNCTION(util_isDirectory){
 
         char* tmpPath = alloca(sizeof(*tmpPath) * (strlen(TMP_DIRECTORY_NAME) + 1));
         strcpy(tmpPath, TMP_DIRECTORY_NAME);
-            
+
         #undef TMP_DIRECTORY_NAME
-        
+
         const char* dir = mkdtemp(tmpPath);
 
         if(dir == NULL){
             return TEST_FAILURE("Failed to create unique directory name. '%s'", strerror(errno));
         }
-        
+
         if(!util_isDirectory(dir)){
             return TEST_FAILURE("Failed to identify directory '%s'.", dir);
         }
@@ -1543,12 +1543,12 @@ TEST_TEST_FUNCTION(util_isDirectory){
     // Test_1.
     {
         #define TEST_FILE_NAME "/tmp/herder_util_test_isDirectory_1_XXXXXX"
-    
+
         char* filePath = alloca(sizeof(*filePath) * (strlen(TEST_FILE_NAME) + 1));
         strcpy(filePath, TEST_FILE_NAME);
-            
+
         #undef TEST_FILE_NAME
-        
+
         const int fileDescriptor = mkstemp(filePath);
         if(fileDescriptor < 1){
             return TEST_FAILURE("Failed to create temporary file '%s' [%s].", filePath, strerror(errno));
@@ -1597,9 +1597,9 @@ TEST_TEST_FUNCTION(http_addHeaderField){
 
     const char connection[] = "close";
     HTTP_ADD_HEADER_FIELD(request, Connection, connection);
-   
+
     const HTTP_HeaderField* headerFieldConnection = http_getHeaderField(&request, "Connection");
-    
+
     if(headerFieldConnection == NULL){
         return TEST_FAILURE("Failed to retrieve headeer field: '%s'.", "Connection");
     }
@@ -1791,11 +1791,144 @@ TEST_TEST_FUNCTION(cache_load){
             }
         }
     }
+
+    if((error = util_deleteFile(filePath)) != ERROR_NO_ERROR){
+        return TEST_FAILURE("Failed to delete test file: '%s'. '%s'.", filePath, util_toErrorString(error));
+    }
+
+    cache_free(&cache);
+
+    return TEST_SUCCESS;
+}
+
+TEST_TEST_FUNCTION(cache_get){
+    ERROR_CODE error;
+
+    #define TEST_FILE_NAME "/tmp/herder_cache_get_test_file_XXXXXX"
+
+    // TODO:(jan) Replace with temporary file.
+    char* filePath = malloc(sizeof(*filePath) * (strlen(TEST_FILE_NAME) + 1));
+    strcpy(filePath, TEST_FILE_NAME);
+
+    #undef TEST_FILE_NAME
+
+    int fileDescriptor = mkstemp(filePath);
+    if(fileDescriptor < 1){
+       return TEST_FAILURE("Failed to create temporary file '%s' [%s].", filePath, strerror(errno));
+    }
+
+    uint8_t* buffer = malloc(sizeof(*buffer) * 256);
+    memset(buffer, 8, 64);
+    memset(buffer + 64, 16, 64);
+    memset(buffer + 128, 8, 64);
+    memset(buffer + 192, 32, 64);
+
+    if(write(fileDescriptor, buffer, 256) != 256){
+        return TEST_FAILURE("Failed to write media library file version. Expected to write %d bytes.", 256);
+    }
+
+    free(buffer);
+    
+    Cache cache;
+    if((error = cache_init(&cache, 2, MB(8))) != ERROR_NO_ERROR){
+        return TEST_FAILURE("Failed to initialise cache. '%s'", util_toErrorString(error));
+    }
+
+    char symbolicFileLocation[] = "/herderTestFile";
+
+    CacheObject* o;
+    if((error = cache_load(&cache, &o, filePath, strlen(filePath), symbolicFileLocation, strlen(symbolicFileLocation))) != ERROR_NO_ERROR){
+        return TEST_FAILURE("Failed to load cache object. '%s'", util_toErrorString(error));
+    }
+
+    CacheObject* cacheObject;
+    if((error = cache_get(&cache, &cacheObject, symbolicFileLocation, strlen(symbolicFileLocation))) != ERROR_NO_ERROR){
+        return TEST_FAILURE("Failed to retireve cache object. '%s'", util_toErrorString(error));
+    }
+
+    uint_fast16_t i;
+    for(i = 0; i < 256; i++){
+        if(i < 64){
+            if(cacheObject->data[i] != 8){
+                return TEST_FAILURE("failed to readcache object data '%d' != '%d'", cacheObject->data[i], 8);
+            }
+        }else if(i < 128){
+            if(cacheObject->data[i] != 16){
+                return TEST_FAILURE("failed to readcache object data '%d' != '%d'", cacheObject->data[i], 16);
+            }
+        }else if(i < 192){
+            if(cacheObject->data[i] != 8){
+                return TEST_FAILURE("failed to readcache object data '%d' != '%d'", cacheObject->data[i], 8);
+            }
+        }else if(i < 256){
+            if(cacheObject->data[i] != 32){
+                return TEST_FAILURE("failed to readcache object data '%d' != '%d'", cacheObject->data[i], 32);
+            }
+        }
+    }
     
     if((error = util_deleteFile(filePath)) != ERROR_NO_ERROR){
         return TEST_FAILURE("Failed to delete test file: '%s'. '%s'.", filePath, util_toErrorString(error));
     }
 
+    cache_free(&cache);
+
+    return TEST_SUCCESS;
+}
+
+TEST_TEST_FUNCTION(cache_remove){
+    ERROR_CODE error;
+
+    #define TEST_FILE_NAME "/tmp/herder_cache_remove_test_file_XXXXXX"
+
+    // TODO:(jan) Replace with temporary file.
+    char* filePath = malloc(sizeof(*filePath) * (strlen(TEST_FILE_NAME) + 1));
+    strcpy(filePath, TEST_FILE_NAME);
+
+    #undef TEST_FILE_NAME
+
+    int fileDescriptor = mkstemp(filePath);
+    if(fileDescriptor < 1){
+       return TEST_FAILURE("Failed to create temporary file '%s' [%s].", filePath, strerror(errno));
+    }
+
+    uint8_t* buffer = malloc(sizeof(*buffer) * 256);
+    memset(buffer, 8, 64);
+    memset(buffer + 64, 16, 64);
+    memset(buffer + 128, 8, 64);
+    memset(buffer + 192, 32, 64);
+
+    if(write(fileDescriptor, buffer, 256) != 256){
+        return TEST_FAILURE("Failed to write media library file version. Expected to write %d bytes.", 256);
+    }
+
+    free(buffer);
+    
+    Cache cache;
+    if((error = cache_init(&cache, 2, MB(8))) != ERROR_NO_ERROR){
+        return TEST_FAILURE("Failed to initialise cache. '%s'", util_toErrorString(error));
+    }
+
+    char symbolicFileLocation[] = "/herderTestFile";
+
+    CacheObject* o;
+    if((error = cache_load(&cache, &o, filePath, strlen(filePath), symbolicFileLocation, strlen(symbolicFileLocation))) != ERROR_NO_ERROR){
+        return TEST_FAILURE("Failed to load cache object. '%s'", util_toErrorString(error));
+    }
+
+    if((error = util_deleteFile(filePath)) != ERROR_NO_ERROR){
+        return TEST_FAILURE("Failed to delete test file: '%s'. '%s'.", filePath, util_toErrorString(error));
+    }
+
+    if((error = cache_remove(&cache, o)) != ERROR_NO_ERROR){
+        return TEST_FAILURE("Failed to remove cache object. '%s'", util_toErrorString(error));
+    }
+
+    CacheObject* cacheObject;
+    if((error = cache_get(&cache, &cacheObject, symbolicFileLocation, strlen(symbolicFileLocation))) == ERROR_NO_ERROR){
+        return TEST_FAILURE("Failed to retireve cache object. '%s'", util_toErrorString(error));
+    }
+    
     cache_free(&cache);
 
     return TEST_SUCCESS;
@@ -1890,7 +2023,7 @@ TEST_TEST_FUNCTION(propertyFile_create){
     return TEST_SUCCESS;
 }
 
-TEST_TEST_FUNCTION_(propertyFile_add, PropertyFile, propertyFile){
+TEST_TEST_FUNCTION_(propertyFile_addProperty, PropertyFile, propertyFile){
     ERROR_CODE error;
 
     Property* testProperty;
@@ -1917,7 +2050,61 @@ TEST_TEST_FUNCTION_(propertyFile_add, PropertyFile, propertyFile){
     return TEST_SUCCESS;
 }    
 
-TEST_TEST_FUNCTION_(propertyFile_remove, PropertyFile, propertyFile){
+TEST_TEST_FUNCTION_(propertyFile_getProperty, PropertyFile, propertyFile){
+    ERROR_CODE error;
+
+    Property* testProperty;
+    if((error = propertyFile_addProperty(propertyFile, &testProperty, "testProperty", sizeof(uint64_t))) != ERROR_NO_ERROR){
+        return TEST_FAILURE("Failed to add property:'testProperty'. '%s'.", util_toErrorString(error));
+    }
+
+    int8_t* buffer = alloca(sizeof(uint16_t));
+    util_uint64ToByteArray(buffer, 19875431121);
+
+    propertyFile_setBuffer(testProperty, buffer);
+
+    propertyFile_freeProperty(testProperty);
+    free(testProperty);
+
+    Property* retrievedProperty;
+    if(propertyFile_getProperty(propertyFile, &retrievedProperty, "testProperty") != ERROR_NO_ERROR){
+       return TEST_FAILURE("Failed to retrieve property 'testProperty'. '%s'.", util_toErrorString(error));
+    }
+
+    propertyFile_freeProperty(retrievedProperty);
+    free(retrievedProperty);
+
+    return TEST_SUCCESS;
+}    
+
+TEST_TEST_FUNCTION_(propertyFile_contains, PropertyFile, propertyFile){
+    ERROR_CODE error;
+
+    Property* testProperty;
+    if((error = propertyFile_addProperty(propertyFile, &testProperty, "testProperty", sizeof(uint64_t))) != ERROR_NO_ERROR){
+        return TEST_FAILURE("Failed to add property:'testProperty'. '%s'.", util_toErrorString(error));
+    }
+
+    int8_t* buffer = alloca(sizeof(uint16_t));
+    util_uint64ToByteArray(buffer, 19875431121);
+
+    propertyFile_setBuffer(testProperty, buffer);
+
+    propertyFile_freeProperty(testProperty);
+    free(testProperty);
+
+    if(!propertyFile_contains(propertyFile, "testProperty")){
+       return TEST_FAILURE("Failed to retrieve property 'testProperty'. '%s'.", util_toErrorString(error));
+    }
+
+    if(!propertyFile_contains(propertyFile, "testProperty_2")){
+       return TEST_FAILURE("Failed to retrieve property 'testProperty'. '%s'.", util_toErrorString(error));
+    }
+
+    return TEST_SUCCESS;
+}    
+
+TEST_TEST_FUNCTION_(propertyFile_removeProperty, PropertyFile, propertyFile){
     ERROR_CODE error;
 
     Property* testProperty;
@@ -2085,7 +2272,7 @@ TEST_TEST_SUIT_CONSTRUCT_FUNCTION(mediaLibrary, library){
     char* libraryFileLocation = alloca(sizeof(*libraryFileLocation) * (libraryFileLocationLength + 1));
     strncpy(libraryFileLocation, currentDir, currentDirLength);
     strncpy(libraryFileLocation + currentDirLength, "/tmp/", 6);
-    
+
     *library = malloc(sizeof(MediaLibrary));
 
     if((error = mediaLibrary_init(*library, libraryFileLocation, libraryFileLocationLength)) != ERROR_NO_ERROR){
@@ -2126,7 +2313,7 @@ TEST_TEST_SUIT_DESTRUCT_FUNCTION(mediaLibrary, library){
     return ERROR(error);
 }
 
-TEST_TEST_FUNCTION_(mediaLibrary_getShow, MediaLibrary, library){           
+TEST_TEST_FUNCTION_(mediaLibrary_getShow, MediaLibrary, library){
     ERROR_CODE error;
 
     char showName[] = "American Dad";
@@ -2250,12 +2437,12 @@ TEST_TEST_FUNCTION_(medialibrary_removeEpisode, MediaLibrary, library){
 
 TEST_TEST_FUNCTION_(medialibrary_removeEpisodeFrromLibraryFile, MediaLibrary, library){
     ERROR_CODE error;
-    
+
     const char showName[] = "Enen no Shouboutai";
     const uint_fast64_t showNameLength = strlen(showName);
 
     Show* show;
-    if((error = mediaLibrary_addShow(library, &show, showName, showNameLength)) != ERROR_NO_ERROR){             
+    if((error = mediaLibrary_addShow(library, &show, showName, showNameLength)) != ERROR_NO_ERROR){
         return TEST_FAILURE("Failed to add show:'%s'. '%s'.", showName, util_toErrorString(error));
     }
 
@@ -2388,7 +2575,7 @@ TEST_TEST_FUNCTION(mediaLibrary_extractPrefixedNumber){
 }
 
 TEST_TEST_FUNCTION(mediaLibrary_extractEpisodeInfo){
-    char a[] = "American_Dad_s01e01_Threat_Levels.mkv"; 
+    char a[] = "American_Dad_s01e01_Threat_Levels.mkv";
 
     LinkedList shows;
     linkedList_init(&shows);
@@ -2507,7 +2694,7 @@ TEST_TEST_FUNCTION(server_addContext){
     if(util_blockAlloc(&buffer, BUFFER_SIZE) != ERROR_NO_ERROR){
         goto label_free;
     }
-  
+
     const char requestURL[] = "/img/img_001.png";
 
     HTTP_Request request;
@@ -2566,7 +2753,7 @@ TEST_TEST_FUNCTION(server_addContext){
 
 
 label_free:
-    http_freeHTTP_Request(&request);    
+    http_freeHTTP_Request(&request);
 
     server_free(&server);
 
@@ -2576,7 +2763,7 @@ label_free:
     return ret;
 }
 
-local SERVER_CONTEXT_HANDLER(server_testContextHandler){    
+local SERVER_CONTEXT_HANDLER(server_testContextHandler){
     http_setHTTP_Version(response, HTTP_VERSION_1_1);
     response->statusCode = _200_OK;
 
@@ -2605,7 +2792,7 @@ local THREAD_POOL_RUNNABLE(server_thread){
     HerderServer server;
     ERROR_CODE error;
     if((error = server_init(&server, serverRootDirectory, serverRootDirectoryLength, 8888) != ERROR_NO_ERROR)){
-        goto label_free;    
+        goto label_free;
     }
 
     server_addContext(&server, "/test", server_testContextHandler);
@@ -2699,7 +2886,7 @@ int main(void){
         // Integer to ByteArray conversions.
         TEST(util_uint16ToByteArray);
         TEST(util_uint32ToByteArray);
-        TEST(util_uint64ToByteArray); 
+        TEST(util_uint64ToByteArray);
         TEST(util_formatNumber);
 
         // String utils.
@@ -2721,7 +2908,7 @@ int main(void){
         TEST(util_getBaseDirectory);
         TEST(util_getFileName);
         TEST(util_renameFile);
-        TEST(util_renameFileRelative);                
+        TEST(util_renameFileRelative);
         TEST(util_getFileDirectory);
         TEST(util_fileExists);
         TEST(util_fileCopy);
@@ -2738,7 +2925,7 @@ int main(void){
 
     TEST_SUIT_BEGIN("argumentParser");
         TEST(argumentParser_parse);
-    TEST_SUIT_END();    
+    TEST_SUIT_END();
 
     TEST_SUIT_BEGIN("http");
         TEST(http_addHeaderField);
@@ -2755,16 +2942,20 @@ int main(void){
 
     TEST_SUIT_BEGIN("cache");
         TEST(cache_load);
+        TEST(cache_get);
+        TEST(cache_remove);
     TEST_SUIT_END();
     
     TEST_SUIT_BEGIN_(propertyFile);
         __TEST_NO_SETUP__(); TEST(propertyFile_create);
-        TEST(propertyFile_add);
+        TEST(propertyFile_addProperty);
         TEST(propertyFile_createAndSetUINT16Property);
         TEST(propertyFile_createAndSetStringProperty);
         TEST(propertyFile_createAndSetDirectoryProperty);
-        TEST(propertyFile_remove);
-    TEST_SUIT_END();   
+        TEST(propertyFile_removeProperty);
+        TEST(propertyFile_getProperty);
+        TEST(propertyFile_contains);
+    TEST_SUIT_END();
 
     TEST_SUIT_BEGIN_(mediaLibrary);
         TEST(mediaLibrary_getShow);

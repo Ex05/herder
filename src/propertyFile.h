@@ -9,14 +9,14 @@
 #define PROPERTY_IS_SET(property) (property != NULL)
 
 typedef struct{
-	uint_fast8_t release;
+    uint_fast8_t release;
     uint_fast8_t update;
     uint_fast8_t hotfix;
 }Version;
 
 typedef struct{
-	FILE* file;
-	Version version;
+    FILE* file;
+    Version version;
     uint_fast8_t maxPageEntries;
     LinkedList pages;
 }PropertyFile;
@@ -51,7 +51,7 @@ void propertyFile_free(PropertyFile*);
 
 void propertyFile_freeProperty(Property*);
 
-ERROR_CODE propertyFile_addProperty(PropertyFile*, Property**,  const char*, const uint_fast64_t);
+ERROR_CODE propertyFile_addProperty(PropertyFile*, Property**, const char*, const uint_fast64_t);
 
 ERROR_CODE propertyFile_setBuffer(Property*, int_fast8_t*);
 
@@ -73,7 +73,7 @@ ERROR_CODE propertyFile_createProperty(PropertyFile*, Property**, const char*, c
 
 /*
 Version: 3 bytes
-Max_Page_Entries: 1 byte  
+Max_Page_Entries: 1 byte
 
 ########################
 # Page_0:              # 
@@ -82,7 +82,7 @@ Max_Page_Entries: 1 byte
 # Name_Size: 8 bytes   #
 # Name_Offset: 8 bytes #
 # Data_Size: 8 bytes   #
-# Data_Offset: 8 bytes #  
+# Data_Offset: 8 bytes #
 # }                    #
 # Next_Page: 8 bytes   #
 ########################
