@@ -1,13 +1,10 @@
 #!/bin/bash
 
-# Clear the screen.
-clear
-clear
+# ./build <target> <debug/release> <optimisation>
 
-# Halt on the first error.
-set -e
-
-# Build settings.
+###############
+### Settings. #
+###############
 buildDirectory="out"
 
 compiler="gcc"
@@ -27,7 +24,7 @@ compileFlags="-pthread -lrt -c -Werror -Wall -Wextra -pedantic -Wno-unused-param
 # (pedantic-errors) Issue all the warnings demanded by strict ISO C and turns them into errors.
 # (Wno-unused-parameter) Don't warn about unused parameter.
 # (std=c11) Use C11 (C standard revision) ISO/IEC 9899:2011.
-# (-march=native) Use CPU/Architecture dependent optimisations. See:'https://stackoverflow.com/questions/14492436/g-optimization-beyond-o3-ofast' for more optimisation flags.
+# (march=native) Use CPU/Architecture dependent optimisations. See:'https://stackoverflow.com/questions/14492436/g-optimization-beyond-o3-ofast' for more optimisation flags.
 
 additionalDebugFlags="-D DEBUG"
 
@@ -36,6 +33,13 @@ additionalReleaseFlags="-D NDEBUG"
 linkFlags="-pthread -lrt"
 
 libraries="-lpthread"
+
+# Halt on the first error.
+set -e
+
+######################
+### Build functions. #
+######################
 
 # prepareBuildDirectory(buildDirectory)
 prepareBuildDirectory(){
@@ -50,8 +54,10 @@ prepareBuildDirectory(){
 
 # preprocess(compiler, "compilerFlags", buildDirectory, fileName)
 preprocess(){
+    # Add 'src' directory to directory stack.
     pushd src > /dev/null
 
+    # If 'time' command is available.
     if hash time 2>/dev/null; then
         printf "Preprocessing:\n"
 
@@ -69,12 +75,14 @@ preprocess(){
 
 # assemble(compiler, "compilerFlags", buildDirectory, fileName)
 assemble(){
+    # Add 'src' directory to directory stack.
     pushd src > /dev/null
 
+    # If 'time' command is available.
     if hash time 2>/dev/null; then
         printf "Assembling:\n"
 
-        \time --format '\tUser time: %Us\n\tSystem time: %Ss\n\tCPU utilization: %P' $1 $2 -o ../$3/$4.s ../$3/$4.i    
+        \time --format '\tUser time: %Us\n\tSystem time: %Ss\n\tCPU utilization: %P' $1 $2 -o ../$3/$4.s ../$3/$4.i
     else
         printf "Assembling...\n"
 
@@ -88,9 +96,10 @@ assemble(){
 
 # compile(compiler, "compilerFlags", buildDirectory, inputFileName, outputFileName)
 compile(){
+    # Add 'src' directory to directory stack.
     pushd src >/dev/null
 
-    # Compile.
+    # If 'time' command is available.
     if hash time 2>/dev/null; then
         printf "Compiling:\n"
 
@@ -108,9 +117,10 @@ compile(){
 
 # link(compiler, "linkFlags", "libraries", buildDirectory, objectFileName, executableName)
 link(){
+    # Add build directory directory to directory stack.
     pushd $4 > /dev/null
     
-    # Link.
+    # If 'time' command is available.
     if hash time 2>/dev/null; then
         printf "Linking:\n"
 
@@ -122,7 +132,7 @@ link(){
 
         printf "Install the 'time' package to get a timing information about the compilation process."
     fi
-    
+
     popd >/dev/null
 }
 
@@ -138,6 +148,7 @@ buildRelease(){
 
     link $compiler "$linkFlags" "$libraries" $buildDirectory $1 $2
 
+    # Remove build directory.
     rm -r $buildDirectory
 }
 
@@ -149,6 +160,7 @@ buildDebug(){
 
     link $compiler "$linkFlags" "$libraries" $buildDirectory $1 $2
 
+    # Remove build directory.
     rm -r $buildDirectory
 }
 
@@ -173,104 +185,126 @@ buildAndRunTest(){
     # Don't halt on errors.
     set +e
 
-    # Run test executable.
-    ./$2
-
-    # If tests run successfully, run a memory leak check.
-    if [ $? -eq 0 ]; then
-        if hash valgrind 2>/dev/null; then
+    # If valgrind is available.
+    if hash valgrind 2>/dev/null; then
             valgrind --leak-check=full --track-origins=yes --show-leak-kinds=all ./$2 > /dev/null
-        fi
+    else
+        # Run test executable.
+        ./$2
     fi
 
     # Remove temporary test directory.
     rm -r "./tmp/"
-}   
+}
 
 # printBuildOptions(void)
 printBuildOptions(){
-    printf "Usage 'build <target> optinal:<debug/optimisation>'.\n "
+    printf "Usage 'build <target> <debug/release> <optimisation>'.\n "
     printf "\tTargets:[herder, server, all, test], Optimisation:[0-3].\n"
 }
 
+#########################
+### Begin build script. #
+#########################
+clear
+clear
+
 # Print build options if no arguments were paresed.
-if [ $# -eq 0 ];then
+if [ $# -eq 0 ]; then
     printBuildOptions
 
     exit -1
 fi
 
-# Build a debug build without optimisations when no arguments are passed.
-# Else apply choosen optimisations.
-if [ $# -eq 1 ] || [ "$1" == "test" ] || [ "$2" == "debug" ]; then
-    compileFlags="$compileFlags -O0 -g $additionalDebugFlags"
-else
-    if [ "$2" == "0" ]; then
-        compileFlags="$compileFlags -O0 $additionalReleaseFlags"
-    else
-        if [ "$2" == "1" ]; then
-            compileFlags="$compileFlags -O1 $additionalReleaseFlags"
-        else
-            if [ "$2" == "2" ]; then
-                compileFlags="$compileFlags -O2 $additionalReleaseFlags"
-            else
-                if [ "$2" == "3" ]; then
-                    compileFlags="$compileFlags -O3 $additionalReleaseFlags"
-                else
-                    printBuildOptions
+if [ $# -eq 1 ]; then
+    # Build and Run the test executable.
+    if [ "$1" == "test" ]; then
+        compileFlags="$compileFlags -O0 -g $additionalDebugFlags"
 
-                    exit -1
+        echo buildAndRunTest test herder_test
+
+        exit 0
+    fi
+fi
+
+if [ $# -eq 2 ]; then
+    if [ "$2" == "debug" ]; then
+        compileFlags="$compileFlags -O0 -g $additionalDebugFlags"
+
+        if [ "$1" == "herder" ]; then
+            echo buildDebug consoleClient herder
+
+            exit 0
+        else
+            if [ "$1" == "server" ]; then
+                echo buildDebug server herderServerDaemon
+
+                exit 0
+            else
+                if [ "$1" == "all" ]; then
+                    echo buildDebug consoleClient herder
+
+                    printf "\n"
+
+                    echo buildDebug server herderServerDaemon
+                    
+                    exit 0
                 fi
             fi
         fi
     fi
 fi
 
-# If the build target is herder, build the client side executable.
-if [ "$1" == "herder" ] || [ "$1" == "all" ]; then
-    # Build the debug version of the executable.
-    if [ "$2" == "debug" ];then
-        buildDebug consoleClient herder
+if [ $# -eq 3 ]; then
+    if [ "$2" == "release" ]; then
+        if [ "$1" == "herder" ] || [ "$1" == "server" ] || [ "$1" == "all" ]; then
+            if [ "$3" == "0" ] || [ "$3" == "1" ] || [ "$3" == "2" ] || [ "$3" == "3" ]; then
+                if [ "$3" == "0" ]; then
+                    echo compileFlags="$compileFlags -O0 $additionalReleaseFlags"
+                else
+                    if [ "$3" == "1" ]; then
+                        echo compileFlags="$compileFlags -O1 $additionalReleaseFlags"
+                    else
+                        if [ "$3" == "2" ]; then
+                            echo compileFlags="$compileFlags -O2 $additionalReleaseFlags"
+                        else
+                            if [ "$3" == "3" ]; then
+                                echo compileFlags="$compileFlags -O3 $additionalReleaseFlags"
+                            fi
+                        fi
+                    fi
+                fi
 
-        if [ "$1" != "all" ]; then
-            exit 0
-        fi
-    else
-        buildRelease consoleClient herder
+                if [ "$1" == "herder" ]; then
+                    echo buildRelease consoleClient herder
 
-        printf "\nBuild completeted.\n"
+                    printf "\nBuild completeted.\n"
 
-        if [ "$1" != "all" ]; then
-            exit 0
+                    exit 0
+                fi
+
+                if [ "$1" == "server" ]; then
+                    echo buildDebug server herderServerDaemon
+
+                    printf "\nBuild completeted.\n"
+
+                    exit 0
+                fi
+
+                if [ "$1" == "all" ]; then
+                    echo buildRelease consoleClient herder
+
+                    printf "\n"
+
+                    echo buildDebug server herderServerDaemon
+
+                    printf "\nBuild completeted.\n"
+
+                    exit 0
+                fi
+            fi
         fi
     fi
-fi
-
-# If the target is 'server' build the sever executable.
-if [ "$1" == "server" ] || [ "$1" == "all" ]; then
-    # Build the debug version of the executable.
-    if [ "$2" == "debug" ]; then
-        buildDebug server herderServerDaemon
-
-        exit 0
-    else
-        if [ "$1" == "all" ]; then
-            printf "\n"
-
-            buildRelease server herderServerDaemon
-
-            printf "\nBuild completeted.\n"
-
-            exit 0
-        fi
-    fi
-fi
-
-# Build and Run the test executable.
-if [ "$1" == "test" ]; then
-    buildAndRunTest test herder_test
-
-    exit 0
 fi
 
 printBuildOptions
