@@ -14,6 +14,9 @@
     memset(headerField ##  _name, 0, sizeof(*headerField ##  _name)); \
     const uint_fast64_t headerFieldHostNameLength = strlen(# _name); \
     headerField ##  _name->name = malloc(sizeof(headerField ##  _name->name) * (headerFieldHostNameLength + 1)); \
+    if(headerField ##  _name->name == NULL){ \
+        UTIL_LOG_ERROR_("%s.", util_toErrorString(ERROR_OUT_OF_MEMORY)); \
+    } \
     strncpy(headerField ##  _name->name, # _name, headerFieldHostNameLength + 1); \
     \
     const uint_fast64_t headerField ##  _nameValueLength = strlen(_value); \

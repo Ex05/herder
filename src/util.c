@@ -140,7 +140,7 @@ inline int_fast32_t util_directoryExists(const char* dir){
 }
 
 inline ERROR_CODE util_blockAlloc(void** buffer, const uint_fast64_t length){
-    *buffer = mmap(NULL, length, PROT_NONE, MAP_PRIVATE, -1, 0);
+    *buffer = mmap(NULL, length, PROT_NONE, MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
 
     if(*buffer == MAP_FAILED){
         return ERROR_(ERROR_MEMORY_ALLOCATION_ERROR, "Failed to create memory page '%s'.", strerror(errno));

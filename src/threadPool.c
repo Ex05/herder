@@ -130,12 +130,6 @@ void* threadPool_threadFunc(void* data){
         Job* job = que_deque(&threadPool->jobQue);
 
         pthread_mutex_unlock(&threadPool->lock);
-
-        if(job == NULL){
-            UTIL_LOG_WARNING("Can't execute 'NULL' job.");
-
-            continue;
-        }
         
         // NOTE: Until we can make sure we are not leaking memory, we just clear everything. (jan - 2019.03.06)
         // TODO: Clear only the actually used memory after we send/received and handled our packets. (jan - 2019.03.06)
