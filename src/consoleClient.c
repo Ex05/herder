@@ -38,6 +38,7 @@
 #define CONSOLE_CLIENT_USAGE_ARGUMENT_SET_REMOTE_PORT "--setRemotePort <port>"
 #define CONSOLE_CLIENT_USAGE_ARGUMENT_SHOW_SETTINGS "--showSettings"
 #define CONSOLE_CLIENT_USAGE_ARGUMENT_PLAY "-p, --play <name>"
+#define CONSOLE_CLIENT_USAGE_ARGUMENT_CONVERT "--mp3/convert :optional<all/showName>"
 
 #define CONSOLE_CLIENT_PROPERTY_IMPORT_DIRECTORY_NAME "importDirectory"
 #define CONSOLE_CLIENT_PROPERTY_REMOTE_HOST_NAME "remoteHost"
@@ -76,6 +77,8 @@ local ERROR_CODE consoleClient_selectYesNo(bool*);
 
 local ERROR_CODE consoleClient_addEpisode(Property*, Property*, Property*, const char*, const uint_fast64_t);
 
+local ERROR_CODE consoleClient_convert(Property*, Property*, Property*);
+
 // TODO:(jan) Make custom entry point for the client build, so we won't have to use 'main'.
 #ifndef TEST_BUILD
 	int main(const int argc, const char** argv){
@@ -109,6 +112,7 @@ local ERROR_CODE consoleClient_addEpisode(Property*, Property*, Property*, const
     ARGUMENT_PARSER_ADD_ARGUMENT(SetRemoteHostPort, 1, "--setRemotePort");
     ARGUMENT_PARSER_ADD_ARGUMENT(ShowSettings, 1, "--showSettings");
     ARGUMENT_PARSER_ADD_ARGUMENT(Play, 1, "--play");
+    ARGUMENT_PARSER_ADD_ARGUMENT(Convert, 2, "--mp3", "--convert");
 
     if((error = argumentParser_parse(&parser, argc, argv)) != ERROR_NO_ERROR){
         if(error == ERROR_NO_VALID_ARGUMENT){
@@ -514,6 +518,69 @@ local ERROR_CODE consoleClient_addEpisode(Property*, Property*, Property*, const
         goto label_freeProperties;
     }
 
+    // --convert.
+    if(argumentParser_contains(&parser, &argumentConvert)){ 
+        if(argumentConvert.numValues == 0){
+            consoleClient_convert(remoteHost, remotePort, libraryDirectory);
+        }else{
+            if(argumentConvert.numValues == 1){
+                LinkedList shows;
+                if((error = herder_pullShowList(&shows, remoteHost, remotePort)) != ERROR_NO_ERROR){
+                    goto label_freeProperties;
+                }
+
+                #define CONSOLE_CLIENT_STRING_CONSTANT_ALL "all"
+                
+                if(strncmp(CONSOLE_CLIENT_STRING_CONSTANT_ALL, argumentConvert.values[0], strlen(CONSOLE_CLIENT_STRING_CONSTANT_ALL) + 1) == 0){
+                    LinkedListIterator it;
+                    linkedList_initIterator(&it, &shows);
+
+                    while(LINKED_LIST_ITERATOR_HAS_NEXT(&it)){
+                        Show* show = LINKED_LIST_ITERATOR_NEXT(&it);
+
+                        if(strncmp(argumentConvert.values[0], show->name, argumentConvert.valueLengths[0] + 1) == 0){
+                            if((error = herder_convertToMP3(remoteHost, remotePort, libraryDirectory, show->name, show->nameLength)) != ERROR_NO_ERROR){
+                                goto label_freeShowList;
+                            }
+                        }
+                    }
+                }else{
+                    LinkedListIterator it;
+                    linkedList_initIterator(&it, &shows);
+
+                    while(LINKED_LIST_ITERATOR_HAS_NEXT(&it)){
+                        Show* show = LINKED_LIST_ITERATOR_NEXT(&it);
+
+                        if(strncmp(argumentConvert.values[0], show->name, argumentConvert.valueLengths[0] + 1) == 0){
+                            if((error = herder_convertToMP3(remoteHost, remotePort, libraryDirectory, show->name, show->nameLength)) != ERROR_NO_ERROR){
+                                goto label_freeShowList;
+                            }
+                        }
+                    }
+                }
+                #undef CONSOLE_CLIENT_STRING_CONSTANT_ALL
+
+                LinkedListIterator it;
+
+            label_freeShowList:
+                linkedList_initIterator(&it, &shows);
+
+                while(LINKED_LIST_ITERATOR_HAS_NEXT(&it)){
+                    Show* show = LINKED_LIST_ITERATOR_NEXT(&it);
+
+                    mediaLibrary_freeShow(show);
+
+                    free(show);
+                }
+
+                linkedList_free(&shows);
+            }else{
+                UTIL_LOG_CONSOLE(LOG_INFO, "Invalid command. Usage: " CONSOLE_CLIENT_USAGE_ARGUMENT_CONVERT);
+            }
+        }
+        goto label_freeProperties;
+    }
+
     // --showSettings.
     if(argumentParser_contains(&parser, &argumentShowSettings)){ 
         if(argumentShowSettings.numValues != 0){
@@ -585,6 +652,8 @@ inline void consoleClient_printHelp(void){
     UTIL_LOG_CONSOLE_(LOG_INFO, "\t%s\t\t\t\t%s", CONSOLE_CLIENT_USAGE_ARGUMENT_SET_REMOTE_HOST, "Sets the 'remote host' address to the given URL.");
     UTIL_LOG_CONSOLE_(LOG_INFO, "\t%s\t\t\t\t%s", CONSOLE_CLIENT_USAGE_ARGUMENT_SET_REMOTE_PORT, "Sets the 'remote host' port to the given port.");
     UTIL_LOG_CONSOLE_(LOG_INFO, "\t%s\t\t\t%s", CONSOLE_CLIENT_USAGE_ARGUMENT_SHOW_SETTINGS, "Shows a quick overview of all the user settings.");
+    UTIL_LOG_CONSOLE_(LOG_INFO, "\t%s\t\t\t%s", CONSOLE_CLIENT_USAGE_ARGUMENT_PLAY, "Shows a quick overview of all the user settings.");
+    UTIL_LOG_CONSOLE_(LOG_INFO, "\t%s\t\t\t%s", CONSOLE_CLIENT_USAGE_ARGUMENT_CONVERT, "Convert episodes to audio only versions. No Arguments opens an interactive episode selection, 'all' to convert all episodes in the library which have not been converted and 'showName' to convert all episodes of a show.");
 }
 
 inline ERROR_CODE consoleClient_listShows(Property* remoteHost, Property* remotePort){
@@ -879,7 +948,7 @@ label_readUserInput:
         }
 
         if(userInputLength != 0){
-            if((error = util_stringToInt(season, &episodeInfo->season)) != ERROR_NO_ERROR){
+            if((error = util_stringToInt(season, (int64_t*) &episodeInfo->season)) != ERROR_NO_ERROR){
                 UTIL_LOG_CONSOLE_(LOG_ERR, "%s.", util_toErrorString(error));
 
                 free(season);
@@ -900,7 +969,7 @@ label_readUserInput:
         }
 
         if(userInputLength != 0){
-            if((error = util_stringToInt(episode, &episodeInfo->episode)) != ERROR_NO_ERROR){
+            if((error = util_stringToInt(episode, (int64_t*) &episodeInfo->episode)) != ERROR_NO_ERROR){
                 UTIL_LOG_CONSOLE_(LOG_ERR, "%s.", util_toErrorString(error));
 
                 free(episode);
@@ -1406,7 +1475,7 @@ local ERROR_CODE consoleClient_selectYesNo(bool* selection){
         *selection = false;
     }else{
         if(userInputLength != 0 && strncmp(userInput, "yes", 4) != 0 && strncmp(userInput, "y", 2) != 0){
-            UTIL_LOG_CONSOLE(LOG_DEBUG, "Invalid selection, enter yes/no to continue.");
+            UTIL_LOG_CONSOLE(LOG_DEBUG, "Invalid selection, enter Yes/No to continue.");
 
             error = ERROR_INVALID_VALUE;
         }else{
@@ -1445,7 +1514,7 @@ ERROR_CODE consoleClient_addEpisode(Property* remoteHost, Property* remotePort, 
     char* fileName = util_getFileName(info.path, info.pathLength);
     const uint_fast64_t fileNameLength = strlen(fileName);
 
-    if((error = util_getFileExtension(&info.fileExtension, &info.fileExtensionLength, fileName, fileNameLength)) != ERROR_NO_ERROR){
+    if((error = util_getFileExtension(&info.fileExtension, (uint_fast64_t*) &info.fileExtensionLength, fileName, fileNameLength)) != ERROR_NO_ERROR){
         goto label_freeShowList;
     }
 
@@ -1479,5 +1548,40 @@ label_freeInfo:
     free(info.showName);
     free(info.name);
 
+    return ERROR(error);
+}
+
+ERROR_CODE consoleClient_convert(Property* remoteHost, Property* remotePort, Property* libraryDirectory){
+    ERROR_CODE error = ERROR_NO_ERROR;
+
+    Show* selectedShow = NULL;
+    if((error = consoleClient_selectShow(remoteHost, remotePort, &selectedShow))){
+        goto label_return;
+    }
+
+    UTIL_LOG_CONSOLE_(LOG_DEBUG, "Selected show:'%s'.", selectedShow->name);
+
+label_yesNo:
+    UTIL_LOG_CONSOLE_(LOG_INFO, "Convert '%s' to audio/mp3? Yes/No.", selectedShow->name);
+
+    bool renameEpisode;
+    if((error = consoleClient_selectYesNo(&renameEpisode) != ERROR_NO_ERROR)){
+        goto label_yesNo;
+    }
+
+    if(!renameEpisode){
+        goto label_freeNewName;
+    }
+
+    if((error = herder_convertToMP3(remoteHost, remotePort, libraryDirectory, selectedShow->name, selectedShow->nameLength)) != ERROR_NO_ERROR){
+        goto label_freeNewName;
+    }
+
+label_freeNewName:
+    mediaLibrary_freeShow(selectedShow);
+
+    free(selectedShow);
+
+label_return:
     return ERROR(error);
 }

@@ -964,3 +964,152 @@ label_unMap:
 label_return:
     return ERROR(error);
 }
+
+ERROR_CODE herder_convertToMP3(Property* remoteHost, Property* remotePort, Property* libraryDirectory, const char* showName, const uint_fast64_t showNameLength){
+    ERROR_CODE error = ERROR_NO_ERROR;
+
+    #define HERDER_STRING_CONSTANT_AUDIO "audio/"
+
+    const uint_fast64_t audioStringLength = strlen(HERDER_STRING_CONSTANT_AUDIO);
+    const uint_fast64_t audioDirectoryLength = (libraryDirectory->entry->length - 1) + audioStringLength;
+
+    char* audioDirectory = alloca(sizeof(*audioDirectory) * (audioDirectoryLength + 1));
+    memcpy(audioDirectory, libraryDirectory->buffer, libraryDirectory->entry->length - 1);
+    strncpy(audioDirectory + libraryDirectory->entry->length - 1, HERDER_STRING_CONSTANT_AUDIO, audioStringLength + 1);
+
+    #undef HERDER_STRING_CONSTANT_AUDIO
+
+    if(!util_directoryExists(audioDirectory)){
+        if((error = util_createDirectory(audioDirectory)) != ERROR_NO_ERROR){
+            goto label_return;
+        }
+
+        UTIL_LOG_INFO_("Created directory:'%s'.", audioDirectory);
+    }
+
+    const uint_fast64_t showDirectoryLength = audioDirectoryLength + showNameLength + 1/*'/'*/;
+
+    char* _showName = alloca(sizeof(*_showName) * showNameLength + 1);
+    strncpy(_showName, showName, showNameLength + 1);
+    util_replaceAllChars(_showName, ' ', '_');
+
+    char* showDirectory = alloca(sizeof(*showDirectory) * (showDirectoryLength + 1));
+    strncpy(showDirectory, audioDirectory, audioDirectoryLength);
+    strncpy(showDirectory + audioDirectoryLength, _showName, showNameLength);
+    showDirectory[audioDirectoryLength + showNameLength] = '/';
+    showDirectory[audioDirectoryLength + showNameLength + 1] = '\0';
+
+    if(!util_directoryExists(showDirectory)){
+        if((error = util_createDirectory(showDirectory)) != ERROR_NO_ERROR){
+            goto label_return;
+        }
+
+        UTIL_LOG_INFO_("Created directory:'%s'.", showDirectory);
+    }
+
+    Show show;
+    if((error = medialibrary_initShow(&show, showName, showNameLength)) != ERROR_NO_ERROR){
+        goto label_return;
+    }
+
+    if((error = herder_pullShowInfo(remoteHost, remotePort, &show)) != ERROR_NO_ERROR){
+        goto label_freeShow;
+    }
+
+    LinkedListIterator seasonIterator;
+    linkedList_initIterator(&seasonIterator, &show.seasons);
+
+    while(LINKED_LIST_ITERATOR_HAS_NEXT(&seasonIterator)){
+        Season* season = LINKED_LIST_ITERATOR_NEXT(&seasonIterator);
+
+        uint_fast64_t seasonDirectoryLength = showDirectoryLength + (showNameLength + 3/*' - '*/ + 7/*'Season_'*/ + UTIL_UINT16_STRING_LENGTH + 1/*'/'*/);
+
+        char* seasonDirectory = alloca(sizeof(*seasonDirectory) * (seasonDirectoryLength + 1));
+
+        seasonDirectoryLength = snprintf(seasonDirectory, seasonDirectoryLength + 1, "%s%s - Season_%02" PRIdFAST16 "/", showDirectory, _showName, season->number);
+
+        if(!util_directoryExists(seasonDirectory)){
+            if((error = util_createDirectory(seasonDirectory)) != ERROR_NO_ERROR){
+                goto label_return;
+            }
+
+            UTIL_LOG_INFO_("Created directory:'%s'.", seasonDirectory);
+        }
+
+        LinkedListIterator episodeIterator;
+        linkedList_initIterator(&episodeIterator, &season->episodes);
+
+        while(LINKED_LIST_ITERATOR_HAS_NEXT(&episodeIterator)){
+            Episode* episode = LINKED_LIST_ITERATOR_NEXT(&episodeIterator);
+
+            uint_fast64_t episodePathLength = seasonDirectoryLength + showNameLength + episode->nameLength + (2 * UTIL_UINT16_STRING_LENGTH + 2/*'_s'*/ + 1/*'e'*/ + 1/*"_"*/ + 4/*'.mp3'*/);
+
+            char* episodePath = alloca(sizeof(*episodePath) * (episodePathLength + 1));
+
+            util_replaceAllChars(episode->name, ' ', '_');
+
+            episodePathLength = snprintf(episodePath, episodePathLength + 1, "%s%s_s%02" PRIdFAST16 "e%02" 
+            PRIdFAST16 "_%s%s", seasonDirectory, _showName, season->number, episode->number, episode->name, ".mp3");
+
+            if(!util_fileExists(episodePath)){
+                EpisodeInfo episodeInfo;
+                mediaLibrary_fillEpisodeInfo(&episodeInfo, &show, season, episode);
+
+                char* relativePath;
+                uint_fast64_t relativePathLength;
+                HERDER_CONSTRUCT_RELATIVE_FILE_PATH(&relativePath, &relativePathLength, &episodeInfo);
+
+                const uint_fast64_t absoluteFilePathLength = (libraryDirectory->entry->length - 1) + relativePathLength + 1;
+
+                char* absoluteFilePath = alloca(sizeof(*absoluteFilePath) * (absoluteFilePathLength + 1));
+                uint_fast64_t writeOffset = 0;
+
+                strncpy(absoluteFilePath + writeOffset, (char*) libraryDirectory->buffer, libraryDirectory->entry->length - 1);
+                writeOffset += libraryDirectory->entry->length - 1;
+
+                strncpy(absoluteFilePath + writeOffset, relativePath, relativePathLength);
+                writeOffset += relativePathLength;
+                
+                absoluteFilePath[writeOffset] = '\0';
+
+                uint_fast64_t ffmpegCallStringLength = 10/*'ffmpeg -i '*/ + episodePathLength + 51/*'-q:a 2 -loglevel error -stats -af "volume=4dB" -vn '*/ + absoluteFilePathLength + 4/*'""'*/;
+
+                char* ffmpegCallString = alloca(sizeof(*ffmpegCallString) * (ffmpegCallStringLength + 1));
+                ffmpegCallStringLength = snprintf(ffmpegCallString, ffmpegCallStringLength + 1, "ffmpeg -i \"%s\" -q:a 2 -loglevel error -stats -af \"volume=4dB\" -vn \"%s\"", absoluteFilePath, episodePath);
+
+                const uint_fast64_t episodeOffset = util_findLast(relativePath, relativePathLength, '/');
+
+                UTIL_LOG_CONSOLE_(LOG_DEBUG, "%s", relativePath + episodeOffset + 1);
+
+                const int returnValue = system(ffmpegCallString);
+
+                if(returnValue == -1){
+                    UTIL_LOG_ERROR(strerror(error));
+                }else{
+                    if(returnValue != 0){
+                        if(util_fileExists(episodePath)){
+                            error = util_deleteFile(episodePath);
+                        }
+                        goto label_freeShow;
+                    }
+                }
+
+                // https://trac.ffmpeg.org/wiki/Encode/MP3
+                // -i Input.
+                // -b:a 192k Desired bitrate. (Constant encoding)
+                // -q:a 2 ~190kbit/s. -q:a == -qscale:a.
+                // -af voulume=4dB Increase voulume.
+                // -vn No video output.
+                // -ar 44100 SamplingRate.
+                // -ac 2 Numnber of audio chanels.
+                // -loglevel error -stats
+            }
+        }
+    }
+
+label_freeShow:
+    mediaLibrary_freeShow(&show);
+
+label_return:
+    return ERROR(error);
+}
