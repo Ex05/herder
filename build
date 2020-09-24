@@ -67,7 +67,7 @@ preprocess(){
 
         $1 $2 -o ../$3/$4.i $4.c
 
-        printf "Install the 'time' package to get a timing information about the compilation process."
+        printf "Install the 'time' package to get timing information about the compilation process."
     fi
 
     popd > /dev/null
@@ -88,7 +88,7 @@ assemble(){
 
         $1 $2 -o ../$3/$4.s ../$3/$4.i
 
-        printf "Install the 'time' package to get a timing information about the compilation process."
+        printf "Install the 'time' package to get timing information about the compilation process."
     fi
 
     popd > /dev/null
@@ -109,7 +109,7 @@ compile(){
 
         $1 $2 -o ../$3/$5 $4
 
-        printf "Install the 'time' package to get a timing information about the compilation process."
+        printf "Install the 'time' package to get timing information about the compilation process."
     fi
 
     popd > /dev/null
@@ -130,7 +130,7 @@ link(){
 
         $1 $2 $3 -o ../$6 ../$4/$5.o
 
-        printf "Install the 'time' package to get a timing information about the compilation process."
+        printf "Install the 'time' package to get timing information about the compilation process."
     fi
 
     popd >/dev/null

@@ -1876,6 +1876,94 @@ TEST_TEST_FUNCTION(cache_get){
     return TEST_SUCCESS;
 }
 
+TEST_TEST_FUNCTION(cache_overflowBehaviour){
+ ERROR_CODE error;
+
+    Cache cache;
+    if((error = cache_init(&cache, 2, 400)) != ERROR_NO_ERROR){
+        return TEST_FAILURE("Failed to initialise cache. '%s'", util_toErrorString(error));
+    }
+
+    char symbolicFileLocation_000[] = "/herderTestFile_000";
+
+    char* filePath_000;
+
+{
+     // File_0.
+    #define TEST_FILE_NAME "/tmp/herder_cache_overflowBehaviour_000_XXXXXX"
+
+    // TODO:(jan) Replace with temporary file.
+    filePath_000 = malloc(sizeof(*filePath_000) * (strlen(TEST_FILE_NAME) + 1));
+    strcpy(filePath_000, TEST_FILE_NAME);
+
+    #undef TEST_FILE_NAME
+
+    int fileDescriptor = mkstemp(filePath_000);
+    if(fileDescriptor < 1){
+       return TEST_FAILURE("Failed to create temporary file '%s' [%s].", filePath_000, strerror(errno));
+    }
+
+    uint8_t* buffer = malloc(sizeof(*buffer) * 256);
+    memset(buffer, 8, 64);
+    memset(buffer + 64, 16, 64);
+    memset(buffer + 128, 8, 64);
+    memset(buffer + 192, 32, 64);
+
+    if(write(fileDescriptor, buffer, 256) != 256){
+        return TEST_FAILURE("Failed to write media library file version. Expected to write %d bytes.", 256);
+    }
+
+    free(buffer);  
+
+    CacheObject* o;
+    if((error = cache_load(&cache, &o, filePath_000, strlen(filePath_000), symbolicFileLocation_000, strlen(symbolicFileLocation_000))) != ERROR_NO_ERROR){
+        return TEST_FAILURE("Failed to load cache object. '%s'", util_toErrorString(error));
+    }
+}
+
+    // File_1.
+    #define TEST_FILE_NAME "/tmp/herder_cache_overflowBehaviour_001_XXXXXX"
+
+    // TODO:(jan) Replace with temporary file.
+    char* filePath = malloc(sizeof(*filePath) * (strlen(TEST_FILE_NAME) + 1));
+    strcpy(filePath, TEST_FILE_NAME);
+
+    #undef TEST_FILE_NAME
+
+    int fileDescriptor = mkstemp(filePath);
+    if(fileDescriptor < 1){
+       return TEST_FAILURE("Failed to create temporary file '%s' [%s].", filePath, strerror(errno));
+    }
+
+    uint8_t* buffer = malloc(sizeof(*buffer) * 256);
+    memset(buffer, 8, 64);
+    memset(buffer + 64, 16, 64);
+    memset(buffer + 128, 8, 64);
+    memset(buffer + 192, 32, 64);
+
+    if(write(fileDescriptor, buffer, 256) != 256){
+        return TEST_FAILURE("Failed to write media library file version. Expected to write %d bytes.", 256);
+    }
+
+    free(buffer);
+
+    char symbolicFileLocation[] = "/herderTestFile_001";
+
+    CacheObject* o;
+    if((error = cache_load(&cache, &o, filePath, strlen(filePath), symbolicFileLocation, strlen(symbolicFileLocation))) != ERROR_NO_ERROR){
+        return TEST_FAILURE("Failed to load cache object. '%s'", util_toErrorString(error));
+    }
+
+    CacheObject* cacheObject;
+    if((error = cache_get(&cache, &cacheObject, symbolicFileLocation_000, strlen(symbolicFileLocation_000))) == ERROR_NO_ERROR){
+        return TEST_FAILURE("Failed to retireve cache object. '%s'", util_toErrorString(error));
+    }
+    
+    cache_free(&cache);
+
+    return TEST_SUCCESS;
+}
+
 TEST_TEST_FUNCTION(cache_remove){
     ERROR_CODE error;
 
@@ -2944,6 +3032,7 @@ int main(void){
         TEST(cache_load);
         TEST(cache_get);
         TEST(cache_remove);
+        TEST(cache_overflowBehaviour);
     TEST_SUIT_END();
     
     TEST_SUIT_BEGIN_(propertyFile);

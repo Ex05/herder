@@ -31,4 +31,6 @@ ERROR_CODE herder_add(Property*, Property*, Property*, EpisodeInfo*);
 
 ERROR_CODE herder_renameEpisode(Property*, Property*, Property*, EpisodeInfo*, const char*, const uint_fast64_t);
 
+ERROR_CODE herder_convertToMP3(Property*, Property*, Property*, const char*, const uint_fast64_t);
+
 #endif
