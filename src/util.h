@@ -25,6 +25,7 @@
 #include <time.h>
 #include <pwd.h>
 #include <fcntl.h>
+#include <sys/param.h>
 
 /* void foo(char arg[__require 10])
     Require an array with atleast 10 elements.
