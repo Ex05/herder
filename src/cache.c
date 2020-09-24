@@ -3,10 +3,6 @@
 
 #include "cache.h"
 
-#include <sys/types.h>
-#include <sys/stat.h>
-#include <unistd.h>
-
 local ERROR_CODE cache_initCacheObject(CacheObject*, uint8_t*, const uint_fast64_t, char*, const uint_fast64_t, char*, const uint_fast64_t);
 
 local void cache_freeCacheObject(CacheObject*);
@@ -152,6 +148,7 @@ inline ERROR_CODE cache_load(Cache* cache, CacheObject** cacheObject, char* file
         return ERROR(ERROR_FAILED_TO_CLOSE_FILE);
     }
 
+    // Lock cache.
     pthread_mutex_lock(&cache->lock);
 
     uint_fast64_t i;
@@ -159,14 +156,55 @@ inline ERROR_CODE cache_load(Cache* cache, CacheObject** cacheObject, char* file
         sem_wait(&cache->activeAcesses);
     }
 
+    label_removeStaleCacheObjects:
       if(cache->currentSize + (*cacheObject)->size > cache->maxSize){
-        UTIL_LOG_CRITICAL("// TODO:(jan) Remove stuff from cache.");
+        // TODO: Implement better algorithem to delete old cacheObjects.
+
+        uint_fast64_t maxSize = 0;
+        CacheObject* staleObject = NULL;
+
+        LinkedListIterator it;
+        linkedList_initIterator(&it, &cache->elements);
+
+        while(LINKED_LIST_ITERATOR_HAS_NEXT(&it)){
+            CacheObject* o = LINKED_LIST_ITERATOR_NEXT(&it);
+
+            if(o->size >= maxSize){
+                staleObject = o;
+            }
+        }
+
+        cache->currentSize -= staleObject->size;
+
+        if(cache->currentSize + (*cacheObject)->size > cache->maxSize){
+            goto label_removeStaleCacheObjects;
+        }
+        
+        // Unlock cache to remove entry.
+        for(; i > 0; i--){
+            sem_post(&cache->activeAcesses);
+        }
+
+        pthread_mutex_unlock(&cache->lock);
+
+        ERROR_CODE error;
+        if((error = cache_remove(cache, staleObject)) != ERROR_NO_ERROR){
+            return ERROR(error);
+        }
+
+        // Relock cache.
+        pthread_mutex_lock(&cache->lock);
+
+        for(i = 0; i < cache->threads; i++){
+            sem_wait(&cache->activeAcesses);
+        }
     }
 
     linkedList_add(&cache->elements, *cacheObject);
 
     cache->currentSize += (*cacheObject)->size;
 
+    // Unlock cache.
     for(; i > 0; i--){
         sem_post(&cache->activeAcesses);
     }
