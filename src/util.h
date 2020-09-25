@@ -44,7 +44,7 @@
 
 #define UTIL_FLAG(name, size) uint8_t name:size
 
-// Note: These redefenition are needed for the 'read from library file' macros in medialibnrary.c. And are an exception to the rule off the all caps macro style. (jan - 2019.05.17)
+// Note: These redefenition are needed for the 'read from library file' macros in mediaLibrary.c. And are an exception to the rule off the all caps macro style. (jan - 2019.05.17)
 #define util_byteArrayTo_uint16_t util_byteArrayTo_uint16
 
 #define util_byteArrayTo_uint32_t util_byteArrayTo_uint32

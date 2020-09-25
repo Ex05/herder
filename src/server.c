@@ -1311,25 +1311,8 @@ ERROR_CODE server_init(HerderServer* server, const char* rootDirectory, const ui
         }
     }
 
-    uint_fast64_t i;
-    for(i = 0; i < 6; i++){
-        if(bind(server->sockFD, (struct sockaddr*) &server->sockAddr, sizeof(server->sockAddr)) == -1){
-            const uint_fast64_t sleepTime = MIN(30, MAX((i == 0 ? 5 : 0) + (i * 10), 0));
-
-            UTIL_LOG_CONSOLE_(LOG_INFO, "Failed to bind to socket, retrying in %" PRIuFAST64 "s.", sleepTime);
-
-            sleep(sleepTime);
-
-            if(i >= 6){
-                return ERROR(ERROR_FAILED_TO_BIND_SERVER_SOCKET);
-            }
-        }else{
-            break;
-        }
-    }
-
-    if(i != 0){
-        UTIL_LOG_CONSOLE(LOG_INFO, "Starting server...");
+    if(bind(server->sockFD, (struct sockaddr*) &server->sockAddr, sizeof(server->sockAddr)) == -1){
+        return ERROR(ERROR_FAILED_TO_BIND_SERVER_SOCKET);
     }
 
     server->alive = true;
