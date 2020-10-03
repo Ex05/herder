@@ -1040,215 +1040,139 @@ label_return:
 #else
     int server_totalyNotMain(const int argc, const char** argv){
 #endif
-        ERROR_CODE error;
-        openlog(SERVER_DAEMON_NAME, LOG_PID | LOG_NOWAIT, LOG_DAEMON);
+    ERROR_CODE error;
+    openlog(SERVER_DAEMON_NAME, LOG_PID | LOG_NOWAIT, LOG_DAEMON);
 
-        ArgumentParser parser;
-        if((error = argumentParser_init(&parser)) != ERROR_NO_ERROR){
-            goto label_exit;
-        }
-    
-        ARGUMENT_PARSER_ADD_ARGUMENT(Help, 3, "-?", "-h", "--help");
-        ARGUMENT_PARSER_ADD_ARGUMENT(SetServerRootDirectory, 1, "--setServerRootDirectory");
-        ARGUMENT_PARSER_ADD_ARGUMENT(SetServerExternalPort, 1, "--setServerExternalPort");
-        ARGUMENT_PARSER_ADD_ARGUMENT(ShowSettings, 1, "--showSettings");
+    ArgumentParser parser;
+    if((error = argumentParser_init(&parser)) != ERROR_NO_ERROR){
+        goto label_exit;
+    }
 
-        __UTIL_SUPPRESS_NEXT_ERROR_OF_TYPE__(ERROR_NO_VALID_ARGUMENT);
-        if((error = argumentParser_parse(&parser, argc, argv)) != ERROR_NO_ERROR){
-            if(error == ERROR_DUPLICATE_ENTRY){
-                UTIL_LOG_CONSOLE(LOG_ERR, "Duplicate argument.");
+    ARGUMENT_PARSER_ADD_ARGUMENT(Help, 3, "-?", "-h", "--help");
+    ARGUMENT_PARSER_ADD_ARGUMENT(SetServerRootDirectory, 1, "--setServerRootDirectory");
+    ARGUMENT_PARSER_ADD_ARGUMENT(SetServerExternalPort, 1, "--setServerExternalPort");
+    ARGUMENT_PARSER_ADD_ARGUMENT(ShowSettings, 1, "--showSettings");
 
-                goto label_exit;
-            }
-        }
-
-        const char* userHome = util_getHomeDirectory();
-        const uint_fast64_t userHomeLength = strlen(userHome);
-
-        const uint_fast64_t serverWorkingDirectoryLength = userHomeLength + 15/*/herder/daemon/*/;
-        char* serverWorkingDirectory = alloca(sizeof(*serverWorkingDirectory) * (serverWorkingDirectoryLength + 1));
-        strncpy(serverWorkingDirectory, userHome, userHomeLength);
-        strncpy(serverWorkingDirectory + userHomeLength, "/herder/daemon/", 16);
-
-		if(!util_fileExists(serverWorkingDirectory)){
-			UTIL_LOG_CONSOLE_(LOG_ERR, "WorkingDirectory '%s' %s.", serverWorkingDirectory, strerror(errno));
-
-			goto label_exit;
-		}
-
-        const uint_fast64_t proeprtyFileNameLength = strlen(PROPERTY_FILE_NAME);
-        const uint_fast64_t propertyFilePathLength = serverWorkingDirectoryLength + proeprtyFileNameLength;
-
-        char* propertyFilePath = alloca(sizeof(*propertyFilePath) * (propertyFilePathLength + 1));
-        strncpy(propertyFilePath, serverWorkingDirectory, serverWorkingDirectoryLength);
-        strncpy(propertyFilePath + serverWorkingDirectoryLength, PROPERTY_FILE_NAME, proeprtyFileNameLength + 1);
-
-        if(!util_fileExists(propertyFilePath)){
-            propertyFile_create(propertyFilePath, 8);
-        }
-
-        PropertyFile properties;
-        propertyFile_init(&properties, propertyFilePath);
-
-        Property* serverRootDirectory;
-        propertyFile_getProperty(&properties, &serverRootDirectory, SERVER_PROPERTY_SERVER_ROOT_DIRECTORY_NAME);
-
-        Property* serverExternalPort;
-        propertyFile_getProperty(&properties, &serverExternalPort, PROPERTY_SERVER_EXTERNAL_PORT_NAME);
-
-        if(argumentParser_contains(&parser, &argumentHelp)){
-            UTIL_LOG_CONSOLE(LOG_INFO, "Usage: herder --[command]/-[alias] <arguments>.\n");
-
-            UTIL_LOG_CONSOLE_(LOG_INFO, "\t%s\t%s", SERVER_USAGE_ARGUMENT_SET_SERVER_ROOT_DIRECTORY,  "Sets the 'server root directory' to the given path.");
-            UTIL_LOG_CONSOLE_(LOG_INFO, "\t%s\t%s", SERVER_USAGE_ARGUMENT_SET_SERVER_EXTERNAL_PORT, "Sets the external port to the given port.");
-            UTIL_LOG_CONSOLE_(LOG_INFO, "\t%s\t\t\t%s", SERVER_USAGE_ARGUMENT_SHOW_SETTINGS, "Shows a quick overview of all the user settings.");
-
-            UTIL_LOG_CONSOLE_(LOG_INFO, "\t%s\t\t%s", SERVER_USAGE_ARGUMENT_HELP, "Displays this help.");
+    __UTIL_SUPPRESS_NEXT_ERROR_OF_TYPE__(ERROR_NO_VALID_ARGUMENT);
+    if((error = argumentParser_parse(&parser, argc, argv)) != ERROR_NO_ERROR){
+        if(error == ERROR_DUPLICATE_ENTRY){
+            UTIL_LOG_CONSOLE(LOG_ERR, "Duplicate argument.");
 
             goto label_exit;
         }
+    }
 
-        // --setServerRootDirectory
-        if(argumentParser_contains(&parser, &argumentSetServerRootDirectory)){
-           if(argumentSetServerRootDirectory.numValues != 1){
-                UTIL_LOG_CONSOLE(LOG_INFO, "Invalid command. Usage: " SERVER_USAGE_ARGUMENT_SET_SERVER_ROOT_DIRECTORY);
-            }else{
-                if((error = propertyFile_createAndSetDirectoryProperty(&properties, &serverRootDirectory, SERVER_PROPERTY_SERVER_ROOT_DIRECTORY_NAME, argumentSetServerRootDirectory.values[0], argumentSetServerRootDirectory.valueLengths[0])) != ERROR_NO_ERROR){
-                    UTIL_LOG_CONSOLE(LOG_ERR, util_toErrorString(error));
-                }else{
-                    UTIL_LOG_CONSOLE_(LOG_INFO, "Successfully set '%s' to '%s'", SERVER_PROPERTY_SERVER_ROOT_DIRECTORY_NAME, (char*) serverRootDirectory->buffer);
-                }
+    const char* userHome = util_getHomeDirectory();
+    const uint_fast64_t userHomeLength = strlen(userHome);
 
-                goto label_free;
-            }
+    const uint_fast64_t serverWorkingDirectoryLength = userHomeLength + 15/*/herder/daemon/*/;
+    char* serverWorkingDirectory = alloca(sizeof(*serverWorkingDirectory) * (serverWorkingDirectoryLength + 1));
+    strncpy(serverWorkingDirectory, userHome, userHomeLength);
+    strncpy(serverWorkingDirectory + userHomeLength, "/herder/daemon/", 16);
+
+    if(!util_fileExists(serverWorkingDirectory)){
+        if((error = util_createAllDirectories(serverWorkingDirectory, serverWorkingDirectoryLength)) != ERROR_NO_ERROR){
+            UTIL_LOG_CONSOLE_(LOG_ERR, "Failed to create directory structure:'%s'.", serverWorkingDirectory);
+
+            goto label_exit;
         }
+    }
 
-        // --setServerExternalPort
-        if(argumentParser_contains(&parser, &argumentSetServerExternalPort)){
-	        if(argumentSetServerExternalPort.numValues != 1){
-                UTIL_LOG_CONSOLE(LOG_INFO, "Invalid command. Usage: " PROPERTY_SERVER_EXTERNAL_PORT_NAME);
+    const uint_fast64_t proeprtyFileNameLength = strlen(PROPERTY_FILE_NAME);
+    const uint_fast64_t propertyFilePathLength = serverWorkingDirectoryLength + proeprtyFileNameLength;
+
+    char* propertyFilePath = alloca(sizeof(*propertyFilePath) * (propertyFilePathLength + 1));
+    strncpy(propertyFilePath, serverWorkingDirectory, serverWorkingDirectoryLength);
+    strncpy(propertyFilePath + serverWorkingDirectoryLength, PROPERTY_FILE_NAME, proeprtyFileNameLength + 1);
+
+    if(!util_fileExists(propertyFilePath)){
+        propertyFile_create(propertyFilePath, 8);
+    }
+
+    PropertyFile properties;
+    propertyFile_init(&properties, propertyFilePath);
+
+    Property* serverRootDirectory;
+    __UTIL_SUPPRESS_NEXT_ERROR_OF_TYPE__(ERROR_ENTRY_NOT_FOUND);
+    propertyFile_getProperty(&properties, &serverRootDirectory, SERVER_PROPERTY_SERVER_ROOT_DIRECTORY_NAME);
+
+    Property* serverExternalPort;
+    __UTIL_SUPPRESS_NEXT_ERROR_OF_TYPE__(ERROR_ENTRY_NOT_FOUND);
+    propertyFile_getProperty(&properties, &serverExternalPort, PROPERTY_SERVER_EXTERNAL_PORT_NAME);
+
+    if(argumentParser_contains(&parser, &argumentHelp)){
+        UTIL_LOG_CONSOLE(LOG_INFO, "Usage: herder --[command]/-[alias] <arguments>.\n");
+
+        UTIL_LOG_CONSOLE_(LOG_INFO, "\t%s\t%s", SERVER_USAGE_ARGUMENT_SET_SERVER_ROOT_DIRECTORY,  "Sets the 'server root directory' to the given path.");
+        UTIL_LOG_CONSOLE_(LOG_INFO, "\t%s\t%s", SERVER_USAGE_ARGUMENT_SET_SERVER_EXTERNAL_PORT, "Sets the external port to the given port.");
+        UTIL_LOG_CONSOLE_(LOG_INFO, "\t%s\t\t\t%s", SERVER_USAGE_ARGUMENT_SHOW_SETTINGS, "Shows a quick overview of all the user settings.");
+
+        UTIL_LOG_CONSOLE_(LOG_INFO, "\t%s\t\t%s", SERVER_USAGE_ARGUMENT_HELP, "Displays this help.");
+
+        goto label_freeParser;
+    }
+
+    // --setServerRootDirectory
+    if(argumentParser_contains(&parser, &argumentSetServerRootDirectory)){
+        if(argumentSetServerRootDirectory.numValues != 1){
+            UTIL_LOG_CONSOLE(LOG_INFO, "Invalid command. Usage: " SERVER_USAGE_ARGUMENT_SET_SERVER_ROOT_DIRECTORY);
+        }else{
+            if((error = propertyFile_createAndSetDirectoryProperty(&properties, &serverRootDirectory, SERVER_PROPERTY_SERVER_ROOT_DIRECTORY_NAME, argumentSetServerRootDirectory.values[0], argumentSetServerRootDirectory.valueLengths[0])) != ERROR_NO_ERROR){
+                UTIL_LOG_CONSOLE(LOG_ERR, util_toErrorString(error));
             }else{
-                int64_t port;
-                ERROR_CODE error;
-                if((error = util_stringToInt(argumentSetServerExternalPort.values[0], &port)) != ERROR_NO_ERROR){
+                UTIL_LOG_CONSOLE_(LOG_INFO, "Successfully set '%s' to '%s'", SERVER_PROPERTY_SERVER_ROOT_DIRECTORY_NAME, (char*) serverRootDirectory->buffer);
+            }
+
+            goto label_freeParser;
+        }
+    }
+
+    // --setServerExternalPort
+    if(argumentParser_contains(&parser, &argumentSetServerExternalPort)){
+        if(argumentSetServerExternalPort.numValues != 1){
+            UTIL_LOG_CONSOLE(LOG_INFO, "Invalid command. Usage: " PROPERTY_SERVER_EXTERNAL_PORT_NAME);
+        }else{
+            int64_t port;
+            ERROR_CODE error;
+            if((error = util_stringToInt(argumentSetServerExternalPort.values[0], &port)) != ERROR_NO_ERROR){
+                UTIL_LOG_CONSOLE_(LOG_ERR, "Port value must be in range of 0-%" PRIu16 ". '%s'.", UINT16_MAX, util_toErrorString(ERROR_INVALID_VALUE));
+
+                goto label_freeParser;
+            }else{
+                if(port <= 0 || port > UINT16_MAX){
                     UTIL_LOG_CONSOLE_(LOG_ERR, "Port value must be in range of 0-%" PRIu16 ". '%s'.", UINT16_MAX, util_toErrorString(ERROR_INVALID_VALUE));
 
-                    goto label_free;
-                }else{
-                    if(port <= 0 || port > UINT16_MAX){
-                        UTIL_LOG_CONSOLE_(LOG_ERR, "Port value must be in range of 0-%" PRIu16 ". '%s'.", UINT16_MAX, util_toErrorString(ERROR_INVALID_VALUE));
-
-                        goto label_free;
-                    }
+                    goto label_freeParser;
                 }
-
-                if((error = propertyFile_createAndSetUINT16Property(&properties, &serverExternalPort, PROPERTY_SERVER_EXTERNAL_PORT_NAME, port)) != ERROR_NO_ERROR){
-                    UTIL_LOG_CONSOLE(LOG_ERR, util_toErrorString(error));
-                }else{
-                    UTIL_LOG_CONSOLE_(LOG_INFO, "Successfully set '%s' to '%s'", PROPERTY_SERVER_EXTERNAL_PORT_NAME, argumentSetServerExternalPort.values[0]);
-                }
-
-                goto label_free;
             }
-        }
 
-        // --showSettings
-        if(argumentParser_contains(&parser, &argumentShowSettings)){
-  		    if(argumentShowSettings.numValues != 0){
-                UTIL_LOG_CONSOLE(LOG_INFO, "Invalid command. Usage --showSettings.");
-            }else{
-                UTIL_LOG_CONSOLE_(LOG_INFO, "ServerRootDirectory: '%s'.", PROPERTY_IS_SET(serverRootDirectory) ? (char*) serverRootDirectory->buffer : "NULL");
-
-                UTIL_LOG_CONSOLE_(LOG_INFO, "ServerExternalPort: '%" PRIuFAST16 "'.", PROPERTY_IS_SET(serverExternalPort) ? util_byteArrayTo_uint16(serverExternalPort->buffer) : 0);                
-		    }
-            
-            goto label_exit;
-        }
-
-        argumentParser_free(&parser);
-
-        if(PROPERTY_IS_NOT_SET(serverRootDirectory)){
-            UTIL_LOG_CONSOLE_(LOG_ERR, "Error: Failed to find server settings entry for '%s'.\n\tUse --setServerRootDirectory <path> to set the http server root directory.", SERVER_PROPERTY_SERVER_ROOT_DIRECTORY_NAME);
-
-            goto label_exit;
-        }
-
-        if(PROPERTY_IS_NOT_SET(serverExternalPort)){
-            UTIL_LOG_CONSOLE_(LOG_ERR, "Error: Failed to find server settings entry for '%s'.\n\tUse --setServerExternalPort <port> to set the external http server port.", PROPERTY_SERVER_EXTERNAL_PORT_NAME);
-
-            goto label_exit;
-        }
-
-	    // server_daemonize(serverWorkingDirectory);
-        
-        const uint_fast64_t serverDaemonNameLength = strlen(SERVER_DAEMON_NAME);
-        const uint_fast64_t serverDaemonLockFileNameLength = serverWorkingDirectoryLength + serverDaemonNameLength;
-
-        char* serverDaemonLockFileName = alloca(sizeof(*serverDaemonLockFileName) * (serverDaemonLockFileNameLength +5 /*'.lock'*/ + 1));
-        strncpy(serverDaemonLockFileName, serverWorkingDirectory, serverWorkingDirectoryLength);
-        strncpy(serverDaemonLockFileName + serverWorkingDirectoryLength, SERVER_DAEMON_NAME ".lock", serverDaemonNameLength + 5 + 1);
-
-		int lockFile;
-		lockFile = open(serverDaemonLockFileName, O_RDWR | O_CREAT, 0640);
-
-        if(lockFile == -1){
-            UTIL_LOG_ERROR_("Failed to open file: '%s'. %s.", serverDaemonLockFileName, strerror(errno));
-
-            goto label_exit;
-        }
-
-		if(lockf(lockFile, F_TLOCK, 0)  == -1){
-			UTIL_LOG_INFO("Server already running.");
-		}else{
-            const uint_fast16_t port = util_byteArrayTo_uint16((int8_t*) serverExternalPort->buffer);
-
-			if((error = server_init(&server, (char*) serverRootDirectory->buffer, serverRootDirectory->entry->length - 1, port)) != ERROR_NO_ERROR){
+            if((error = propertyFile_createAndSetUINT16Property(&properties, &serverExternalPort, PROPERTY_SERVER_EXTERNAL_PORT_NAME, port)) != ERROR_NO_ERROR){
                 UTIL_LOG_CONSOLE(LOG_ERR, util_toErrorString(error));
-
-				goto label_free;
-			}
-
-			// HTML/Static pages
-			server_addContext(&server, "/", server_defaultContextHandler);
-			server_addContext(&server, "/img", server_defaultContextHandler);
-			server_addContext(&server, "/css", server_defaultContextHandler);
-			server_addContext(&server, "/js", server_defaultContextHandler);
-
-			// Herder media library rest api.
-            server_addContext(&server, "/add", server_pageAdd);
-            server_addContext(&server, "/addShow", server_pageAddShow);
-            server_addContext(&server, "/removeShow", server_pageRemoveShow);
-			server_addContext(&server, "/shows", server_pageShows);
-            server_addContext(&server, "/extractShowInfo", server_pageExtractShowInfo);
-            server_addContext(&server, "/showInfo", server_pageShowInfo);
-            server_addContext(&server, "/renameEpisode", server_pageRenameEpisode);
-            server_addContext(&server, "/removeEpisode", server_pageRemoveEpisode);
-
-			UTIL_LOG_INFO_("Starting server on port '%" PRIuFAST16 "'.", port);
-
-			if((error = server_start(&server)) != ERROR_NO_ERROR){
-                UTIL_LOG_CONSOLE_(LOG_ERR, "%s", util_toErrorString(error));
+            }else{
+                UTIL_LOG_CONSOLE_(LOG_INFO, "Successfully set '%s' to '%s'", PROPERTY_SERVER_EXTERNAL_PORT_NAME, argumentSetServerExternalPort.values[0]);
             }
 
-            if(lockf(lockFile, F_ULOCK, 0)  == -1){
-			    UTIL_LOG_ERROR_("Failed to unlock lock file [%d] (%s)", errno, strerror(errno));
-		    }
-		}
-
-	label_free:
-		close(lockFile);
-
-        server_free(&server);
-
-        util_deleteFile(serverDaemonLockFileName);
-
-        propertyFile_free(&properties);
-
-        if(PROPERTY_IS_SET(serverRootDirectory)){
-            propertyFile_freeProperty(serverRootDirectory);
-
-            free(serverRootDirectory);
+            goto label_freeParser;
         }
+    }
+
+    // --showSettings
+    if(argumentParser_contains(&parser, &argumentShowSettings)){
+        if(argumentShowSettings.numValues != 0){
+            UTIL_LOG_CONSOLE(LOG_INFO, "Invalid command. Usage --showSettings.");
+        }else{
+            UTIL_LOG_CONSOLE_(LOG_INFO, "ServerRootDirectory: '%s'.", PROPERTY_IS_SET(serverRootDirectory) ? (char*) serverRootDirectory->buffer : "NULL");
+
+            UTIL_LOG_CONSOLE_(LOG_INFO, "ServerExternalPort: '%" PRIuFAST16 "'.", PROPERTY_IS_SET(serverExternalPort) ? util_byteArrayTo_uint16(serverExternalPort->buffer) : 0);                
+        }
+        
+        goto label_freeParser;
+    }
+
+    argumentParser_free(&parser);
+
+    if(PROPERTY_IS_NOT_SET(serverRootDirectory)){
+        UTIL_LOG_CONSOLE_(LOG_ERR, "Error: Failed to find server settings entry for '%s'.\n\tUse --setServerRootDirectory <path> to set the http server root directory.", SERVER_PROPERTY_SERVER_ROOT_DIRECTORY_NAME);
 
         if(PROPERTY_IS_SET(serverExternalPort)){
             propertyFile_freeProperty(serverExternalPort);
@@ -1256,11 +1180,111 @@ label_return:
             free(serverExternalPort);
         }
 
-    label_exit:
-        closelog();
+        goto label_exit;
+    }
 
-		return 0;
-	}
+    if(PROPERTY_IS_NOT_SET(serverExternalPort)){
+        UTIL_LOG_CONSOLE_(LOG_ERR, "Error: Failed to find server settings entry for '%s'.\n\tUse --setServerExternalPort <port> to set the external http server port.", PROPERTY_SERVER_EXTERNAL_PORT_NAME);
+
+        if(PROPERTY_IS_SET(serverRootDirectory)){
+            propertyFile_freeProperty(serverRootDirectory);
+
+            free(serverRootDirectory);
+        }
+
+        goto label_exit;
+    }
+
+       // TODO: Calling './herderServer' with an invalid argument like should not start the server. (jan - 2020.10.03)
+
+    // server_daemonize(serverWorkingDirectory);
+    
+    const uint_fast64_t serverDaemonNameLength = strlen(SERVER_DAEMON_NAME);
+    const uint_fast64_t serverDaemonLockFileNameLength = serverWorkingDirectoryLength + serverDaemonNameLength;
+
+    char* serverDaemonLockFileName = alloca(sizeof(*serverDaemonLockFileName) * (serverDaemonLockFileNameLength +5 /*'.lock'*/ + 1));
+    strncpy(serverDaemonLockFileName, serverWorkingDirectory, serverWorkingDirectoryLength);
+    strncpy(serverDaemonLockFileName + serverWorkingDirectoryLength, SERVER_DAEMON_NAME ".lock", serverDaemonNameLength + 5 + 1);
+
+    int lockFile;
+    lockFile = open(serverDaemonLockFileName, O_RDWR | O_CREAT, 0640);
+
+    if(lockFile == -1){
+        UTIL_LOG_ERROR_("Failed to open file: '%s'. %s.", serverDaemonLockFileName, strerror(errno));
+
+        goto label_free;
+    }
+
+    if(lockf(lockFile, F_TLOCK, 0)  == -1){
+        UTIL_LOG_INFO("Server already running.");
+    }else{
+        const uint_fast16_t port = util_byteArrayTo_uint16((int8_t*) serverExternalPort->buffer);
+
+        if((error = server_init(&server, (char*) serverRootDirectory->buffer, serverRootDirectory->entry->length - 1, port)) != ERROR_NO_ERROR){
+            UTIL_LOG_CONSOLE(LOG_ERR, util_toErrorString(error));
+
+            goto label_closeLockFile;
+        }
+
+        // HTML/Static pages
+        server_addContext(&server, "/", server_defaultContextHandler);
+        server_addContext(&server, "/img", server_defaultContextHandler);
+        server_addContext(&server, "/css", server_defaultContextHandler);
+        server_addContext(&server, "/js", server_defaultContextHandler);
+
+        // Herder media library rest api.
+        server_addContext(&server, "/add", server_pageAdd);
+        server_addContext(&server, "/addShow", server_pageAddShow);
+        server_addContext(&server, "/removeShow", server_pageRemoveShow);
+        server_addContext(&server, "/shows", server_pageShows);
+        server_addContext(&server, "/extractShowInfo", server_pageExtractShowInfo);
+        server_addContext(&server, "/showInfo", server_pageShowInfo);
+        server_addContext(&server, "/renameEpisode", server_pageRenameEpisode);
+        server_addContext(&server, "/removeEpisode", server_pageRemoveEpisode);
+
+        UTIL_LOG_INFO_("Starting server on port '%" PRIuFAST16 "'.", port);
+
+        if((error = server_start(&server)) != ERROR_NO_ERROR){
+            UTIL_LOG_CONSOLE_(LOG_ERR, "%s", util_toErrorString(error));
+        }
+
+        if(lockf(lockFile, F_ULOCK, 0)  == -1){
+            UTIL_LOG_ERROR_("Failed to unlock lock file [%d] (%s)", errno, strerror(errno));
+        }
+    }
+
+label_closeLockFile:
+    close(lockFile);
+
+label_free:
+    server_free(&server);
+
+    util_deleteFile(serverDaemonLockFileName);
+
+    goto label_exit;
+
+label_freeParser:
+    argumentParser_free(&parser);
+
+label_exit:
+    if(PROPERTY_IS_SET(serverRootDirectory)){
+        propertyFile_freeProperty(serverRootDirectory);
+
+        free(serverRootDirectory);
+    }
+
+    if(PROPERTY_IS_SET(serverExternalPort)){
+        propertyFile_freeProperty(serverExternalPort);
+
+        free(serverExternalPort);
+    }
+
+    propertyFile_free(&properties);
+
+    closelog();
+
+    return 0;
+}
 
 ERROR_CODE server_init(HerderServer* server, const char* rootDirectory, const uint_fast64_t rootDirectoryLength, const uint_fast16_t port){
     memset(server, 0, sizeof(*server));
