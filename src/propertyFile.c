@@ -4,6 +4,7 @@
 #include "propertyFile.h"
 
 #include "linkedList.c"
+#include "util.h"
 
 #define PAGE_ENTRY_SIZE (sizeof(uint64_t) * 4)
 
@@ -24,7 +25,7 @@ ERROR_CODE propertyFile_init(PropertyFile* propertyFile, const char* fileName){
 
     ERROR_CODE error;
     if((error = linkedList_init(&propertyFile->pages) != ERROR_NO_ERROR)){
-        return error;
+        return ERROR(error);
     }
 
     FILE* file = propertyFile->file;
@@ -51,9 +52,13 @@ ERROR_CODE propertyFile_init(PropertyFile* propertyFile, const char* fileName){
             return ERROR(ERROR_OUT_OF_MEMORY);
         }
 
-        propertyFile_initPropertyPage(propertyPage, propertyFile->maxPageEntries, ftell(file));
+        if((error = propertyFile_initPropertyPage(propertyPage, propertyFile->maxPageEntries, ftell(file))) != ERROR_NO_ERROR){
+            return ERROR(error);
+        }
 
-        linkedList_add(&propertyFile->pages, propertyPage);
+        if((error = linkedList_add(&propertyFile->pages, propertyPage)) != ERROR_NO_ERROR){
+            return ERROR(error);
+        }
 
         int i;
         for(i = 0; i < propertyFile->maxPageEntries; i++){
