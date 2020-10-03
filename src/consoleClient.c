@@ -385,8 +385,6 @@ local ERROR_CODE consoleClient_convert(Property*, Property*, Property*);
                 if((error = consoleClient_listAllShows(remoteHost, remotePort)) != ERROR_NO_ERROR){
                     UTIL_LOG_CONSOLE_(LOG_ERR, "Failed to list all shows. '%s'", util_toErrorString(error));
                 }
-            }else{
-                UTIL_LOG_CONSOLE(LOG_ERR, util_toErrorString(ERROR_PROPERTY_NOT_SET));
             }
         }
 
@@ -447,7 +445,7 @@ local ERROR_CODE consoleClient_convert(Property*, Property*, Property*);
         if(argumentSetRemoteHost.numValues != 1){
             UTIL_LOG_CONSOLE(LOG_INFO, "Invalid command. Usage: " CONSOLE_CLIENT_USAGE_ARGUMENT_SET_REMOTE_HOST);
         }else{
-            if((error = propertyFile_createAndSetStringProperty(&properties, &libraryDirectory, CONSOLE_CLIENT_PROPERTY_REMOTE_HOST_NAME, argumentSetRemoteHost.values[0], argumentSetRemoteHost.valueLengths[0])) != ERROR_NO_ERROR){
+            if((error = propertyFile_createAndSetStringProperty(&properties, &remoteHost, CONSOLE_CLIENT_PROPERTY_REMOTE_HOST_NAME, argumentSetRemoteHost.values[0], argumentSetRemoteHost.valueLengths[0])) != ERROR_NO_ERROR){
                 UTIL_LOG_CONSOLE(LOG_ERR, util_toErrorString(error));
             }else{
                 UTIL_LOG_CONSOLE_(LOG_INFO, "Successfully set '%s' to '%s'", CONSOLE_CLIENT_PROPERTY_REMOTE_HOST_NAME, argumentSetRemoteHost.values[0]);
@@ -458,9 +456,9 @@ local ERROR_CODE consoleClient_convert(Property*, Property*, Property*);
     }
 
     // --setRemotePort.
-    if(argumentParser_contains(&parser, &argumentSetRemoteHostPort)){ 
+    if(argumentParser_contains(&parser, &argumentSetRemoteHostPort)){
        if(argumentSetRemoteHostPort.numValues != 1){
-            UTIL_LOG_CONSOLE(LOG_INFO, "Invalid command. Usage: " CONSOLE_CLIENT_USAGE_ARGUMENT_SET_REMOTE_HOST);
+            UTIL_LOG_CONSOLE(LOG_INFO, "Invalid command. Usage: " CONSOLE_CLIENT_USAGE_ARGUMENT_SET_REMOTE_PORT);
         }else{
             int64_t port;
             ERROR_CODE error;
@@ -476,7 +474,7 @@ local ERROR_CODE consoleClient_convert(Property*, Property*, Property*);
                 }
             }
 
-            if((error = propertyFile_createAndSetUINT16Property(&properties, &libraryDirectory, CONSOLE_CLIENT_PROPERTY_REMOTE_PORT_NAME, port)) != ERROR_NO_ERROR){
+            if((error = propertyFile_createAndSetUINT16Property(&properties, &remotePort, CONSOLE_CLIENT_PROPERTY_REMOTE_PORT_NAME, port)) != ERROR_NO_ERROR){
                 UTIL_LOG_CONSOLE(LOG_ERR, util_toErrorString(error));
             }else{
                 UTIL_LOG_CONSOLE_(LOG_INFO, "Successfully set '%s' to '%s'", CONSOLE_CLIENT_PROPERTY_REMOTE_PORT_NAME, argumentSetRemoteHostPort.values[0]);
@@ -588,7 +586,7 @@ local ERROR_CODE consoleClient_convert(Property*, Property*, Property*);
         }else{
             UTIL_LOG_CONSOLE_(LOG_INFO, "ImportDirectory: %s.", PROPERTY_IS_SET(importDirectory) ? (char*) importDirectory->buffer : "NULL");
             UTIL_LOG_CONSOLE_(LOG_INFO, "RemoteHost: %s.", PROPERTY_IS_SET(remoteHost) ? (char*) remoteHost->buffer : "NULL");
-            UTIL_LOG_CONSOLE_(LOG_INFO, "RemotePorrt: %" PRIuFAST64 ".", PROPERTY_IS_SET(remotePort) ? util_byteArrayTo_uint64(remotePort->buffer) : 0);
+            UTIL_LOG_CONSOLE_(LOG_INFO, "RemotePorrt: %" PRIuFAST64 ".", PROPERTY_IS_SET(remotePort) ? util_byteArrayTo_uint16(remotePort->buffer) : 0);
             UTIL_LOG_CONSOLE_(LOG_INFO, "LibraryDirectory: %s.", PROPERTY_IS_SET(libraryDirectory) ? (char*) libraryDirectory->buffer : "NULL");
         }
 

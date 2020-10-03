@@ -13,7 +13,7 @@ ERROR_CODE herder_pullShowList(LinkedList* shows, Property* remoteHost, Property
     ERROR_CODE error = ERROR_NO_ERROR;
     
     char* host = (char*) remoteHost->buffer;
-    uint_fast16_t port = util_byteArrayTo_uint64(remotePort->buffer);
+    uint_fast16_t port = util_byteArrayTo_uint16(remotePort->buffer);
 
     void* httpProcessingBuffer;
     if((error = util_blockAlloc(&httpProcessingBuffer, HTTP_PROCESSING_BUFFER_SIZE)) != ERROR_NO_ERROR){
@@ -92,7 +92,7 @@ ERROR_CODE herder_addShow(Property* remoteHost, Property* remotePort, const char
     ERROR_CODE error = ERROR_NO_ERROR;
 
     char* host = (char*) remoteHost->buffer;
-    uint_fast16_t port = util_byteArrayTo_uint64(remotePort->buffer);
+    uint_fast16_t port = util_byteArrayTo_uint16(remotePort->buffer);
 
     void* httpProcessingBuffer;
     if((error = util_blockAlloc(&httpProcessingBuffer, HTTP_PROCESSING_BUFFER_SIZE)) != ERROR_NO_ERROR){
@@ -164,7 +164,7 @@ ERROR_CODE herder_removeShow(Property* remoteHost, Property* remotePort, const c
     ERROR_CODE error = ERROR_NO_ERROR;
 
     char* host = (char*) remoteHost->buffer;
-    uint_fast16_t port = util_byteArrayTo_uint64(remotePort->buffer);
+    uint_fast16_t port = util_byteArrayTo_uint16(remotePort->buffer);
 
     void* httpProcessingBuffer;
     if((error = util_blockAlloc(&httpProcessingBuffer, HTTP_PROCESSING_BUFFER_SIZE)) != ERROR_NO_ERROR){
@@ -230,7 +230,7 @@ ERROR_CODE herder_addEpisode(Property* remoteHost, Property* remotePort, Propert
     ERROR_CODE error = ERROR_NO_ERROR;
 
     char* host = (char*) remoteHost->buffer;
-    uint_fast16_t port = util_byteArrayTo_uint64(remotePort->buffer);
+    uint_fast16_t port = util_byteArrayTo_uint16(remotePort->buffer);
 
     void* httpProcessingBuffer;
     if((error = util_blockAlloc(&httpProcessingBuffer, HTTP_PROCESSING_BUFFER_SIZE)) != ERROR_NO_ERROR){
@@ -350,7 +350,7 @@ ERROR_CODE herder_removeEpisode(Property* remoteHost, Property* remotePort, Prop
     ERROR_CODE error = ERROR_NO_ERROR;
 
     char* host = (char*) remoteHost->buffer;
-    uint_fast16_t port = util_byteArrayTo_uint64(remotePort->buffer);
+    uint_fast16_t port = util_byteArrayTo_uint16(remotePort->buffer);
 
     void* httpProcessingBuffer;
     if((error = util_blockAlloc(&httpProcessingBuffer, HTTP_PROCESSING_BUFFER_SIZE)) != ERROR_NO_ERROR){
@@ -447,7 +447,7 @@ ERROR_CODE herder_extractShowInfo(Property* remoteHost, Property* remotePort, Ep
     ERROR_CODE error;
 
     char* host = (char*) remoteHost->buffer;
-    uint_fast16_t port = util_byteArrayTo_uint64(remotePort->buffer);
+    uint_fast16_t port = util_byteArrayTo_uint16(remotePort->buffer);
 
     void* httpProcessingBuffer;
     if((error = util_blockAlloc(&httpProcessingBuffer, HTTP_PROCESSING_BUFFER_SIZE)) != ERROR_NO_ERROR){
@@ -569,7 +569,7 @@ ERROR_CODE herder_add(Property* remoteHost, Property* remotePort, Property* libr
     ERROR_CODE error;
 
     char* host = (char*) remoteHost->buffer;
-    uint_fast16_t port = util_byteArrayTo_uint64(remotePort->buffer);
+    uint_fast16_t port = util_byteArrayTo_uint16(remotePort->buffer);
 
     void* httpProcessingBuffer;
     if((error = util_blockAlloc(&httpProcessingBuffer, HTTP_PROCESSING_BUFFER_SIZE)) != ERROR_NO_ERROR){
@@ -713,7 +713,7 @@ ERROR_CODE herder_pullShowInfo(Property* remoteHost, Property* remotePort, Show*
     ERROR_CODE error;
 
     char* host = (char*) remoteHost->buffer;
-    uint_fast16_t port = util_byteArrayTo_uint64(remotePort->buffer);
+    uint_fast16_t port = util_byteArrayTo_uint16(remotePort->buffer);
 
     void* httpProcessingBuffer;
     if((error = util_blockAlloc(&httpProcessingBuffer, HTTP_PROCESSING_BUFFER_SIZE)) != ERROR_NO_ERROR){
@@ -848,7 +848,7 @@ ERROR_CODE herder_renameEpisode(Property* remoteHost, Property* remotePort, Prop
     ERROR_CODE error;
 
     char* host = (char*) remoteHost->buffer;
-    uint_fast16_t port = util_byteArrayTo_uint64(remotePort->buffer);
+    uint_fast16_t port = util_byteArrayTo_uint16(remotePort->buffer);
 
     void* httpProcessingBuffer;
     if((error = util_blockAlloc(&httpProcessingBuffer, HTTP_PROCESSING_BUFFER_SIZE)) != ERROR_NO_ERROR){
