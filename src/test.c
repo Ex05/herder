@@ -2643,7 +2643,7 @@ TEST_TEST_FUNCTION(mediaLibrary_extractPrefixedNumber){
         return TEST_FAILURE("Extracted value '%" PRIdFAST16 "' != '%d'.", val, 1);
     }
 
-    if(strncmp(a, "American_Dad_e02_Threat_Levels.mkv", strlen("American_Dad_e02_Threat_Levels.mkv") != 0)){
+    if(strncmp(a, "American_Dad_e02_Threat_Levels.mkv", strlen("American_Dad_e02_Threat_Levels.mkv")) != 0){
         return TEST_FAILURE("'%" PRIdFAST16 "' != '%d'.", val, 2);
     }
 
@@ -2655,7 +2655,7 @@ TEST_TEST_FUNCTION(mediaLibrary_extractPrefixedNumber){
         return TEST_FAILURE("Extracted value '%" PRIdFAST16 "' != '%d'.", val, 2);
     }
 
-    if(strncmp(a, "American_Dad__Threat_Levels.mkv", strlen("American_Dad__Threat_Levels.mkv") != 0)){
+    if(strncmp(a, "American_Dad__Threat_Levels.mkv", strlen("American_Dad__Threat_Levels.mkv")) != 0){
         return TEST_FAILURE("'%s' != '%s'.", a, "American_Dad__Threat_Levels.mkv");
     }
 
