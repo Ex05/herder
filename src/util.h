@@ -243,6 +243,9 @@ inline ERROR_CODE util_error(const ERROR_CODE error, const char* file, const int
 #define UTIL_DIRECTORIES_ONLY 0
 #define UTIL_FILES_ONLY 1
 
+#define UTIL_WALK_DIRECTORY_FILTER_FUNCTION(functionName) bool functionName(const char* s, const uint_fast64_t length)
+typedef UTIL_WALK_DIRECTORY_FILTER_FUNCTION(Util_walkDirectoryFilterFunction);
+
 #include "linkedList.h"
 
 int_fast32_t util_fileExists(const char*);
@@ -329,7 +332,7 @@ ERROR_CODE util_renameFileRelative(char*, char*, char*);
 
 ERROR_CODE util_getFileDirectory(char*, char*, const uint_fast64_t);
 
-ERROR_CODE util_walkDirectory(LinkedList*, const char*, bool);
+ERROR_CODE util_walkDirectory(LinkedList*, const char*, const bool, Util_walkDirectoryFilterFunction*);
 
 #undef UTIL_MAX_ERROR_MSG_LENGTH
 

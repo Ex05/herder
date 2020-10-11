@@ -685,30 +685,6 @@ label_unMap:
     return ERROR(error);
 }
 
-/*  printf("#define HASH_MP4 %d\n", util_hashString(".mp4"));
-    printf("#define HASH_MKV %d\n", util_hashString(".mkv"));
-    printf("#define HASH_AVI %d\n", util_hashString(".avi")); */
-local inline bool herder_walkDirectoryAcceptFunction(const char* s, const uint_fast64_t length){
-    #define HASH_MP4 -1839843325
-    #define HASH_MKV -1840171254
-    #define HASH_AVI -1938587738
-
-    switch(util_hashString(s, length)){
-        case HASH_MP4:
-        case HASH_MKV:
-        case HASH_AVI:{
-            return true;
-        }
-
-        default:
-            return false;
-    }
-
-    #undef HASH_MP4
-    #undef HASH_MKV
-    #undef HASH_AVI
-}
-
 ERROR_CODE herder_pullShowInfo(Property* remoteHost, Property* remotePort, Show* show){
     ERROR_CODE error;
 

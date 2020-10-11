@@ -2582,6 +2582,8 @@ TEST_TEST_FUNCTION(mediaLibrary_extractShowName){
 
     EpisodeInfo info = {0};
 
+    // Stargate.Atlantis..Der.Angriff.GERMAN.DUBBED.DL.720p.BluRay.x264-TVP'
+    // Stargate.Atlantis.S05E01.Such.und.Rettungsaktion.GERMAN.DUBBED.DL.720p.BluRay.x264-TVP.mkv
     char fileName_0[] = "American_Dad_Rogers_Spot";
     if((error = mediaLibrary_extractShowName(&info, &shows, fileName_0, strlen(fileName_0))) != ERROR_NO_ERROR){
          return TEST_FAILURE("Failed to extract show name from string:'%s'. '%s'.", fileName_0, util_toErrorString(error));

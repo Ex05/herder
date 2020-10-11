@@ -558,7 +558,7 @@ label_continue:
 }
 
 inline bool mediaLibrary_isCharcterWordDelimiter(char c){
-     return c == '.' || c == ' ' || c == '_';
+     return c == '.' || c == ' ' || c == '_' || c == '-';
 }
 
 inline ERROR_CODE mediaLibrary_addShow(MediaLibrary* library, Show** show, const char* name, const uint_fast64_t nameLength){

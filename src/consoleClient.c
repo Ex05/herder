@@ -694,6 +694,30 @@ label_return:
     return ERROR(error);
 }
 
+    /* printf("#define HASH_MP4 %d\n", util_hashString("mp4", 3));
+    printf("#define HASH_MKV %d\n", util_hashString("mkv", 3));
+    printf("#define HASH_AVI %d\n", util_hashString("avi", 3)); */
+local inline UTIL_WALK_DIRECTORY_FILTER_FUNCTION(consoleClient_importFilter){
+    #define HASH_MP4 907851185
+    #define HASH_MKV 907523256
+    #define HASH_AVI 809106772
+
+    switch(util_hashString(s, length)){
+        case HASH_MP4:
+        case HASH_MKV:
+        case HASH_AVI:{
+            return true;
+        }
+
+        default:
+            return false;
+    }
+
+    #undef HASH_MP4
+    #undef HASH_MKV
+    #undef HASH_AVI
+}
+
 ERROR_CODE consoleClient_import(Property* remoteHost, Property* remotePort, Property* libraryDirectory, const char* directory, const bool batchImport){
     ERROR_CODE error;
 
@@ -706,7 +730,7 @@ ERROR_CODE consoleClient_import(Property* remoteHost, Property* remotePort, Prop
         goto label_return;
     }
 
-    if((error = util_walkDirectory(&infos, directory, UTIL_FILES_ONLY)) != ERROR_NO_ERROR){
+    if((error = util_walkDirectory(&infos, directory, UTIL_FILES_ONLY, consoleClient_importFilter)) != ERROR_NO_ERROR){
         goto label_return;
     }
 

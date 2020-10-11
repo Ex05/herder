@@ -271,6 +271,7 @@ inline int_fast64_t util_findLast(const char* s, const uint_fast64_t length, con
 }
 
 // TODO: Do some testing, what is actually the fastest way to copy a file on each platform. See: https://stackoverflow.com/questions/10195343/copy-a-file-in-a-sane-safe-and-efficient-way for some example implementations. (jan - 2018.11.20)
+// Move/rename file: https://stackoverflow.com/questions/17438493/moving-a-file-on-linux-in-c
 inline ERROR_CODE util_fileCopy(const char* src, const char* dst){
     ERROR_CODE error = ERROR_NO_ERROR;
 
@@ -758,7 +759,7 @@ inline ERROR_CODE util_renameFileRelative(char* dir, char* file, char* newName){
     return ERROR(ERROR_NO_ERROR);
 }
 
-ERROR_CODE util_walkDirectory(LinkedList* list, const char* directory, bool listItemType){
+ERROR_CODE util_walkDirectory(LinkedList* list, const char* directory, const bool listItemOfType, Util_walkDirectoryFilterFunction* filter){
     ERROR_CODE error = ERROR_NO_ERROR;
 
     DIR* currentDirectory = opendir(directory);
@@ -784,24 +785,24 @@ ERROR_CODE util_walkDirectory(LinkedList* list, const char* directory, bool list
             const uint_fast64_t directoryPathLength = directoryLength + currentEntryLength + 1;
 
             char* directoryPath;
-            directoryPath = (listItemType == UTIL_DIRECTORIES_ONLY) ? malloc(sizeof(*directoryPath) * (directoryPathLength + 1)) : alloca(sizeof(*directoryPath) * (directoryPathLength + 1));
+            directoryPath = (listItemOfType == UTIL_DIRECTORIES_ONLY) ? malloc(sizeof(*directoryPath) * (directoryPathLength + 1)) : alloca(sizeof(*directoryPath) * (directoryPathLength + 1));
             strncpy(directoryPath, directory, directoryLength + 1);
 
             util_append(directoryPath + directoryLength, directoryPathLength - 1 - directoryLength, directoryEntry->d_name, currentEntryLength);
             directoryPath[directoryPathLength - 1] = '/';
             directoryPath[directoryPathLength] = '\0';
 
-            if(listItemType == UTIL_DIRECTORIES_ONLY){
+            if(listItemOfType == UTIL_DIRECTORIES_ONLY){
                 if((error = linkedList_add(list, directoryPath)) !=ERROR_NO_ERROR){
                     goto label_closeDir;
                 }
             }
 
-            if((error = util_walkDirectory(list, directoryPath, listItemType)) != ERROR_NO_ERROR){
+            if((error = util_walkDirectory(list, directoryPath, listItemOfType, filter)) != ERROR_NO_ERROR){
                 goto label_closeDir;
             }
         }else{
-            if(listItemType == UTIL_FILES_ONLY){
+            if(listItemOfType == UTIL_FILES_ONLY){
                 const uint_fast64_t pathLength = directoryLength + currentEntryLength;
 
                 char* path;
@@ -811,8 +812,19 @@ ERROR_CODE util_walkDirectory(LinkedList* list, const char* directory, bool list
                 util_append(path + directoryLength, pathLength - directoryLength, directoryEntry->d_name, currentEntryLength);
                 path[pathLength] = '\0';
 
-                if((error = linkedList_add(list, path)) !=ERROR_NO_ERROR){
+                char* fileExtension = NULL;
+                uint_fast64_t fileExtensionLength = 0;
+                
+                if((error = util_getFileExtension(&fileExtension, &fileExtensionLength, path, pathLength)) != ERROR_NO_ERROR){
                     goto label_closeDir;
+                }
+
+                if(fileExtensionLength == 0 || filter(fileExtension, fileExtensionLength)){
+                    if((error = linkedList_add(list, path)) !=ERROR_NO_ERROR){
+                        goto label_closeDir;
+                    }
+                }else{
+                    free(path);
                 }
             }
         }

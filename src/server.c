@@ -124,7 +124,7 @@ THREAD_POOL_RUNNABLE_(server_inotifyWatch, Job, job){
     LinkedList directories;
     linkedList_init(&directories);
 
-    if(util_walkDirectory(&directories, rootDirectory, UTIL_DIRECTORIES_ONLY) != ERROR_NO_ERROR){
+    if(util_walkDirectory(&directories, rootDirectory, UTIL_DIRECTORIES_ONLY, NULL) != ERROR_NO_ERROR){
         return NULL;
     }
 
@@ -1335,26 +1335,11 @@ ERROR_CODE server_init(HerderServer* server, const char* rootDirectory, const ui
         }
     }
 
-    uint_fast64_t i;
-    for(i = 0; i < 6; i++){
-        if(bind(server->sockFD, (struct sockaddr*) &server->sockAddr, sizeof(server->sockAddr)) == -1){
-            const uint_fast64_t sleepTime = MIN(30, MAX((i == 0 ? 5 : 0) + (i * 10), 0));
-
-            UTIL_LOG_CONSOLE_(LOG_INFO, "Failed to bind to socket, retrying in %" PRIuFAST64 "s.", sleepTime);
-
-            sleep(sleepTime);
-
-            if(i >= 6){
-                return ERROR(ERROR_FAILED_TO_BIND_SERVER_SOCKET);
-            }
-        }else{
-            break;
-        }
+    if(bind(server->sockFD, (struct sockaddr*) &server->sockAddr, sizeof(server->sockAddr)) == -1){
+        return ERROR(ERROR_FAILED_TO_BIND_SERVER_SOCKET);
     }
 
-    if(i != 0){
-        UTIL_LOG_CONSOLE(LOG_INFO, "Starting server...");
-    }
+    UTIL_LOG_CONSOLE(LOG_INFO, "Starting server...");
 
     server->alive = true;
 
