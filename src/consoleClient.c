@@ -759,9 +759,7 @@ ERROR_CODE consoleClient_import(Property* remoteHost, Property* remotePort, Prop
 
         info->fileName = util_getFileName(info->path, info->pathLength);
         info->fileNameLength = strlen(info->fileName);
-
-        UTIL_LOG_CONSOLE_(LOG_INFO, "\"%s\"", info->fileName);
-          
+                  
         if((error = consoleClient_extractShowInfo(remoteHost, remotePort, info, batchImport)) != ERROR_NO_ERROR){
             UTIL_LOG_CONSOLE_(LOG_ERR, "Failed to extract show info from file: '%s'. [%s]", info->fileName, util_toErrorString(error));
 

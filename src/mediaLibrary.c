@@ -30,6 +30,8 @@ local ERROR_CODE mediaLibrary_extractEpisodeName(EpisodeInfo*, char*, const uint
 
 local ERROR_CODE mediaLibrary_extractSeasonNumber(EpisodeInfo*, char*, const uint_fast64_t);
 
+local ERROR_CODE mediaLibrary_extractDelimiterSeperatedSeasonAndEpisodeNumber(EpisodeInfo*, char*, const uint_fast64_t, const char);
+
 local ERROR_CODE mediaLibrary_containsShow(LinkedList*, Show**, const char*, const uint_fast64_t);
 
 local ERROR_CODE medialibrary_initShow(Show*, const char*, const uint_fast64_t);
@@ -309,6 +311,12 @@ inline ERROR_CODE mediaLibrary_extractEpisodeInfo(EpisodeInfo* info, LinkedList*
         error = ERROR_INCOMPLETE;
     }
 
+    if(info->season == 0){
+        if(mediaLibrary_extractDelimiterSeperatedSeasonAndEpisodeNumber(info, fileName, strlen(fileName), 'x') != ERROR_NO_ERROR){
+            error = ERROR_INCOMPLETE;
+        }
+    }
+
     if(mediaLibrary_extractShowName(info, shows, fileName, strlen(fileName)) != ERROR_NO_ERROR){
         error = ERROR_INCOMPLETE;
     }
@@ -318,6 +326,87 @@ inline ERROR_CODE mediaLibrary_extractEpisodeInfo(EpisodeInfo* info, LinkedList*
     }
 
     return error;
+}
+
+inline ERROR_CODE mediaLibrary_extractDelimiterSeperatedSeasonAndEpisodeNumber(EpisodeInfo* info, char* fileName, const uint_fast64_t fileNameLength, const char delimiter){
+    char* lowerCaseFileName = alloca(sizeof(*lowerCaseFileName) * (fileNameLength + 1));
+    strncpy(lowerCaseFileName, fileName, fileNameLength + 1);
+    util_toLowerChase(lowerCaseFileName);
+
+    int_fast64_t searchOffset = 0;
+    for(;;){
+        int_fast64_t offset = util_findFirst(lowerCaseFileName + searchOffset, fileNameLength - searchOffset, delimiter);
+
+        if(offset == -1){
+            break;
+        }
+
+        // Advance searchOfset.
+        searchOffset += offset + 1;
+
+        // Backtrack current offset to end of possible season number.
+        offset = searchOffset - 1;
+
+        if(!isdigit(lowerCaseFileName[offset - 1]) || !isdigit(lowerCaseFileName[offset + 1])){
+            continue;
+        }
+
+        const int_fast64_t seasonStringEndIndex = --offset;
+
+        // Backtrack to begining of season number.
+        while(offset > 0 && isdigit(lowerCaseFileName[offset - 1])){
+            offset -= 1;
+        }
+
+        // SeasonNumber.
+        const uint_fast64_t seasonNumberStringLength = seasonStringEndIndex + 1 - offset;
+        char* seasonNumberString = alloca(sizeof(*seasonNumberString) * (seasonNumberStringLength + 1));
+        memcpy(seasonNumberString, lowerCaseFileName + offset, seasonNumberStringLength);
+        seasonNumberString[seasonNumberStringLength] = '\0';
+
+        char* endPtr;
+        const int_fast64_t season = strtol(seasonNumberString, &endPtr, 10);
+
+        if((season == 0 && endPtr == seasonNumberString) || season == LONG_MIN || season == LONG_MAX){
+            return ERROR_(ERROR_CONVERSION_ERROR, "'%s' is not a valid number.", seasonNumberString);
+        }
+
+        info->season = season;
+
+        // EpisodeNumber.
+        const uint_fast64_t episodeNumberStringBeginIndex = seasonStringEndIndex + 2;
+        uint_fast64_t episodeNumberStringEndIndex = episodeNumberStringBeginIndex;
+
+        if(episodeNumberStringBeginIndex > fileNameLength){
+            break;
+        }
+
+        while(episodeNumberStringEndIndex < fileNameLength && isdigit(lowerCaseFileName[episodeNumberStringEndIndex + 1])){
+            episodeNumberStringEndIndex += 1;
+        }
+
+        const uint_fast64_t episodeNumberStringLength = episodeNumberStringEndIndex + 1 - episodeNumberStringBeginIndex;
+        char* episodeNumberString = alloca(sizeof(*episodeNumberString) * (episodeNumberStringLength + 1));
+        memcpy(episodeNumberString, lowerCaseFileName + episodeNumberStringBeginIndex, episodeNumberStringLength);
+        episodeNumberString[episodeNumberStringLength] = '\0';
+        
+        const int_fast64_t episode = strtol(episodeNumberString, &endPtr, 10);
+
+        if((episode == 0 && endPtr == episodeNumberString) || episode == LONG_MIN || episode == LONG_MAX){
+            return ERROR_(ERROR_CONVERSION_ERROR, "'%s' is not a valid number.", episodeNumberString);
+        }
+
+        info->episode = episode;
+
+        // Remove season and episode number from fileName.
+        util_stringCopy(fileName + offset, fileName + episodeNumberStringEndIndex + 1, fileNameLength + 1 - episodeNumberStringEndIndex + 1);
+
+        fileName = util_trim(fileName, fileNameLength - (episodeNumberStringEndIndex + 1 - offset));
+
+        break;
+    }
+
+    return ERROR(ERROR_NO_ERROR);
 }
 
 inline ERROR_CODE mediaLibrary_extractEpisodeName(EpisodeInfo* info, char* fileName, uint_fast64_t fileNameLength){
@@ -412,7 +501,9 @@ inline ERROR_CODE mediaLibrary_extractPrefixedNumber(char* fileName, uint_fast64
 inline ERROR_CODE mediaLibrary_extractEpisodeNumber(EpisodeInfo* info, char* fileName, const uint_fast64_t fileNameLength){
     ERROR_CODE error;
     if((error = mediaLibrary_extractPrefixedNumber(fileName, fileNameLength, &info->episode, 'e')) != ERROR_NO_ERROR){
-        return ERROR(error);
+        if(error != ERROR_ENTRY_NOT_FOUND){
+            return ERROR(error);
+        }
     }
 
     if(info->episode == 0){
@@ -425,7 +516,9 @@ inline ERROR_CODE mediaLibrary_extractEpisodeNumber(EpisodeInfo* info, char* fil
 inline ERROR_CODE mediaLibrary_extractSeasonNumber(EpisodeInfo* info, char* fileName, const uint_fast64_t fileNameLength){
     ERROR_CODE error;
     if((error = mediaLibrary_extractPrefixedNumber(fileName, fileNameLength, &info->season, 's')) != ERROR_NO_ERROR){
-        return ERROR(error);
+        if(error != ERROR_ENTRY_NOT_FOUND){
+            return ERROR(error);
+        }
     }
 
     if(info->season == 0){
@@ -475,7 +568,7 @@ label_continue:
         endIndex = 0;
     }
 
-    // Iterate over each word chunk and search the existing shows names for the best match.
+    // Iterate over each word chunk and search the existing show names for the best match.
     LinkedListIterator showIterator;
     linkedList_initIterator(&showIterator, shows);
 

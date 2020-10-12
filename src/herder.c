@@ -1053,9 +1053,7 @@ ERROR_CODE herder_convertToMP3(Property* remoteHost, Property* remotePort, Prope
                 char* ffmpegCallString = alloca(sizeof(*ffmpegCallString) * (ffmpegCallStringLength + 1));
                 ffmpegCallStringLength = snprintf(ffmpegCallString, ffmpegCallStringLength + 1, "ffmpeg -i \"%s\" -q:a 2 -loglevel error -stats -af \"volume=4dB\" -vn \"%s\"", absoluteFilePath, episodePath);
 
-                const uint_fast64_t episodeOffset = util_findLast(relativePath, relativePathLength, '/');
-
-                UTIL_LOG_CONSOLE_(LOG_DEBUG, "%s", relativePath + episodeOffset + 1);
+                // const uint_fast64_t episodeOffset = util_findLast(relativePath, relativePathLength, '/');
 
                 const int returnValue = system(ffmpegCallString);
 

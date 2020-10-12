@@ -157,7 +157,7 @@ THREAD_POOL_RUNNABLE_(server_inotifyWatch, Job, job){
     linkedList_free(&directories);
 
     // Event loop.
-    while(true){
+    for(;;){
         const ssize_t length = read(watchDescriptor, buffer, sizeof(buffer));
 
         if(length == -1 && errno != EAGAIN){
