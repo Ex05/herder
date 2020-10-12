@@ -914,7 +914,30 @@ ERROR_CODE consoleClient_extractShowInfo(Property* remoteHost, Property* remoteP
             goto label_freeUserInput;
         }
 
-        if((error = herder_addShow(remoteHost, remotePort, userInput, userInputLength)) != ERROR_NO_ERROR){
+        // Pull show list.
+        bool newShow = true;
+
+        LinkedList shows;
+        if((error = herder_pullShowList(&shows, remoteHost, remotePort)) != ERROR_NO_ERROR){
+            goto label_freeUserInput;
+        }
+
+        LinkedListIterator it;
+        linkedList_initIterator(&it, &shows);
+
+        while(LINKED_LIST_ITERATOR_HAS_NEXT(&it)){
+            Show* show = LINKED_LIST_ITERATOR_NEXT(&it);
+
+            if(strncmp(show->name, userInput, userInputLength + 1) == 0){
+                newShow = false;
+            }
+
+            mediaLibrary_freeShow(show);
+        }
+
+        linkedList_free(&shows);
+
+        if(newShow && (error = herder_addShow(remoteHost, remotePort, userInput, userInputLength)) != ERROR_NO_ERROR){
             goto label_freeUserInput;
         }
 
@@ -922,7 +945,6 @@ ERROR_CODE consoleClient_extractShowInfo(Property* remoteHost, Property* remoteP
 
         episodeInfo->showName = userInput;
         episodeInfo->showNameLength = userInputLength;
-
     }
 
     if(batchImport){
