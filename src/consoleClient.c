@@ -861,13 +861,15 @@ inline ERROR_CODE consoleClient_printShowInfo(Property* remoteHost, Property* re
 
     UTIL_LOG_CONSOLE_(LOG_INFO, "%s:", show.name);
 
-    Season** seasons = alloca(sizeof(*seasons) * show.seasons.length);
-    if((error = mediaLibrary_sortSeasons(&seasons, &show.seasons)) != ERROR_NO_ERROR){
+    if(show.seasons.length == 0){
+        UTIL_LOG_CONSOLE(LOG_INFO, "\tEmpty.");
+
         goto label_freeShow;
     }
 
-    if(show.seasons.length == 0){
-        UTIL_LOG_CONSOLE(LOG_INFO, "\tEmpty.");
+    Season** seasons = alloca(sizeof(*seasons) * show.seasons.length);
+    if((error = mediaLibrary_sortSeasons(&seasons, &show.seasons)) != ERROR_NO_ERROR){
+        goto label_freeShow;
     }
 
     register uint_fast64_t i;
@@ -899,7 +901,6 @@ label_return:
 ERROR_CODE consoleClient_extractShowInfo(Property* remoteHost, Property* remotePort, EpisodeInfo* episodeInfo, const bool batchImport){
     ERROR_CODE error;
 
-label_extractShowInfo:
     if((error = herder_extractShowInfo(remoteHost, remotePort, episodeInfo)) != ERROR_NO_ERROR){
         if(error != ERROR_INCOMPLETE){
             goto label_return;
@@ -909,7 +910,7 @@ label_extractShowInfo:
     int_fast64_t userInputLength;
     char* userInput;
     if(episodeInfo->showName == NULL){
-        UTIL_LOG_CONSOLE(LOG_INFO, "Failed to extract the show name based on library entries.\nPlease enter the show name.");
+        UTIL_LOG_CONSOLE(LOG_INFO, "Failed to extract the show name based on existing library entries.\nPlease enter the show name.");
 
         if((error = util_readUserInput(&userInput, &userInputLength)) != ERROR_NO_ERROR){
             goto label_freeUserInput;
@@ -919,10 +920,9 @@ label_extractShowInfo:
             goto label_freeUserInput;
         }
 
-        free(episodeInfo->name);
-        free(userInput);
+        free(episodeInfo->showName);
 
-        goto label_extractShowInfo;
+        episodeInfo->showName = userInput;
     }
 
     if(batchImport){
@@ -951,7 +951,7 @@ label_readUserInput:
             goto label_freeUserInput;
         }
 
-        if(userInputLength != 0){
+        if(userInputLength != 0){ 
             free(episodeInfo->showName);
 
             episodeInfo->showName = showName;
