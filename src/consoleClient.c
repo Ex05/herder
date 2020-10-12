@@ -923,6 +923,8 @@ ERROR_CODE consoleClient_extractShowInfo(Property* remoteHost, Property* remoteP
         free(episodeInfo->showName);
 
         episodeInfo->showName = userInput;
+        episodeInfo->showNameLength = userInputLength;
+
     }
 
     if(batchImport){
