@@ -1255,14 +1255,27 @@ TEST_TEST_FUNCTION(util_concatenate){
 }
 
 TEST_TEST_FUNCTION(util_stringCopy){
-    char a[] = "012345";
+    // Test_0.
+    {
+        char a[] = "012345";
+        char b[7] = {0};
 
-    char b[7] = {0};
+        util_stringCopy(a, b, strlen(a) + 1);
 
-    util_stringCopy(a, b, strlen(a) + 1);
+        if(strncmp(a, b, strlen(a) + 1) != 0){
+            return TEST_FAILURE("Failed to copy string. '%s' != '012345'.", b);
+        }
+    }
 
-    if(strncmp(a, b, strlen(a) + 1) != 0){
-        return TEST_FAILURE("Failed to copy string. '%s' != '012345'.", b);
+    // Test_1.
+    {
+        char a[] = "012345";
+        
+        util_stringCopy(a + 1, a + 4, 3);
+
+        if(strncmp(a, "045", strlen("045") + 1) != 0){
+            return TEST_FAILURE("Failed to copy string. '%s' != '045'.", a);
+        }
     }
 
     return TEST_SUCCESS;
@@ -2580,51 +2593,91 @@ TEST_TEST_FUNCTION(mediaLibrary_extractShowName){
 
     linkedList_add(&shows, &avatar);
 
-    EpisodeInfo info = {0};
+    Show drawnTogether;
+    drawnTogether.name = "Drawn Together";
+    drawnTogether.nameLength = strlen(drawnTogether.name);
 
-    // Stargate.Atlantis..Der.Angriff.GERMAN.DUBBED.DL.720p.BluRay.x264-TVP'
-    // Stargate.Atlantis.S05E01.Such.und.Rettungsaktion.GERMAN.DUBBED.DL.720p.BluRay.x264-TVP.mkv
-    char fileName_0[] = "American_Dad_Rogers_Spot";
-    if((error = mediaLibrary_extractShowName(&info, &shows, fileName_0, strlen(fileName_0))) != ERROR_NO_ERROR){
-         return TEST_FAILURE("Failed to extract show name from string:'%s'. '%s'.", fileName_0, util_toErrorString(error));
+    linkedList_add(&shows, &drawnTogether);
+
+    Show starGateAtlantis;
+    starGateAtlantis.name = "Stargate Atlantis";
+    starGateAtlantis.nameLength = strlen(starGateAtlantis.name);
+
+    linkedList_add(&shows, &starGateAtlantis);
+
+    // Test_0.
+    {
+        EpisodeInfo info = {0};
+
+        // 1x1 The Hot Tub.avi
+        char fileName[] = "American_Dad_Rogers_Spot";
+        if((error = mediaLibrary_extractShowName(&info, &shows, fileName, strlen(fileName))) != ERROR_NO_ERROR){
+            return TEST_FAILURE("Failed to extract show name from string:'%s'. '%s'.", fileName, util_toErrorString(error));
+        }
+
+        if(strncmp(info.showName, americanDad.name, americanDad.nameLength + 1) != 0){
+            return TEST_FAILURE("Extracted value '%s' != '%s'.", info.name, americanDad.name);
+        }
+
+        if(strncmp(fileName, "Rogers_Spot", strlen("Rogers_Spot") + 1) != 0){
+            return TEST_FAILURE("Extracted value '%s' != '%s'.", fileName, "Rogers_Spot");
+        }
+
+        mediaLibrary_freeEpisodeInfo(&info);
     }
 
-    if(strncmp(info.showName, americanDad.name, americanDad.nameLength + 1) != 0){
-        return TEST_FAILURE("Extracted value '%s' != '%s'.", info.name, americanDad.name);
+    // Test_1.
+    {
+        EpisodeInfo info = {0};
+
+        char fileName[] = "Family_Guy_s01e01_Death_Has_a_Shadow.avi";
+        if(mediaLibrary_extractShowName(&info, &shows, fileName, strlen(fileName)) != ERROR_NO_ERROR){
+            return TEST_FAILURE("Failed to extract show name from string:'%s'. '%s'.", fileName, util_toErrorString(error));
+        }
+
+        if(strncmp(info.showName, familyGuy.name, familyGuy.nameLength + 1) != 0){
+            return TEST_FAILURE("Extracted value '%s' != '%s'.", info.name, familyGuy.name);
+        }
+
+        if(strncmp(fileName, "s01e01_Death_Has_a_Shadow.avi", strlen("s01e01_Death_Has_a_Shadow.avi") + 1) != 0){
+            return TEST_FAILURE("Extracted value '%s' != '%s'.", fileName, "s01e01_Death_Has_a_Shadow.avi");
+        }
+
+        mediaLibrary_freeEpisodeInfo(&info);
     }
-
-    if(strncmp(fileName_0, "Rogers_Spot", strlen("Rogers_Spot") + 1) != 0){
-        return TEST_FAILURE("Extracted value '%s' != '%s'.", fileName_0, "Rogers_Spot");
-    }
-
-    mediaLibrary_freeEpisodeInfo(&info);
-
-    memset(&info, 0, sizeof(info));
-
-    char fileName_1[] = "Family_Guy_s01e01_Death_Has_a_Shadow.avi";
-    if(mediaLibrary_extractShowName(&info, &shows, fileName_1, strlen(fileName_1)) != ERROR_NO_ERROR){
-      return TEST_FAILURE("Failed to extract show name from string:'%s'. '%s'.", fileName_1, util_toErrorString(error));
-    }
-
-    if(strncmp(info.showName, familyGuy.name, familyGuy.nameLength + 1) != 0){
-        return TEST_FAILURE("Extracted value '%s' != '%s'.", info.name, familyGuy.name);
-    }
-
-    if(strncmp(fileName_1, "s01e01_Death_Has_a_Shadow.avi", strlen("s01e01_Death_Has_a_Shadow.avi") + 1) != 0){
-       return TEST_FAILURE("Extracted value '%s' != '%s'.", fileName_0, "s01e01_Death_Has_a_Shadow.avi");
-    }
-
-    mediaLibrary_freeEpisodeInfo(&info);
     
-    memset(&info, 0, sizeof(info));
+    // Test_2.
+    {
+        EpisodeInfo info = {0};
 
-    char fileName_2[] = "s01e01_Death_Has_a_Shadow.avi";
-    __UTIL_SUPPRESS_NEXT_ERROR_OF_TYPE__(ERROR_INCOMPLETE);
-    if(mediaLibrary_extractShowName(&info, &shows, fileName_2, strlen(fileName_2)) != ERROR_INCOMPLETE){
-         return TEST_FAILURE("Extracting a show name from string:'%s' did not fail as expected. '%s'.", fileName_2, util_toErrorString(error));
+        char fileName[] = "s01e01_Death_Has_a_Shadow.avi";
+        __UTIL_SUPPRESS_NEXT_ERROR_OF_TYPE__(ERROR_INCOMPLETE);
+        if(mediaLibrary_extractShowName(&info, &shows, fileName, strlen(fileName)) != ERROR_INCOMPLETE){
+            return TEST_FAILURE("Extracting a show name from string:'%s' did not fail as expected. '%s'.", fileName, util_toErrorString(error));
+        }
+
+        mediaLibrary_freeEpisodeInfo(&info);
     }
 
-    mediaLibrary_freeEpisodeInfo(&info);
+    // Test_3.
+    {
+        EpisodeInfo info = {0};
+
+        char fileName[] = "Stargate.Atlantis.S05E01.Such.und.Rettungsaktion.GERMAN.DUBBED.DL.720p.BluRay.x264-TVP.mkv";
+        if(mediaLibrary_extractShowName(&info, &shows, fileName, strlen(fileName)) != ERROR_NO_ERROR){
+        
+        }
+
+        if(strncmp(info.showName, starGateAtlantis.name, starGateAtlantis.nameLength + 1) != 0){
+            return TEST_FAILURE("Extracted value '%s' != '%s'.", info.name, starGateAtlantis.name);
+        }
+
+        if(strncmp(fileName, "S05E01.Such.und.Rettungsaktion.GERMAN.DUBBED.DL.720p.BluRay.x264-TVP.mkv", strlen("S05E01.Such.und.Rettungsaktion.GERMAN.DUBBED.DL.720p.BluRay.x264-TVP.mkv") + 1) != 0){
+        return TEST_FAILURE("Extracted value '%s' != '%s'.", fileName, "S05E01.Such.und.Rettungsaktion.GERMAN.DUBBED.DL.720p.BluRay.x264-TVP.mkv");
+        }
+
+        mediaLibrary_freeEpisodeInfo(&info);
+    }
 
     linkedList_free(&shows);
 

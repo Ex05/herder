@@ -35,9 +35,3 @@ ERROR_CODE linkedList_remove(LinkedList*, void*);
 void linkedList_free(LinkedList* list);
 
 #endif
-
-// Index:       Watches:         Directories:
-//  0               1               /home
-//  1               4               /home/ex05
-//  2               8               /home/var
-//  3               7               /home/ex05/projects

@@ -243,7 +243,7 @@ local ERROR_CODE consoleClient_convert(Property*, Property*, Property*);
                     // Import from importDirectory_setting.
                     if((error = consoleClient_import(remoteHost, remotePort, libraryDirectory, (char*) importDirectory->buffer, false)) != ERROR_NO_ERROR){
                         if(error != ERROR_DUPLICATE_ENTRY){
-                            UTIL_LOG_CONSOLE_(LOG_ERR, "ERROR: Failed to import from directory: '%s'. [%s]", (char*) importDirectory->buffer, util_toErrorString(error));
+                            UTIL_LOG_CONSOLE_(LOG_ERR, "ERROR: Import failed. [%s]", util_toErrorString(error));
                         }
                     }
                 }else{
@@ -761,8 +761,6 @@ ERROR_CODE consoleClient_import(Property* remoteHost, Property* remotePort, Prop
         info->fileNameLength = strlen(info->fileName);
                   
         if((error = consoleClient_extractShowInfo(remoteHost, remotePort, info, batchImport)) != ERROR_NO_ERROR){
-            UTIL_LOG_CONSOLE_(LOG_ERR, "Failed to extract show info from file: '%s'. [%s]", info->fileName, util_toErrorString(error));
-
             goto label_freeFiles;
         }
 
@@ -898,6 +896,8 @@ label_return:
 
 ERROR_CODE consoleClient_extractShowInfo(Property* remoteHost, Property* remotePort, EpisodeInfo* episodeInfo, const bool batchImport){
     ERROR_CODE error;
+
+    UTIL_LOG_CONSOLE_(LOG_INFO, "Importing:\"%s\".", episodeInfo->fileName);
 
     if((error = herder_extractShowInfo(remoteHost, remotePort, episodeInfo)) != ERROR_NO_ERROR){
         if(error != ERROR_INCOMPLETE){

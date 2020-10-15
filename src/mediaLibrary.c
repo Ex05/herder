@@ -32,6 +32,8 @@ local ERROR_CODE mediaLibrary_extractSeasonNumber(EpisodeInfo*, char*, const uin
 
 local ERROR_CODE mediaLibrary_extractDelimiterSeperatedSeasonAndEpisodeNumber(EpisodeInfo*, char*, const uint_fast64_t, const char);
 
+local ERROR_CODE mediaLibrary_ectractWordChunks(LinkedList*, const char*, const uint_fast64_t);
+
 local ERROR_CODE mediaLibrary_containsShow(LinkedList*, Show**, const char*, const uint_fast64_t);
 
 local ERROR_CODE medialibrary_initShow(Show*, const char*, const uint_fast64_t);
@@ -528,126 +530,158 @@ inline ERROR_CODE mediaLibrary_extractSeasonNumber(EpisodeInfo* info, char* file
     return ERROR(ERROR_NO_ERROR);
 }
 
-// TODO:(jan) Refactor this mess and add some guidance for readers.
-ERROR_CODE mediaLibrary_extractShowName(EpisodeInfo* info, LinkedList* shows, char* fileName, const uint_fast64_t fileNameLength){
+inline ERROR_CODE mediaLibrary_ectractWordChunks(LinkedList* wordChunkList, const char* s, const uint_fast64_t stringLength){
+    ERROR_CODE error;
+
     uint_fast64_t endIndex = 0;
-
     // We need the trailing '/0' of the file name to terminate our loop.
-    uint_fast64_t remainingCharacter = fileNameLength + 1;
-
-    // Split the filename into easily searchable word chunks.
-    LinkedList wordList;
-    linkedList_init(&wordList);
-
-    char* lowerCaseFileName = alloca(sizeof(*lowerCaseFileName) * (fileNameLength + 1));
-    strncpy(lowerCaseFileName, fileName, fileNameLength + 1);
-    util_toLowerChase(lowerCaseFileName);
+    uint_fast64_t remainingCharacter = stringLength + 1;       
 
     while(remainingCharacter > 0){
         char c;
+        // Find next word delimiter.
         do{
-            c = lowerCaseFileName[endIndex++];
+            c = s[endIndex++];
         }while(c != '\0' && !mediaLibrary_isCharcterWordDelimiter(c));
 
+        // One letter doe not make a word.
         if(endIndex == 1){
             goto label_continue;
         }
 
+        // Add word chunk to list.
         if(endIndex > 2){
-            char* wordChunk = alloca(sizeof(*wordChunk) * endIndex);
-            memcpy(wordChunk, lowerCaseFileName, endIndex - 1);
+            char* wordChunk = malloc(sizeof(*wordChunk) * endIndex);
+            memcpy(wordChunk, s, endIndex - 1);
             wordChunk[endIndex - 1] = '\0';
 
-            linkedList_add(&wordList, wordChunk);
+            if((error = linkedList_add(wordChunkList, wordChunk)) != ERROR_NO_ERROR){
+                goto label_return;
+            }
         }
 
-label_continue:
-        lowerCaseFileName += endIndex;
+    label_continue:
+        // Advance search offset.
+        s += endIndex;
         
         remainingCharacter -= endIndex;
         endIndex = 0;
     }
 
-    // Iterate over each word chunk and search the existing show names for the best match.
-    LinkedListIterator showIterator;
-    linkedList_initIterator(&showIterator, shows);
+label_return:
+    return ERROR(error);
+}
+
+ERROR_CODE mediaLibrary_extractShowName(EpisodeInfo* info, LinkedList* shows, char* fileName, const uint_fast64_t fileNameLength){
+    ERROR_CODE error;
+
+    // Split the filename into easily searchable word chunks.
+    char* lowerCaseFileName = alloca(sizeof(*lowerCaseFileName) * (fileNameLength + 1));
+    strncpy(lowerCaseFileName, fileName, fileNameLength + 1);
+    util_toLowerChase(lowerCaseFileName);
+
+    LinkedList wordChunks;
+    linkedList_init(&wordChunks);
+
+    if((error = mediaLibrary_ectractWordChunks(&wordChunks, lowerCaseFileName, fileNameLength)) != ERROR_NO_ERROR){
+        goto label_freeWordList;
+    }
+
+    // Create word chunks from show name.
+    LinkedListIterator showNameIterator;
+    linkedList_initIterator(&showNameIterator, shows);
 
     uint_fast32_t maxHits = 0;
     Show* mostLikely = NULL;
-    LinkedListIterator wordListIterator;
-    while(LINKED_LIST_ITERATOR_HAS_NEXT(&showIterator)){
-        Show* show = LINKED_LIST_ITERATOR_NEXT(&showIterator);
+    while(LINKED_LIST_ITERATOR_HAS_NEXT(&showNameIterator)){
+        Show* show = LINKED_LIST_ITERATOR_NEXT(&showNameIterator);
 
-        char* lowerChaseShowName = alloca(sizeof(*lowerChaseShowName) * (show->nameLength + 1));
-        strncpy(lowerChaseShowName, show->name, show->nameLength + 1);
-        util_toLowerChase(lowerChaseShowName);
-
-        linkedList_initIterator(&wordListIterator, &wordList);
-
-        uint_fast32_t hits = 0;
-        while(LINKED_LIST_ITERATOR_HAS_NEXT(&wordListIterator)){
-            char* wordChunk = LINKED_LIST_ITERATOR_NEXT(&wordListIterator);
-
-            if(strstr(lowerChaseShowName, wordChunk) != NULL){
-                hits++;
-            }
-        }
-
-        if(hits > maxHits){
-            mostLikely = show;
-
-            maxHits = hits;
-        }
-    }
-
-    linkedList_free(&wordList);
-
-    if(mostLikely != NULL){
-        info->showName = malloc(sizeof(*info->showName) * (mostLikely->nameLength + 1));
-        if(info->showName == NULL){
-            return ERROR(ERROR_OUT_OF_MEMORY);
-        }
-        strncpy(info->showName, mostLikely->name, mostLikely->nameLength + 1);
-        info->showNameLength = mostLikely->nameLength;
-        
-        // Remove show name from file name.
-        char* lowerCaseFileName = alloca(sizeof(*lowerCaseFileName) * (fileNameLength + 1));
-        strncpy(lowerCaseFileName, fileName, fileNameLength + 1);
-        util_toLowerChase(lowerCaseFileName);
-
-        char* lowerCaseShowName = alloca(sizeof(*lowerCaseShowName) * (mostLikely->nameLength + 1));
-        strncpy(lowerCaseShowName, mostLikely->name, mostLikely->nameLength + 1);
+        char* lowerCaseShowName = alloca(sizeof(*lowerCaseShowName) * (show->nameLength + 1));
+        strncpy(lowerCaseShowName, show->name, show->nameLength + 1);
         util_toLowerChase(lowerCaseShowName);
 
-        char* beginIndex = strstr(lowerCaseFileName, lowerCaseShowName);
+        LinkedList showNameWordChunks;
+        linkedList_init(&showNameWordChunks);
 
-        if(beginIndex != NULL){
-            const intptr_t offset = beginIndex - lowerCaseFileName;
-
-            const bool leadingWordDelimiterPresent = (fileName + offset)[mostLikely->nameLength] == '_';
-
-            util_stringCopy(fileName + offset, (fileName + offset + (leadingWordDelimiterPresent? 1 : 0)) + mostLikely->nameLength, strlen(fileName + offset) + 1 - mostLikely->nameLength - (leadingWordDelimiterPresent? 1 : 0));
-        }else{
-            util_replaceAllChars(lowerCaseShowName, ' ', '_');
-
-            beginIndex = strstr(lowerCaseFileName, lowerCaseShowName);
-
-            if(beginIndex != NULL){
-                const intptr_t offset = beginIndex - lowerCaseFileName;
-
-                const bool leadingWordDelimiterPresent = (fileName + offset)[mostLikely->nameLength] == '_';
-
-                util_stringCopy(fileName + offset, (fileName + offset + (leadingWordDelimiterPresent? 1 : 0)) + mostLikely->nameLength, strlen(fileName + offset) + 1 - mostLikely->nameLength - (leadingWordDelimiterPresent? 1 : 0));
-            }
+        if((error = mediaLibrary_ectractWordChunks(&showNameWordChunks, lowerCaseShowName, show->nameLength)) != ERROR_NO_ERROR){
+            goto label_freeShowNameWordChunks;
         }
 
-        return ERROR(ERROR_NO_ERROR);
+        LinkedListIterator showNameWordChunkIterator;
+        linkedList_initIterator(&showNameWordChunkIterator, &showNameWordChunks);
+       
+        // Search for matching word chunks.
+        uint_fast32_t wordHits = 0;
+        while(LINKED_LIST_ITERATOR_HAS_NEXT(&showNameWordChunkIterator)){
+            char* showNameWordChunk = LINKED_LIST_ITERATOR_NEXT(&showNameWordChunkIterator);
+            const uint_fast64_t showNameWordChunkLength = strlen(showNameWordChunk);
+
+            LinkedListIterator wordChunkIterator;
+            linkedList_initIterator(&wordChunkIterator, &wordChunks);
+
+            while(LINKED_LIST_ITERATOR_HAS_NEXT(&wordChunkIterator)){
+                char* wordChunk = LINKED_LIST_ITERATOR_NEXT(&wordChunkIterator);
+                const uint_fast64_t wordChunkLength = strlen(wordChunk);
+
+                if(showNameWordChunkLength == wordChunkLength && strncmp(showNameWordChunk, wordChunk, wordChunkLength + 1) == 0){
+                   wordHits++;
+                }
+            }
+            
+            if(wordHits > maxHits){
+                mostLikely = show;
+
+                maxHits = wordHits;
+            }        
+        }
+
+    label_freeShowNameWordChunks:
+        linkedList_initIterator(&showNameWordChunkIterator, &showNameWordChunks);
+
+        while(LINKED_LIST_ITERATOR_HAS_NEXT(&showNameWordChunkIterator)){
+            free(LINKED_LIST_ITERATOR_NEXT(&showNameWordChunkIterator));
+        }
+
+        linkedList_free(&showNameWordChunks);
     }
 
-    info->showName = NULL;
-    info->showNameLength = 0;
+    LinkedListIterator wordChunkIterator;
+label_freeWordList:
+    linkedList_initIterator(&wordChunkIterator, &wordChunks);
 
-    return ERROR(ERROR_INCOMPLETE);
+    while(LINKED_LIST_ITERATOR_HAS_NEXT(&wordChunkIterator)){
+        free(LINKED_LIST_ITERATOR_NEXT(&wordChunkIterator));
+    }
+
+    linkedList_free(&wordChunks);
+
+    if(mostLikely == NULL){
+        return ERROR(ERROR_INCOMPLETE);
+    }else{
+        info->showNameLength = mostLikely->nameLength;
+
+        info->showName = malloc(sizeof(*info->showName) * info->showNameLength + 1);
+        strncpy(info->showName, mostLikely->name, info->showNameLength + 1);
+    }
+
+    // Remove show name from file name.
+    char* lowerCaseShowName = alloca(sizeof(*lowerCaseShowName) * (mostLikely->nameLength + 1));
+    strncpy(lowerCaseShowName, mostLikely->name, mostLikely->nameLength + 1);
+    util_toLowerChase(lowerCaseShowName);
+
+    util_replaceAllChars(lowerCaseFileName, '.', ' ');
+    util_replaceAllChars(lowerCaseFileName, '-', ' ');
+    util_replaceAllChars(lowerCaseFileName, '_', ' ');
+
+    char* beginIndex = strstr(lowerCaseFileName, lowerCaseShowName);
+
+    if(beginIndex != NULL){
+        const bool delimiterCharacterPresent = mediaLibrary_isCharcterWordDelimiter(fileName[lowerCaseFileName - beginIndex + mostLikely->nameLength]);
+
+        util_stringCopy(fileName + (lowerCaseFileName - beginIndex), fileName + (lowerCaseFileName - beginIndex) + mostLikely->nameLength + (delimiterCharacterPresent ? 1 : 0), fileNameLength - (mostLikely->nameLength + 1 - (delimiterCharacterPresent ? 1 : 0)));
+    }
+
+    return ERROR(ERROR_NO_ERROR);
 }
 
 inline bool mediaLibrary_isCharcterWordDelimiter(char c){
