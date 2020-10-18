@@ -280,7 +280,7 @@ int_fast64_t util_findFirst_s(const char*, const uint_fast64_t, const char*, con
 
 int_fast64_t util_findLast(const char*, const uint_fast64_t, const char);
 
-ERROR_CODE util_fileCopy(const char*, const char*);
+ERROR_CODE util_moveFile(const char*, const char*);
 
 uint_fast32_t util_getFileSystemBlockSize(const char*);
 

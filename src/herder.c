@@ -322,11 +322,7 @@ ERROR_CODE herder_addEpisode(Property* remoteHost, Property* remotePort, Propert
         goto label_freeRequest;
     }
 
-    if((error = util_fileCopy(episodeInfo->path, fileDst)) != ERROR_NO_ERROR){
-        goto label_freeRequest;
-    }
-
-    if(util_deleteFile(episodeInfo->path) != ERROR_NO_ERROR){
+    if((error = util_moveFile(episodeInfo->path, fileDst)) != ERROR_NO_ERROR){
         goto label_freeRequest;
     }
 
@@ -443,9 +439,31 @@ label_unMap:
     return ERROR(error);
 }
 
-ERROR_CODE herder_extractShowInfo(Property* remoteHost, Property* remotePort, EpisodeInfo* episodeInfo){
+ERROR_CODE herder_extractShowInfo(Property* remoteHost, Property* remotePort, const char* importDirectoryPath, const uint_fast64_t importDirectoryPathLength, EpisodeInfo* episodeInfo){
     ERROR_CODE error;
 
+    // Extract the directory structure inside the import directory.
+    const char* beginnIndexDirectoryStructure = strstr(episodeInfo->path, importDirectoryPath) + importDirectoryPathLength;
+
+    const char* _fileName = strstr(beginnIndexDirectoryStructure, episodeInfo->fileName);
+
+    const uint_fast64_t directoryStructureLength = (_fileName - beginnIndexDirectoryStructure) - 1;
+    char* directoryStructure = alloca(sizeof(*directoryStructure)  * (directoryStructureLength + 1));
+    memcpy(directoryStructure, beginnIndexDirectoryStructure, directoryStructureLength);
+    directoryStructure[directoryStructureLength] = '\0';    
+
+    // File extension.
+    if((error = util_getFileExtension(&episodeInfo->fileExtension,(uint_fast64_t*) &episodeInfo->fileExtensionLength, episodeInfo->path, episodeInfo->pathLength)) != ERROR_NO_ERROR){
+        if(error == ERROR_INVALID_STRING){
+            error = ERROR_INVALID_FILE_EXTENSION;
+        }
+
+        goto label_unMap;
+    }
+
+    episodeInfo->fileExtensionLength = strlen(episodeInfo->fileExtension);
+
+    // Create HTTP Request.
     char* host = (char*) remoteHost->buffer;
     uint_fast16_t port = util_byteArrayTo_uint16(remotePort->buffer);
 
@@ -459,22 +477,7 @@ ERROR_CODE herder_extractShowInfo(Property* remoteHost, Property* remotePort, Ep
         goto label_unMap;
     }
 
-    const uint_fast64_t fileNameOffset = util_findLast(episodeInfo->path, episodeInfo->pathLength, '/') + 1;
-
-    const char* fileName = episodeInfo->path + fileNameOffset;
-    const uint_fast64_t fileNameLength = episodeInfo->pathLength - fileNameOffset;
-
     const char url[] = "/extractShowInfo";
-
-    if((error = util_getFileExtension(&episodeInfo->fileExtension,(uint_fast64_t*) &episodeInfo->fileExtensionLength, episodeInfo->path, episodeInfo->pathLength)) != ERROR_NO_ERROR){
-        if(error == ERROR_INVALID_STRING){
-            error = ERROR_INVALID_FILE_EXTENSION;
-        }
-
-        goto label_unMap;
-    }
-
-    episodeInfo->fileExtensionLength = strlen(episodeInfo->fileExtension);
 
     HTTP_Request request;
     if((error = http_initRequest(&request, url, strlen(url), httpProcessingBuffer, HTTP_PROCESSING_BUFFER_SIZE, HTTP_VERSION_1_1, REQUEST_TYPE_POST)) != ERROR_NO_ERROR){
@@ -483,11 +486,19 @@ ERROR_CODE herder_extractShowInfo(Property* remoteHost, Property* remotePort, Ep
 
     HTTP_ADD_HEADER_FIELD(request, Host, host);
 
-    util_uint64ToByteArray(request.data + request.dataLength, fileNameLength);
+    // DirectoryStructure.
+    util_uint64ToByteArray(request.data + request.dataLength, directoryStructureLength);
     request.dataLength += sizeof(uint64_t);
 
-    memcpy(request.data + request.dataLength, fileName, fileNameLength);
-    request.dataLength += fileNameLength;
+    memcpy(request.data + request.dataLength, directoryStructure, directoryStructureLength);
+    request.dataLength += directoryStructureLength;
+
+    // FileName.
+    util_uint64ToByteArray(request.data + request.dataLength, episodeInfo->fileNameLength);
+    request.dataLength += sizeof(uint64_t);
+
+    memcpy(request.data + request.dataLength, episodeInfo->fileName, episodeInfo->fileNameLength);
+    request.dataLength += episodeInfo->fileNameLength;
 
     HTTP_Response response;
     http_initResponse(&response, httpProcessingBuffer, HTTP_PROCESSING_BUFFER_SIZE);
@@ -497,6 +508,7 @@ ERROR_CODE herder_extractShowInfo(Property* remoteHost, Property* remotePort, Ep
 
     http_closeConnection(socketFD);
 
+    // Handle HTTP Response.
     if(response.statusCode == _200_OK){
         uint_fast64_t readOffset = 0;
 
@@ -661,11 +673,7 @@ ERROR_CODE herder_add(Property* remoteHost, Property* remotePort, Property* libr
         goto label_freeRequest;
     }
 
-    if((error = util_fileCopy(episodeInfo->path, fileDst)) != ERROR_NO_ERROR){
-        goto label_freeRequest;
-    }
-
-    if(util_deleteFile(episodeInfo->path) != ERROR_NO_ERROR){
+    if((error = util_moveFile(episodeInfo->path, fileDst)) != ERROR_NO_ERROR){
         goto label_freeRequest;
     }
 

@@ -270,10 +270,17 @@ inline int_fast64_t util_findLast(const char* s, const uint_fast64_t length, con
     return -1;
 }
 
-// TODO: Do some testing, what is actually the fastest way to copy a file on each platform. See: https://stackoverflow.com/questions/10195343/copy-a-file-in-a-sane-safe-and-efficient-way for some example implementations. (jan - 2018.11.20)
-// Move/rename file: https://stackoverflow.com/questions/17438493/moving-a-file-on-linux-in-c
-inline ERROR_CODE util_fileCopy(const char* src, const char* dst){
-    ERROR_CODE error = ERROR_NO_ERROR;
+inline ERROR_CODE util_moveFile(const char* src, const char* dst){
+    int ret;
+    if((ret = rename(src, dst)) == 0){
+        return ERROR(ERROR_NO_ERROR);
+    }
+
+    if(ret != EXDEV){
+        return ERROR_(ERROR_ERROR, "%s", strerror(errno));
+    }
+
+    ERROR_CODE error;
 
     FILE* srcFile = fopen(src, "r");
     if(srcFile == NULL){
@@ -293,9 +300,12 @@ inline ERROR_CODE util_fileCopy(const char* src, const char* dst){
         goto label_closeSrc;
     }
 
-    const uint_fast32_t bufferSize = util_getFileSystemBlockSize(src);
+    #define UTIL_FILE_COPY_BUFFER_MULTIPLIER 4
 
-    // TODO: Decide if putting the buffer on the stack is a good idea. (jan - 2018.11.17)
+    const uint_fast32_t bufferSize = util_getFileSystemBlockSize(src) * UTIL_FILE_COPY_BUFFER_MULTIPLIER;
+
+    #undef UTIL_FILE_COPY_BUFFER_MULTIPLIER
+
     int8_t* buffer = alloca(bufferSize);
 
     uint_fast64_t numBytesToWrite;
@@ -330,6 +340,8 @@ inline ERROR_CODE util_fileCopy(const char* src, const char* dst){
 
 label_closeSrc:
     fclose(srcFile);
+        
+    error = util_deleteFile(dst);
 
 label_return:
     return ERROR(error);

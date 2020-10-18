@@ -1307,7 +1307,7 @@ TEST_TEST_FUNCTION(util_fileCopy){
     close(fileDescriptor);
 
     ERROR_CODE error;
-    if((error = util_fileCopy(filePath, newFileName)) != ERROR_NO_ERROR){
+    if((error = util_moveFile(filePath, newFileName)) != ERROR_NO_ERROR){
         return TEST_FAILURE("Failed to copy file from '%s' to '%s'.", filePath, newFileName);
     }
 
@@ -1331,10 +1331,6 @@ TEST_TEST_FUNCTION(util_fileCopy){
 
     if(strncmp(buffer, TEST_FILE_NAME, bufferLength) != 0){
         return TEST_FAILURE("'%s' != '%s'.", buffer, TEST_FILE_NAME);
-    }
-
-    if(util_deleteFile(filePath) != ERROR_NO_ERROR){
-        return TEST_FAILURE("Failed to delete file:'%s'.", filePath);
     }
 
     if(util_deleteFile(newFileName) != ERROR_NO_ERROR){
@@ -2026,6 +2022,7 @@ TEST_TEST_FUNCTION(cache_remove){
     }
 
     CacheObject* cacheObject;
+    __UTIL_SUPPRESS_NEXT_ERROR_OF_TYPE__(ERROR_ENTRY_NOT_FOUND);
     if((error = cache_get(&cache, &cacheObject, symbolicFileLocation, strlen(symbolicFileLocation))) == ERROR_NO_ERROR){
         return TEST_FAILURE("Failed to retireve cache object. '%s'", util_toErrorString(error));
     }
@@ -2611,7 +2608,7 @@ TEST_TEST_FUNCTION(mediaLibrary_extractShowName){
 
         // 1x1 The Hot Tub.avi
         char fileName[] = "American_Dad_Rogers_Spot";
-        if((error = mediaLibrary_extractShowName(&info, &shows, fileName, strlen(fileName))) != ERROR_NO_ERROR){
+        if((error = mediaLibrary_extractShowName(&info, &shows, NULL, 0, fileName, strlen(fileName))) != ERROR_NO_ERROR){
             return TEST_FAILURE("Failed to extract show name from string:'%s'. '%s'.", fileName, util_toErrorString(error));
         }
 
@@ -2631,7 +2628,7 @@ TEST_TEST_FUNCTION(mediaLibrary_extractShowName){
         EpisodeInfo info = {0};
 
         char fileName[] = "Family_Guy_s01e01_Death_Has_a_Shadow.avi";
-        if(mediaLibrary_extractShowName(&info, &shows, fileName, strlen(fileName)) != ERROR_NO_ERROR){
+        if(mediaLibrary_extractShowName(&info, &shows, NULL, 0, fileName, strlen(fileName)) != ERROR_NO_ERROR){
             return TEST_FAILURE("Failed to extract show name from string:'%s'. '%s'.", fileName, util_toErrorString(error));
         }
 
@@ -2652,7 +2649,7 @@ TEST_TEST_FUNCTION(mediaLibrary_extractShowName){
 
         char fileName[] = "s01e01_Death_Has_a_Shadow.avi";
         __UTIL_SUPPRESS_NEXT_ERROR_OF_TYPE__(ERROR_INCOMPLETE);
-        if(mediaLibrary_extractShowName(&info, &shows, fileName, strlen(fileName)) != ERROR_INCOMPLETE){
+        if(mediaLibrary_extractShowName(&info, &shows, NULL, 0, fileName, strlen(fileName)) != ERROR_INCOMPLETE){
             return TEST_FAILURE("Extracting a show name from string:'%s' did not fail as expected. '%s'.", fileName, util_toErrorString(error));
         }
 
@@ -2664,8 +2661,8 @@ TEST_TEST_FUNCTION(mediaLibrary_extractShowName){
         EpisodeInfo info = {0};
 
         char fileName[] = "Stargate.Atlantis.S05E01.Such.und.Rettungsaktion.GERMAN.DUBBED.DL.720p.BluRay.x264-TVP.mkv";
-        if(mediaLibrary_extractShowName(&info, &shows, fileName, strlen(fileName)) != ERROR_NO_ERROR){
-        
+        if(mediaLibrary_extractShowName(&info, &shows, NULL, 0, fileName, strlen(fileName)) != ERROR_NO_ERROR){
+           return TEST_FAILURE("Failed to extract show name from string:'%s'. '%s'.", fileName, util_toErrorString(error));
         }
 
         if(strncmp(info.showName, starGateAtlantis.name, starGateAtlantis.nameLength + 1) != 0){
@@ -2678,6 +2675,8 @@ TEST_TEST_FUNCTION(mediaLibrary_extractShowName){
 
         mediaLibrary_freeEpisodeInfo(&info);
     }
+
+    // TODO: Importing:"Bob's.Burgers.S01E03.Sacred.Cow.1080p.WEB-DL.x265.10bit.AAC.5.1-ImE[UTR].mkv". (jan - 2020.10.15)
 
     linkedList_free(&shows);
 
@@ -2734,7 +2733,7 @@ TEST_TEST_FUNCTION(mediaLibrary_extractEpisodeInfo){
     mediaLibrary_initEpisodeInfo(&info);
 
     ERROR_CODE error;
-    if((error = mediaLibrary_extractEpisodeInfo(&info, &shows, a, strlen(a))) != ERROR_NO_ERROR){
+    if((error = mediaLibrary_extractEpisodeInfo(&info, &shows, NULL, 0, a, strlen(a))) != ERROR_NO_ERROR){
         return TEST_FAILURE("Failed to extract episode info. '%s'.", util_toErrorString(error));
     }
 

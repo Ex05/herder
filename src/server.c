@@ -975,6 +975,14 @@ local SERVER_CONTEXT_HANDLER(server_pageExtractShowInfo){
 
     uint_fast64_t readOffset = 0;
 
+    // ImportDirectoryStructure.
+    const uint_fast64_t importDirectoryStructureLength = util_byteArrayTo_uint64(request->data + readOffset);
+    readOffset += sizeof(uint64_t);
+
+    char* importDirectoryStructure = (char*) (request->data + readOffset);
+    readOffset += importDirectoryStructureLength;
+
+    // FileName.
     const uint_fast64_t fileNameLength = util_byteArrayTo_uint64(request->data + readOffset);
     readOffset += sizeof(uint64_t);
 
@@ -985,7 +993,7 @@ local SERVER_CONTEXT_HANDLER(server_pageExtractShowInfo){
     if((error = mediaLibrary_initEpisodeInfo(&info)) != ERROR_NO_ERROR){
         goto label_onError;
     }else{
-        error = mediaLibrary_extractEpisodeInfo(&info, &server->library.shows, fileName, fileNameLength);
+        error = mediaLibrary_extractEpisodeInfo(&info, &server->library.shows, importDirectoryStructure, importDirectoryStructureLength, fileName, fileNameLength);
 
         if(error != ERROR_NO_ERROR && error != ERROR_INCOMPLETE){
             mediaLibrary_freeEpisodeInfo(&info);
@@ -1241,8 +1249,6 @@ label_return:
         server_addContext(&server, "/showInfo", server_pageShowInfo);
         server_addContext(&server, "/renameEpisode", server_pageRenameEpisode);
         server_addContext(&server, "/removeEpisode", server_pageRemoveEpisode);
-
-        UTIL_LOG_INFO_("Starting server on port '%" PRIuFAST16 "'.", port);
 
         if((error = server_start(&server)) != ERROR_NO_ERROR){
             UTIL_LOG_CONSOLE_(LOG_ERR, "%s", util_toErrorString(error));

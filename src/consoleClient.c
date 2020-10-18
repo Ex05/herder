@@ -57,7 +57,7 @@ local ERROR_CODE consoleClient_listAllShows(Property*, Property*);
 
 local ERROR_CODE consoleClient_printShowInfo(Property*, Property*, const char*, const uint_fast64_t);
 
-local ERROR_CODE consoleClient_extractShowInfo(Property*, Property*, EpisodeInfo*, const bool);
+local ERROR_CODE consoleClient_extractShowInfo(Property*, Property*, const char*, const uint_fast64_t, EpisodeInfo*, const bool);
 
 local ERROR_CODE consoleClient_rename(Property*, Property*, Property*);
 
@@ -75,7 +75,7 @@ local ERROR_CODE consoleClient_selectEpisode(Episode**, Season*);
 
 local ERROR_CODE consoleClient_selectYesNo(bool*);
 
-local ERROR_CODE consoleClient_addEpisode(Property*, Property*, Property*, const char*, const uint_fast64_t);
+local ERROR_CODE consoleClient_addEpisode(Property*, Property*, Property*, const char*, const uint_fast64_t, const char*, const uint_fast64_t);
 
 local ERROR_CODE consoleClient_convert(Property*, Property*, Property*);
 
@@ -217,7 +217,7 @@ local ERROR_CODE consoleClient_convert(Property*, Property*, Property*);
                 if(!util_fileExists(argumentAdd.values[0]) || util_isDirectory(argumentAdd.values[0])){
                     UTIL_LOG_CONSOLE_(LOG_INFO, "ERROR: '%s' is not a falid file.", argumentAdd.values[0]);
                 }else{
-                    if((error = consoleClient_addEpisode(remoteHost, remotePort, libraryDirectory, argumentAdd.values[0], argumentAdd.valueLengths[0])) != ERROR_NO_ERROR){
+                    if((error = consoleClient_addEpisode(remoteHost, remotePort, libraryDirectory, NULL, 0, argumentAdd.values[0], argumentAdd.valueLengths[0])) != ERROR_NO_ERROR){
                         UTIL_LOG_CONSOLE_(LOG_ERR, "Failed to add file'%s' to library. '%s'", argumentAdd.values[0], util_toErrorString(error));
                     }
                 }
@@ -760,7 +760,7 @@ ERROR_CODE consoleClient_import(Property* remoteHost, Property* remotePort, Prop
         info->fileName = util_getFileName(info->path, info->pathLength);
         info->fileNameLength = strlen(info->fileName);
                   
-        if((error = consoleClient_extractShowInfo(remoteHost, remotePort, info, batchImport)) != ERROR_NO_ERROR){
+        if((error = consoleClient_extractShowInfo(remoteHost, remotePort, directory, strlen(directory), info, batchImport)) != ERROR_NO_ERROR){
             goto label_freeFiles;
         }
 
@@ -894,12 +894,12 @@ label_return:
     return ERROR(error);
 }
 
-ERROR_CODE consoleClient_extractShowInfo(Property* remoteHost, Property* remotePort, EpisodeInfo* episodeInfo, const bool batchImport){
+ERROR_CODE consoleClient_extractShowInfo(Property* remoteHost, Property* remotePort, const char* importDirectory, const uint_fast64_t importDirectoryLength, EpisodeInfo* episodeInfo, const bool batchImport){
     ERROR_CODE error;
 
     UTIL_LOG_CONSOLE_(LOG_INFO, "Importing:\"%s\".", episodeInfo->fileName);
 
-    if((error = herder_extractShowInfo(remoteHost, remotePort, episodeInfo)) != ERROR_NO_ERROR){
+    if((error = herder_extractShowInfo(remoteHost, remotePort, importDirectory, importDirectoryLength, episodeInfo)) != ERROR_NO_ERROR){
         if(error != ERROR_INCOMPLETE){
             goto label_return;
         }
@@ -933,6 +933,7 @@ ERROR_CODE consoleClient_extractShowInfo(Property* remoteHost, Property* remoteP
             }
 
             mediaLibrary_freeShow(show);
+            free(show);
         }
 
         linkedList_free(&shows);
@@ -1144,7 +1145,7 @@ local ERROR_CODE consoleClient_renameEpisode(Property* remoteHost, Property* rem
     char* fileName = alloca(sizeof(*fileName) * (oldNameLength + 1));
     memcpy(fileName, oldName, oldNameLength + 1);
 
-    if((error = mediaLibrary_extractEpisodeInfo(&info, &shows, fileName, oldNameLength)) != ERROR_NO_ERROR){
+    if((error = mediaLibrary_extractEpisodeInfo(&info, &shows, NULL, 0, fileName, oldNameLength)) != ERROR_NO_ERROR){
         goto label_freeShows;
     }
 
@@ -1248,7 +1249,7 @@ local ERROR_CODE consoleClient_removeEpisode(Property* remoteHost, Property* rem
     char* fileName = alloca(sizeof(*fileName) * (episodeNameLength + 1));
     memcpy(fileName, episodeName, episodeNameLength + 1);
 
-    if((error = mediaLibrary_extractEpisodeInfo(&info, &shows, fileName, episodeNameLength)) != ERROR_NO_ERROR){
+    if((error = mediaLibrary_extractEpisodeInfo(&info, &shows, NULL, 0, fileName, episodeNameLength)) != ERROR_NO_ERROR){
         goto label_freeShows;
     }
 
@@ -1533,7 +1534,7 @@ label_freeUserInput:
     return ERROR(error);
 }
 
-ERROR_CODE consoleClient_addEpisode(Property* remoteHost, Property* remotePort, Property* libraryDirectory, const char* path, const uint_fast64_t pathLength){
+ERROR_CODE consoleClient_addEpisode(Property* remoteHost, Property* remotePort, Property* libraryDirectory, const char* importDirectory, const uint_fast64_t importDirectoryLength, const char* path, const uint_fast64_t pathLength){
     ERROR_CODE error;
 
     EpisodeInfo info;
@@ -1562,7 +1563,7 @@ ERROR_CODE consoleClient_addEpisode(Property* remoteHost, Property* remotePort, 
         goto label_freeShowList;
     }
 
-    if((error = consoleClient_extractShowInfo(remoteHost, remotePort, &info, false)) != ERROR_NO_ERROR){
+    if((error = consoleClient_extractShowInfo(remoteHost, remotePort, importDirectory, importDirectoryLength, &info, false)) != ERROR_NO_ERROR){
         goto label_freeShowList;
     }
 

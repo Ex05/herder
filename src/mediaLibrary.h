@@ -71,7 +71,7 @@ ERROR_CODE mediaLibrary_addEpisode(MediaLibrary*, Episode**, Show*, Season*, con
 
 ERROR_CODE mediaLibrary_getEpisode(Season*, Episode**, const uint_fast16_t);
 
-ERROR_CODE mediaLibrary_extractEpisodeInfo(EpisodeInfo*, LinkedList*, char*, const uint_fast64_t);
+ERROR_CODE mediaLibrary_extractEpisodeInfo(EpisodeInfo*, LinkedList*, char*, const uint_fast64_t, char*, const uint_fast64_t);
 
 ERROR_CODE mediaLibrary_initEpisodeInfo(EpisodeInfo*);
 
@@ -92,27 +92,3 @@ ERROR_CODE mediaLibrary_renameEpisode(MediaLibrary*, Show*, Season*, Episode*, c
 ERROR_CODE mediaLibrary_saveEpisodeToDisk(MediaLibrary*, Show*, Season*, Episode*);
 
 #endif
-
-/*
-Show_Name [uint64_t + ~ ],
-Season_Number [uint16_t],
-Episode_Number [uint16_t], 
-Episode_Name [uint64_t + ~ ],
-File_Extension [uint16_t + ~ ]
-*/
-
-/*
-URL: '/showInfo'
-    Num_Seasons,
-        {
-            Number,
-            Num_Episodes,
-            {
-                Number,
-                NameLength,
-                Name,
-                FileExtensionLength,
-                FileExtension                
-            }
-        }
-*/

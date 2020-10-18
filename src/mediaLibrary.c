@@ -22,7 +22,7 @@
 
 local const Version MEDIA_LIBRARY_FILE_VERSION = {0, 1, 0};
 
-local ERROR_CODE mediaLibrary_extractShowName(EpisodeInfo*, LinkedList*, char*, const uint_fast64_t);
+local ERROR_CODE mediaLibrary_extractShowName(EpisodeInfo*, LinkedList*, char*, const uint_fast64_t, char*, const uint_fast64_t);
 
 local ERROR_CODE mediaLibrary_extractEpisodeNumber(EpisodeInfo*, char*, const uint_fast64_t);
 
@@ -302,7 +302,7 @@ inline void mediaLibrary_free(MediaLibrary* library){
     free(library->libraryFileLocation);
 }
 
-inline ERROR_CODE mediaLibrary_extractEpisodeInfo(EpisodeInfo* info, LinkedList* shows, char* fileName, const uint_fast64_t fileNameLength){
+inline ERROR_CODE mediaLibrary_extractEpisodeInfo(EpisodeInfo* info, LinkedList* shows, char* importDirectoryStructure, const uint_fast64_t importDirectoryStructureLength, char* fileName, const uint_fast64_t fileNameLength){
     // NOTE:(jan) All the strlen calls are needed, as each of the 'medialibrary_extract...' calls modify the file name.
     ERROR_CODE error = ERROR_NO_ERROR;
     if(mediaLibrary_extractSeasonNumber(info, fileName, strlen(fileName)) != ERROR_NO_ERROR){
@@ -319,7 +319,7 @@ inline ERROR_CODE mediaLibrary_extractEpisodeInfo(EpisodeInfo* info, LinkedList*
         }
     }
 
-    if(mediaLibrary_extractShowName(info, shows, fileName, strlen(fileName)) != ERROR_NO_ERROR){
+    if(mediaLibrary_extractShowName(info, shows, importDirectoryStructure, importDirectoryStructureLength, fileName, strlen(fileName)) != ERROR_NO_ERROR){
         error = ERROR_INCOMPLETE;
     }
 
@@ -572,10 +572,9 @@ label_return:
     return ERROR(error);
 }
 
-ERROR_CODE mediaLibrary_extractShowName(EpisodeInfo* info, LinkedList* shows, char* fileName, const uint_fast64_t fileNameLength){
+ERROR_CODE mediaLibrary_extractShowName(EpisodeInfo* info, LinkedList* shows, char* importDirectoryStructure, const uint_fast64_t importDirectoryStructureLength, char* fileName, const uint_fast64_t fileNameLength){
     ERROR_CODE error;
 
-    // Split the filename into easily searchable word chunks.
     char* lowerCaseFileName = alloca(sizeof(*lowerCaseFileName) * (fileNameLength + 1));
     strncpy(lowerCaseFileName, fileName, fileNameLength + 1);
     util_toLowerChase(lowerCaseFileName);
@@ -583,9 +582,22 @@ ERROR_CODE mediaLibrary_extractShowName(EpisodeInfo* info, LinkedList* shows, ch
     LinkedList wordChunks;
     linkedList_init(&wordChunks);
 
+    // Split the filename into easily searchable word chunks.
     if((error = mediaLibrary_ectractWordChunks(&wordChunks, lowerCaseFileName, fileNameLength)) != ERROR_NO_ERROR){
         goto label_freeWordList;
     }
+
+    if(importDirectoryStructureLength != 0){
+        char* lowerCaseImportDirectoryStructure = alloca(sizeof(*lowerCaseImportDirectoryStructure) * (importDirectoryStructureLength + 1));
+        strncpy(lowerCaseImportDirectoryStructure, importDirectoryStructure, importDirectoryStructureLength + 1);
+        util_toLowerChase(lowerCaseImportDirectoryStructure);
+
+            // Split the path to the file to be imported also into word chunks.
+        if((error = mediaLibrary_ectractWordChunks(&wordChunks, lowerCaseImportDirectoryStructure, importDirectoryStructureLength)) != ERROR_NO_ERROR){
+            goto label_freeWordList;
+        }
+    }
+
 
     // Create word chunks from show name.
     LinkedListIterator showNameIterator;
@@ -632,7 +644,7 @@ ERROR_CODE mediaLibrary_extractShowName(EpisodeInfo* info, LinkedList* shows, ch
                 mostLikely = show;
 
                 maxHits = wordHits;
-            }        
+            }
         }
 
     label_freeShowNameWordChunks:
@@ -645,7 +657,8 @@ ERROR_CODE mediaLibrary_extractShowName(EpisodeInfo* info, LinkedList* shows, ch
         linkedList_free(&showNameWordChunks);
     }
 
-    LinkedListIterator wordChunkIterator;
+
+    LinkedListIterator wordChunkIterator;          
 label_freeWordList:
     linkedList_initIterator(&wordChunkIterator, &wordChunks);
 
@@ -656,6 +669,7 @@ label_freeWordList:
     linkedList_free(&wordChunks);
 
     if(mostLikely == NULL){
+        __UTIL_SUPPRESS_NEXT_ERROR_OF_TYPE__(ERROR_INCOMPLETE);
         return ERROR(ERROR_INCOMPLETE);
     }else{
         info->showNameLength = mostLikely->nameLength;

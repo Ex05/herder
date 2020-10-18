@@ -21,7 +21,7 @@ ERROR_CODE herder_pullShowList(LinkedList*, Property*, Property*);
 
 ERROR_CODE herder_addShow(Property*, Property*, const char*, const uint_fast64_t);
 
-ERROR_CODE herder_extractShowInfo(Property*, Property*, EpisodeInfo*);
+ERROR_CODE herder_extractShowInfo(Property*, Property*, const char*, const uint_fast64_t, EpisodeInfo*);
 
 ERROR_CODE herder_addEpisode(Property*, Property*, Property*, EpisodeInfo*);
 
