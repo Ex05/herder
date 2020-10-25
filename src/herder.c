@@ -447,10 +447,12 @@ ERROR_CODE herder_extractShowInfo(Property* remoteHost, Property* remotePort, co
 
     const char* _fileName = strstr(beginnIndexDirectoryStructure, episodeInfo->fileName);
 
-    const uint_fast64_t directoryStructureLength = (_fileName - beginnIndexDirectoryStructure) - 1;
+    // We need to clamp 'directoryStructureLength' to '0' for files which are in the root of the import directory.
+    const int_fast64_t directoryStructureLength = MAX(0, (_fileName - beginnIndexDirectoryStructure) - 1);
+
     char* directoryStructure = alloca(sizeof(*directoryStructure)  * (directoryStructureLength + 1));
     memcpy(directoryStructure, beginnIndexDirectoryStructure, directoryStructureLength);
-    directoryStructure[directoryStructureLength] = '\0';    
+    directoryStructure[directoryStructureLength] = '\0';   
 
     // File extension.
     if((error = util_getFileExtension(&episodeInfo->fileExtension,(uint_fast64_t*) &episodeInfo->fileExtensionLength, episodeInfo->path, episodeInfo->pathLength)) != ERROR_NO_ERROR){

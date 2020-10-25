@@ -598,7 +598,6 @@ ERROR_CODE mediaLibrary_extractShowName(EpisodeInfo* info, LinkedList* shows, ch
         }
     }
 
-
     // Create word chunks from show name.
     LinkedListIterator showNameIterator;
     linkedList_initIterator(&showNameIterator, shows);
@@ -657,7 +656,6 @@ ERROR_CODE mediaLibrary_extractShowName(EpisodeInfo* info, LinkedList* shows, ch
         linkedList_free(&showNameWordChunks);
     }
 
-
     LinkedListIterator wordChunkIterator;          
 label_freeWordList:
     linkedList_initIterator(&wordChunkIterator, &wordChunks);
@@ -687,6 +685,10 @@ label_freeWordList:
     util_replaceAllChars(lowerCaseFileName, '-', ' ');
     util_replaceAllChars(lowerCaseFileName, '_', ' ');
 
+    util_replaceAllChars(lowerCaseShowName, '.', ' ');
+    util_replaceAllChars(lowerCaseShowName, '-', ' ');
+    util_replaceAllChars(lowerCaseShowName, '_', ' ');
+    
     char* beginIndex = strstr(lowerCaseFileName, lowerCaseShowName);
 
     if(beginIndex != NULL){

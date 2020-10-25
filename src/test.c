@@ -2676,8 +2676,6 @@ TEST_TEST_FUNCTION(mediaLibrary_extractShowName){
         mediaLibrary_freeEpisodeInfo(&info);
     }
 
-    // TODO: Importing:"Bob's.Burgers.S01E03.Sacred.Cow.1080p.WEB-DL.x265.10bit.AAC.5.1-ImE[UTR].mkv". (jan - 2020.10.15)
-
     linkedList_free(&shows);
 
     return TEST_SUCCESS;
