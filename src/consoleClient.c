@@ -725,6 +725,7 @@ ERROR_CODE consoleClient_import(Property* remoteHost, Property* remotePort, Prop
         return ERROR(ERROR_PROPERTY_NOT_SET);
      }
 
+    // Create list of files in import dir.
     LinkedList infos;
     if((error = linkedList_init(&infos)) != ERROR_NO_ERROR){
         goto label_return;
@@ -745,6 +746,7 @@ ERROR_CODE consoleClient_import(Property* remoteHost, Property* remotePort, Prop
         goto label_freeFiles;
     }
 
+    // Extract show/episode information from file name/path.
     LinkedListIterator fileIterator;
     linkedList_initIterator(&fileIterator, &infos);
     while(LINKED_LIST_ITERATOR_HAS_NEXT(&fileIterator)){
@@ -791,9 +793,9 @@ ERROR_CODE consoleClient_import(Property* remoteHost, Property* remotePort, Prop
 
         mediaLibrary_freeEpisodeInfo(info);
     }
-
+    
     __UTIL_SUPPRESS_NEXT_ERROR_OF_TYPE__(ERROR_FAILED_TO_DELETE_DIRECTORY);
-    if((error = util_deleteDirectory(directory, true, true)) != ERROR_NO_ERROR){
+    if((error = util_deleteDirectory(directory, true, false)) != ERROR_NO_ERROR){
         goto label_freeFiles;
     }
 

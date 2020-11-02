@@ -372,6 +372,8 @@ ERROR_CODE util_deleteDirectory(const char* directory, const bool preserveRoot, 
     if(currentDirectory == NULL){
         error = ERROR_FAILED_TO_OPEN_DIRECTORY;
 
+        UTIL_LOG_CONSOLE_(LOG_DEBUG, "DIIIIIR:'%s'.", directory);
+
         goto label_closeDir;
     }
 

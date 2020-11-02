@@ -1395,31 +1395,49 @@ TEST_TEST_FUNCTION(util_deleteDirectory){
     {
         #define TMP_DIRECTORY_NAME "/tmp/herder_util_test_deleteDirectory_1_XXXXXX"
     
-        char* tmpPath = alloca(sizeof(*tmpPath) * (strlen(TMP_DIRECTORY_NAME) + 1));
-        strcpy(tmpPath, TMP_DIRECTORY_NAME);
+        const uint_fast64_t tmpDirectoryLength = strlen(TMP_DIRECTORY_NAME);
+
+        char* tmpDirectory = malloc(sizeof(*tmpDirectory) * (tmpDirectoryLength + 2));
+        strncpy(tmpDirectory, TMP_DIRECTORY_NAME, tmpDirectoryLength + 1);
 
         #undef TMP_DIRECTORY_NAME
 
-        const char* dir = mkdtemp(tmpPath);
+        char* tmpDirPtr = mkdtemp(tmpDirectory);
 
-        if(dir == NULL){
+        if(tmpDirPtr == NULL){
             return TEST_FAILURE("Failed to create unique directory name. '%s'", strerror(errno));
         }
 
+        tmpDirPtr[tmpDirectoryLength] = '/';
+        tmpDirPtr[tmpDirectoryLength + 1] = '\0';
+
+        #define NESTED_DIRECTORY_NAME "test/"
+
+        const uint_fast64_t nestedDirectoryNameLength = strlen(NESTED_DIRECTORY_NAME);
+
+        char* nestedTmpDirectory = malloc(sizeof(*nestedTmpDirectory) * (nestedDirectoryNameLength + (tmpDirectoryLength + 2) + 1));
+        strncpy(nestedTmpDirectory, tmpDirPtr, tmpDirectoryLength + 2);
+        strncpy(nestedTmpDirectory + tmpDirectoryLength + 1, NESTED_DIRECTORY_NAME, nestedDirectoryNameLength + 1);
+
+        #undef NESTED_DIRECTORY_NAME
+
         ERROR_CODE error;
-        if((error = util_deleteDirectory(dir, true, false)) != ERROR_NO_ERROR){
-            return TEST_FAILURE("Failed to delete directory '%s' [%s].", dir, util_toErrorString(error));
+        if((error = util_createDirectory(nestedTmpDirectory)) != ERROR_NO_ERROR){
+            return TEST_FAILURE("Failed to create directory '%s' [%s].", nestedTmpDirectory, util_toErrorString(error));
         }
 
-        if(!util_directoryExists(dir)){
-            return TEST_FAILURE("Failed to delete directory:'%s'.", dir);
+        if((error = util_deleteDirectory(tmpDirPtr, false, false)) != ERROR_NO_ERROR){
+            return TEST_FAILURE("Failed to delete directory '%s' [%s].", tmpDirPtr, util_toErrorString(error));
         }
 
-        if((error = util_deleteDirectory(dir, false, false)) != ERROR_NO_ERROR){
-            return TEST_FAILURE("Failed to delete directory '%s' [%s].", dir, util_toErrorString(error));
+        if(util_directoryExists(tmpDirPtr)){
+            return TEST_FAILURE("Failed to delete directory:'%s'.", tmpDirPtr);
         }
 
-        // TODO: Add directory into tmp dir.
+        free(tmpDirectory);
+        free(nestedTmpDirectory);
+
+        return TEST_SUCCESS;
     }
 
     // Test_2.
