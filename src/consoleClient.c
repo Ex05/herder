@@ -769,12 +769,73 @@ ERROR_CODE consoleClient_import(Property* remoteHost, Property* remotePort, Prop
         linkedList_add(&fileInfos, info);
     }
 
+    // Check for duplicates.
+    LinkedList shows = {0};
+    if((error = herder_pullShowList(&shows, remoteHost, remotePort)) != ERROR_NO_ERROR){
+        goto label_freeFiles;
+    }
+
+    LinkedListIterator episodeInfoIterator;
+
+    LinkedListIterator showIterator;
+    linkedList_initIterator(&showIterator, &shows);
+    while(LINKED_LIST_ITERATOR_HAS_NEXT(&showIterator)){
+        Show* show = LINKED_LIST_ITERATOR_NEXT(&showIterator);
+
+        linkedList_initIterator(&episodeInfoIterator, &fileInfos);
+        while(LINKED_LIST_ITERATOR_HAS_NEXT(&episodeInfoIterator)){
+            EpisodeInfo* info = LINKED_LIST_ITERATOR_NEXT(&episodeInfoIterator);
+
+            UTIL_LOG_CONSOLE_(LOG_DEBUG, "Show:'%s', Info:'%s'.", show->name, info->showName);
+
+            if(strncmp(show->name, info->showName, info->showNameLength) == 0){
+                Show libraryEntry;
+                if((error = medialibrary_initShow(&libraryEntry, show->name, show->nameLength)) != ERROR_NO_ERROR){
+                    goto label_return;
+                }
+
+                if((error = herder_pullShowInfo(remoteHost, remotePort, &libraryEntry)) != ERROR_NO_ERROR){
+                    goto label_freeFiles;
+                }
+
+                LinkedListIterator seasonIterator;
+                linkedList_initIterator(&seasonIterator, &libraryEntry.seasons);
+                while(LINKED_LIST_ITERATOR_HAS_NEXT(&seasonIterator)){
+                     Season* season = LINKED_LIST_ITERATOR_NEXT(&seasonIterator);
+
+                    if(season->number == (uint_fast16_t) info->season){
+                        LinkedListIterator episodeIterator;
+                        linkedList_initIterator(&episodeIterator, &season->episodes);
+
+                        while(LINKED_LIST_ITERATOR_HAS_NEXT(&episodeIterator)){
+                            Episode* episode = LINKED_LIST_ITERATOR_NEXT(&episodeIterator);
+
+                            if(episode->number == (uint_fast16_t)info->episode){
+                                if(strncmp(episode->name , info->name, episode->nameLength + 1) == 0){
+                                    // TODO: Only add non duplicate entries to library.
+                                    ERROR_(ERROR_FUNCTION_NOT_IMPLEMENTED, "Duplicate entry in library found for: '%s'.", info->fileName);
+                                }
+                            }
+                        }
+                    }
+                }
+
+                mediaLibrary_freeShow(&libraryEntry);
+            }
+        }
+
+        mediaLibrary_freeShow(show);
+        free(show);
+    }
+
+    linkedList_free(&shows);
+
+    // Import.
     UTIL_LOG_CONSOLE(LOG_INFO, "Importing:...");
 
     const uint_fast64_t entries = infos.length;
     uint_fast64_t i = 0;
 
-    LinkedListIterator episodeInfoIterator;
     linkedList_initIterator(&episodeInfoIterator, &fileInfos);
     while(LINKED_LIST_ITERATOR_HAS_NEXT(&episodeInfoIterator)){
         EpisodeInfo* info = LINKED_LIST_ITERATOR_NEXT(&episodeInfoIterator);
