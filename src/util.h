@@ -169,16 +169,15 @@ ERROR_Supressor global_errorSupressionStruct = {0};
 
 #ifdef DEBUG
     static ERROR_CALLBACK(globbal_errorCallback){
-        if(errorCode != ERROR_NO_ERROR && (
-                !global_errorSupressionStruct.supressAllErrors &&
-                !global_errorSupressionStruct.supressNextError && (
-                    !global_errorSupressionStruct.supressNextErrorOfType &&
-                    global_errorSupressionStruct.errorType != errorCode))){
-
+        // TODO: Clean this up by flipping the logic of the if else.(jan - 2021.04.29)
+        if(errorCode == ERROR_NO_ERROR || global_errorSupressionStruct.supressAllErrors || global_errorSupressionStruct.supressNextError || (global_errorSupressionStruct.supressNextErrorOfType && global_errorSupressionStruct.errorType == errorCode)){
+            goto label_cleanUp;
+        }else{
             util_toErrorString(errorCode);
             syslog(LOG_ERR, "%s:%d %s [%" PRIdFAST32 "]%s%s.", file, line, util_toErrorString(errorCode), errorCode, errorMessage[0] == '\0' ? "" : " ", errorMessage);
         }
-
+    
+    label_cleanUp:
         global_errorSupressionStruct.supressNextErrorOfType = false;
         global_errorSupressionStruct.supressNextError = false;
 

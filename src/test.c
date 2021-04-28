@@ -196,7 +196,106 @@ void test_test(test_testFunction func, const char* name){
     testSuit->noSetup = 0;
 }
 
+// error util.h
+TEST_TEST_FUNCTION(error_error){
+    __UTIL_SUPPRESS_NEXT_ERROR_OF_TYPE__(ERROR_ERROR);
+    if(ERROR(ERROR_ERROR) != ERROR_ERROR){
+        return TEST_FAILURE("%s", "Failed to return error code.");
+    }
+
+    return TEST_SUCCESS;
+}
+
+TEST_TEST_FUNCTION(error_supressNextError){
+    __UTIL_SUPRESS_NEXT_ERROR__();
+    if(ERROR(ERROR_ERROR) != ERROR_ERROR){
+        return TEST_FAILURE("%s", "Failed to return error code.");
+    }
+
+    return TEST_SUCCESS;
+}
+
+TEST_TEST_FUNCTION(error_supressNextErrorOfType){
+    __UTIL_SUPPRESS_NEXT_ERROR_OF_TYPE__(ERROR_ERROR);
+    if(ERROR(ERROR_ERROR) != ERROR_ERROR){
+        return TEST_FAILURE("%s", "Failed to return error code.");
+    }
+
+    __UTIL_SUPPRESS_NEXT_ERROR_OF_TYPE__(ERROR_ALREADY_EXIST);
+    if(ERROR(ERROR_ERROR) != ERROR_ERROR){
+        return TEST_FAILURE("%s", "Failed to return error code.");
+    }
+
+    if(ERROR(ERROR_ERROR) != ERROR_ERROR){
+        return TEST_FAILURE("%s", "Failed to return error code.");
+    }
+
+    return TEST_SUCCESS;
+}
+
+TEST_TEST_FUNCTION(error_disableErrorLogging){
+    __UTIL_DISABLE_ERROR_LOGGING__();
+    if(ERROR(ERROR_ERROR) != ERROR_ERROR){
+        return TEST_FAILURE("%s", "Failed to return error code.");
+    }
+
+    __UTIL_ENABLE_ERROR_LOGGING__();
+    if(ERROR(ERROR_ERROR) != ERROR_ERROR){
+        return TEST_FAILURE("%s", "Failed to return error code.");
+    }
+
+    return TEST_SUCCESS;
+}
+
 // arrayList.c
+TEST_TEST_FUNCTION(arraylist_init){
+     ArrayList arrayList;
+     arrayList_init(&arrayList, 16, sizeof(uint8_t), arrayList_defaultExpandFunction);
+
+    if(arrayList.length != 0){
+        return TEST_FAILURE("%s", "Failed to initialise array list. Length == 0.");
+    }
+
+    if(arrayList.elements == NULL){
+        return TEST_FAILURE("%s", "Failed to initialise array list. Elements not allocated.");
+    }
+
+    if(arrayList.stride != sizeof(uint8_t)){
+        return TEST_FAILURE("%s", "Failed to initialise array list. Stride size != sizeof(uint8_t).");
+    }
+
+    if(*arrayList.expandFunction != *arrayList_defaultExpandFunction){
+        return TEST_FAILURE("%s", "Failed to initialise array list. Expand function != arrayList_defaultExpandFunction.");
+    }
+     arrayList_free(&arrayList);
+
+     return TEST_SUCCESS;
+}
+
+TEST_TEST_FUNCTION(arrayList_initFixedSizeList){
+     ArrayList arrayList;
+     arrayList_initFixedSizeList(&arrayList, 16, sizeof(uint8_t));
+
+    if(arrayList.length != 0){
+        return TEST_FAILURE("%s", "Failed to initialise array list. Length == 0.");
+    }
+
+    if(arrayList.elements == NULL){
+        return TEST_FAILURE("%s", "Failed to initialise array list. Elements not allocated.");
+    }
+
+    if(arrayList.stride != sizeof(uint8_t)){
+        return TEST_FAILURE("%s", "Failed to initialise array list. Stride size != sizeof(uint8_t).");
+    }
+
+    if(*arrayList.expandFunction != NULL){
+        return TEST_FAILURE("%s", "Failed to initialise array list. Expand function != NULL.");
+    }
+     arrayList_free(&arrayList);
+
+     return TEST_SUCCESS;
+}
+
 TEST_TEST_FUNCTION(arraylist_iteration){
     ArrayList list;
     arrayList_initFixedSizeList(&list, 12, sizeof(uint8_t));
@@ -1982,6 +2081,7 @@ TEST_TEST_FUNCTION(cache_overflowBehaviour){
     }
 
     CacheObject* cacheObject;
+    __UTIL_SUPPRESS_NEXT_ERROR_OF_TYPE__(ERROR_ENTRY_NOT_FOUND);
     if((error = cache_get(&cache, &cacheObject, symbolicFileLocation_000, strlen(symbolicFileLocation_000))) == ERROR_NO_ERROR){
         return TEST_FAILURE("Failed to retireve cache object. '%s'", util_toErrorString(error));
     }
@@ -3024,7 +3124,18 @@ TEST_TEST_FUNCTION(server_send){
 int main(void){
     TEST_BEGIN();
 
+// Note: This currently needs manual review of the syslog output to verify test success.(jan - 2021.04.29)
+    /* TEST_SUIT_BEGIN("error");
+        TEST(error_error);
+        TEST(error_supressNextError);
+        TEST(error_supressNextErrorOfType);
+        TEST(error_disableErrorLogging);
+    TEST_SUIT_END();
+    */
+    
     TEST_SUIT_BEGIN("arrayList");
+        TEST(arraylist_init);
+        TEST(arrayList_initFixedSizeList);
         TEST(arraylist_iteration);
         TEST(arraylist_fixedSizedStackList);
         TEST(arraylist_get);
