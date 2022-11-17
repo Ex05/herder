@@ -40,7 +40,7 @@ From the project root run the build script **'./scripts/build'** via the **'buil
 When running a **debug** or **test** build debug information will be logged using **syslog**, to view these messages, use **journalctl** or any other method supported by your distribution.
 
 ## Intended usage:
-Herder is meant to be run as five (5) separate components, an ingestation station from which media gets importet, a network attached storag server that handles media storage, a server that runs a web-service for clients to interact with, a Database server which stores all media metainformation and diffent clients be it terminal, gui or web based.
+Herder is meant to be run as five (5) separate components, an ingestation station from which media gets importet, a network attached storag server that handles media storage, a server that runs a web-service for clients to interact with, a Database server which stores all media metainformation and a client be it terminal, gui or web based. But all components can just as easily be run on the same system.
 
 ### Examples:
 This section is not yet complete.
