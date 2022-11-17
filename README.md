@@ -25,7 +25,7 @@ This project currently follows Adam Rukas [OneFlow](https://www.endoflineblog.co
 * GNU Debugger gdb.
 * bash-completion package.
 * journalctl
-* Add an alias for the build script and then register the script for bash-completion.
+* Adding an alias for the build script and then registering the script for bash-completion.
 ```sh
 alias build="./scripts/build"
 
