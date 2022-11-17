@@ -1,7 +1,7 @@
 
 # Herder
 
-A media organization tool. Designed to store and archive digitised copies of your favourite medias.
+A feature rich media organization tool. Designed to store and archive digitised copies of your favourite medias.
 
 > **"Excuse me. I'm actually a... herder."<br/>
 "It's pronounced hoarder young man..."**
@@ -38,3 +38,9 @@ From the project root run the build script **'./scripts/build'** via the **'buil
 * **'build debug'** creates a debuggable executable in the **'./out'** directory. The executable name can be changed in the **'build'** script via the **'debugTargets'**.
 
 When running a **debug** or **test** build debug information will be logged using **syslog**, to view these messages, use **journalctl** or any other method supported by your distribution.
+
+## Intended usage:
+Herder is meant to be run as five (5) separate components, an ingestation station from which media gets importet, a network attached storag server that handles media storage, a server that runs a web-service for clients to interact with, a Database server which stores all media metainformation and diffent clients be it terminal, gui or web based.
+
+### Examples:
+This section is not yet complete.
