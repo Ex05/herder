@@ -1,0 +1,33 @@
+# Ignore compiler output.
+out
+out/*
+
+# Ignore temporary build directory
+.build
+
+# Ignore temporary for running automated tests.
+.tmp
+
+# Ignore VS_Code config/tmp files.
+.vscode
+.vscode/*
+vgcore.*
+herder.code-workspace
+
+# Ignore links to removed files that are still in use by some other process.
+.fuse_hidden*
+
+# Ignore locale TODO list.
+TODO
+
+# Ignore debugger settings/history files.
+.gdb_history
+
+# Ignore any certificate files.
+res/*.pem
+
+# Ignore user settings.
+res/settings
+
+# Ignore suppression files for valgrind/memcheck.
+scripts/valgrindSuppressionsScript

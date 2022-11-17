@@ -1,0 +1,302 @@
+#!/bin/bash
+
+# Register completion script with 'complete -C build build'
+# Create an alias "alias build="./scripts/build" to run the build script from your project root.
+declare -a buildArguments=(debug test release)
+
+if [[ -n $COMP_LINE ]]; then
+	for argument in "${buildArguments[@]}"; do
+		[[ ${argument:0:${#2}} == "${2,,}" ]] && echo "$argument"
+	done
+
+	exit
+fi
+
+# Build settings.
+buildDirectory=".build"
+
+sourceDirectory="src"
+
+destinationDirectory="out"
+
+testSourceFile="test"
+
+releaseSourceFiles=("server" "client")
+
+releaseTargets=("server" "client")
+
+debugSourceFiles=("server" "client")
+# eval $(typeset -A -p releaseSourceFiles | sed 's/ releaseSourceFiles=/ debugSourceFiles=/')
+
+debugTargets=("server" "client")
+# eval $(typeset -A -p releaseTargets | sed 's/ releaseTargets=/ debugTargets=/')
+
+compiler="gcc"
+
+showBuildInformation="yes"
+
+timeFormatString='\tUser time: %Us\n\tSystem time: %Ss\n\tCPU utilization: %P'
+
+preprocessorFlags="-E"
+# (E) Needed to only run the preprocessors.
+
+compileFlags="-c -Werror -Wall -Wextra -pedantic -Wno-unused-parameter -std=c11 -march=native"
+# (c) Compile without linking.
+# (Werror) Turn all warnings in to errors.
+# (Wall) Turn on "all" warnings.
+# (Wextra) Turn on extra warnings not included in 'Wall'.
+# (pedantic-errors) Issue all the warnings demanded by strict ISO C and turns them into errors.
+# (Wno-unused-parameter) Don't warn about unused parameter.
+# (std=c11) Use C11 (C standard revision) ISO/IEC 9899:2011.
+# (march=native) Use CPU/Architecture dependent optimisations. See:https://stackoverflow.com/questions/14492436/g-optimization-beyond-o3-ofast for more optimisation flags.
+
+additionalDebugFlags="-O0 -g3 -ggdb -D DEBUG"
+# (ggdb) Produce debugging information for use by GDB
+# (g3) Include macro definition and more in the debug information.
+
+additionalReleaseFlags="-D NDEBUG -D RELEASE"
+
+additionalTestFlags="-D TEST_BUILD"
+
+assembleFlags="-S"
+# (S) Stop after the compilation step, do not assemble an executable. 
+
+linkFlags="-pthread -L/usr/local/lib"
+
+libraries="-lpthread -lcrypto -lssl -lm"
+
+# Build functions.
+# prepareBuildDirectory(dir:buildDirectory)
+prepareBuildDirectory(){
+local buildDirectory=$1
+
+	# Remove build directory if already present.
+	if [[ -d "$buildDirectory" ]]; then
+		rm -r "$buildDirectory"
+	fi
+
+	# Create build directory.
+	mkdir "$buildDirectory"
+}
+
+# preprocess(string:compiler, string:compilerFlags, dir:buildDirectory, string:fileName)
+preprocess(){
+local compiler=$1; local compilerFlags=$2; local buildDirectory=$3; local fileName=$4; 
+
+	# Add src directory to directory stack.
+	pushd $sourceDirectory > /dev/null
+
+	printf "\x1b[32mPreprocessing:\x1b[0m\n"
+
+	if [[ "$showBuildInformation" = "yes" ]]; then
+		command time --format "$timeFormatString" "$compiler" $compilerFlags -o ../"$buildDirectory"/"$fileName".i "$fileName".c
+	else
+		$compiler $compilerFlags -o ../"$buildDirectory"/"$fileName".i "$fileName".c
+	fi
+
+	popd > /dev/null
+}
+
+# assemble(string:compiler, string:compilerFlags, dir:buildDirectory, string:fileName)
+assemble(){
+local compiler=$1; local compilerFlags=$2; local buildDirectory=$3; local fileName=$4
+
+	# Add src directory to directory stack.
+	pushd $sourceDirectory > /dev/null
+
+	printf "\x1b[32mAssembling:\x1b[0m\n"
+
+	if [[ "$showBuildInformation" = "yes" ]]; then
+		command time --format "$timeFormatString" "$compiler" "$compilerFlags" -o ../"$buildDirectory"/"$fileName".s ../"$buildDirectory"/"$fileName".i
+	else
+		$compiler $compilerFlags -o ../"$buildDirectory"/"$fileName".s ../"$buildDirectory"/"$fileName".i
+	fi
+
+	popd > /dev/null
+}
+
+# compile(string:compiler, string:compilerFlags, dir:buildDirectory, string:fileName, string:outputFileName)
+compile(){
+local compiler=$1; local compilerFlags=$2; local buildDirectory=$3; local fileName=$4; local outputFileName=$5
+
+	# Add src directory to directory stack.
+	pushd $sourceDirectory >/dev/null
+
+	printf "\x1b[32mCompiling:\x1b[0m\n"
+
+	if [[ "$showBuildInformation" = "yes" ]]; then
+		command time --format "$timeFormatString" "$compiler" $compilerFlags -o ../"$buildDirectory"/"$outputFileName" "$fileName"
+	else
+		$compiler "$compilerFlags" -o ../"$buildDirectory"/"$outputFileName" "$fileName"
+	fi
+
+	popd > /dev/null
+}
+
+# link(string:compiler, string:linkFlags, string:libraries, dir:buildDirectory, string:objectFileName, string:executableName)
+link(){
+local compiler=$1; local linkFlags=$2; local libraries=$3; local buildDirectory=$4; local objectFileName=$5; local executableName=$6
+
+	# Add build directory to directory stack.
+	pushd "$buildDirectory" > /dev/null
+	
+	printf "\x1b[32mLinking:\x1b[0m\n"
+
+	if [[ "$showBuildInformation" = "yes" ]]; then
+		command time --format "$timeFormatString" "$compiler" -o ../"$destinationDirectory"/"$executableName" ../"$buildDirectory"/"$objectFileName".o $linkFlags $libraries
+	else
+		$compiler "$linkFlags" "$libraries" -o ../"$destinationDirectory"/"$executableName" ../"$buildDirectory"/"$objectFileName".o
+	fi
+
+	popd >/dev/null
+}
+
+# buildRelease(string:fileName, string:executableName)
+buildRelease(){
+local fileName=$1; local executableName=$2
+
+	printf "\x1b[33mBuilding executable \x1b[37m%s\x1b[33m from \x1b[37m%s.c\x1b[33m.\x1b[0m\n" "$executableName" "$fileName";
+
+	prepareBuildDirectory "$buildDirectory"
+
+	preprocess "$compiler" "$preprocessorFlags $additionalReleaseFlags" "$buildDirectory" "$fileName"
+
+	assemble "$compiler" "$assembleFlags" "$buildDirectory" "$fileName"
+
+	compile "$compiler" "$compileFlags" "$buildDirectory" ../"$buildDirectory"/"$fileName".s "$fileName".o
+
+	link "$compiler" "$linkFlags" "$libraries" "$buildDirectory" "$fileName" "$executableName"
+
+	# Remove build directory.
+	rm -r "$buildDirectory"
+}
+
+# buildDebug(string:fileName, string:executableName)
+buildDebug(){
+local fileName=$1; local executableName=$2
+
+	printf "\x1b[33mBuilding debug executable \x1b[37m%s\x1b[33m from \x1b[37m%s.c\x1b[33m.\x1b[0m\n" "$executableName" "$fileName"; 
+
+	prepareBuildDirectory "$buildDirectory"
+
+	compile "$compiler" "$compileFlags" "$buildDirectory" "$fileName".c "$fileName".o
+
+	link "$compiler" "$linkFlags" "$libraries" "$buildDirectory" "$fileName" "$executableName"
+
+	# Remove build directory.
+	rm -r "$buildDirectory"
+}
+
+# buildAndRunTest(string:fileName, string:executableName)
+buildAndRunTest(){
+local fileName=$1; local executableName=$2
+
+	# Create temporary test directory.
+	if [[ -d "./tmp/" ]]; then
+		rm -r "./tmp/"
+	fi
+
+	mkdir "./tmp/"
+
+	# Remove old executable.
+	if [[ -d "$executableName" ]]; then
+		rm "$executableName"
+	fi
+
+	buildDebug "$fileName" "$executableName"
+
+	# Don't halt on errors.
+	set +e
+
+	# If valgrind is available.
+	if hash valgrind 2>/dev/null; then
+		# 2022.05.14 Latest arch linux release ships a stripped version of glibc.
+		#./$destinationDirectory/$executableName
+
+		valgrind --leak-check=full --track-origins=yes --show-leak-kinds=all ./$destinationDirectory/"$executableName"
+	else
+		# Run test executable.
+		"./$destinationDirectory/$executableName"
+	fi
+
+	# Remove temporary test directory.
+	rm -r "./tmp/"
+}
+
+# printBuildOptions(void)
+printBuildOptions(){
+	printf "Usage 'build <targaet> <optimisation level>'.\n "
+	printf "\tTargets:[test, debug, release], Optimisation level:[0-3] (Release only).\n"
+}
+
+# Halt on the first error.
+set -e
+
+# Begin build script.
+clear
+clear
+
+if [[ $# -eq 1 ]]; then
+	# Build and Run the test executable.
+	if [[ "$1" == "test" ]]; then
+		compileFlags="$compileFlags $additionalDebugFlags $additionalTestFlags"
+
+		buildAndRunTest $testSourceFile "${PWD##*/}_test"
+
+		exit 0
+	else
+		# Create a debug build.
+		if [[ "$1" == "debug" ]]; then
+			compileFlags="$compileFlags $additionalDebugFlags"
+
+			numberDebugSourceFiles=${#debugSourceFiles[@]}
+			numberDebugTargets=${#releaseTargets[@]}
+
+			if [[ $numberDebugSourceFiles != "$numberDebugTargets" ]]; then
+				printf "The number of debug targets must equal the number of source files.\n"
+
+				exit 1
+			fi
+
+			for (( i=0; i<numberDebugTargets; i++ )); do
+				buildDebug "${debugSourceFiles[$i]}" "${debugTargets[$i]}"
+
+				printf "\n"
+			done
+
+			exit 0
+		fi
+	fi
+else
+	if [[ $# -eq 2 ]]; then
+		# Create optimised release version.
+		if [[ "$1" == "release" ]]; then
+			if [[ "$2" == "0" ]] || [[ "$2" == "1" ]] || [[ "$2" == "2" ]] || [[ "$2" == "3" ]]; then
+				compileFlags="$compileFlags -O$2 $additionalReleaseFlags"
+
+				numberReleaseSourceFiles=${#releaseSourceFiles[@]}
+				numberReleaseTargets=${#releaseTargets[@]}
+
+				if [[ $numberReleaseSourceFiles != "$numberReleaseTargets" ]]; then
+					printf "The number of release targets must equal the number of source files.\n"
+
+					exit 1
+				fi
+
+				for (( i=0; i<numberReleaseTargets; i++ )); do
+					buildRelease "${releaseSourceFiles[$i]}" "${releaseTargets[$i]}"
+
+					printf "\n"
+				done
+
+				printf "Build completeted successfully.\n"
+
+				exit 0
+			fi
+		fi
+	fi
+fi
+
+printBuildOptions
+
+exit 1
