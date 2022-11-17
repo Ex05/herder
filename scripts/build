@@ -77,6 +77,12 @@ local buildDirectory=$1
 
 	# Create build directory.
 	mkdir "$buildDirectory"
+
+	# Create executable output directory if not present.
+	if [[ ! -d "$destinationDirectory" ]]; then
+		# Create output directory.
+		mkdir "$destinationDirectory"	
+	fi
 }
 
 # preprocess(string:compiler, string:compilerFlags, dir:buildDirectory, string:fileName)
