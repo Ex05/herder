@@ -108,6 +108,8 @@ ERROR_CODE server_constructErrorPage(Server*, HTTP_Request*, HTTP_Response*, HTT
 
 ERROR_CODE server_sendResponse(SSL*, HTTP_Response*);
 
+void server_daemonize(void);
+
 #endif
 
 /*

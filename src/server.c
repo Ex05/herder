@@ -2,6 +2,10 @@
 #define SERVER_C
 
 // POSIX Version ¢2008
+#include "util.h"
+#include <errno.h>
+#include <sys/syslog.h>
+#include <unistd.h>
 #define _XOPEN_SOURCE 700
 
 #define _GNU_SOURCE
@@ -103,6 +107,10 @@ ERROR_CODE server_writeTemplatePropertyFileToDisk(char* propertyFileLocation, co
 		PROPERTIES_NEW_PROPERTY_TEMPLATE(NumWorkerThreads, CONSTANTS_NUM_WORKER_THREADS_PROPERTY_NAME, CONSTANTS_NUM_WORKER_THREADS_PROPERTY_DEFAULT_VALUE);
 		PROPERTIES_PROPERTY_FILE_SECTION_ADD_PROPERTY(Server, NumWorkerThreads);
 
+		// Daemonize
+		PROPERTIES_NEW_PROPERTY_TEMPLATE(Daemonize, CONSTANTS_DAEMONIZE_PROPERTY_NAME, CONSTANTS_DAEMONIZE_PROPERTY_DEFAULT_VALUE);
+		PROPERTIES_PROPERTY_FILE_SECTION_ADD_PROPERTY(Server, Daemonize);
+
 		// Port
 		PROPERTIES_NEW_PROPERTY_TEMPLATE(Port, CONSTANTS_PORT_PROPERTY_NAME, CONSTANTS_PORT_PROPERTY_DEFAULT_VALUE);
 		PROPERTIES_PROPERTY_FILE_SECTION_ADD_PROPERTY(Server, Port);
@@ -125,17 +133,28 @@ ERROR_CODE server_writeTemplatePropertyFileToDisk(char* propertyFileLocation, co
 		return ERROR(error);
 	}
 
-	PROPERTIES_FREE_PROPERTY_FILE_TEMPLATE(Template);	
+	PROPERTIES_FREE_PROPERTY_FILE_TEMPLATE(Template);
 
 	return ERROR(error);	
 }
 
 ERROR_CODE server_init(Server* server, char* propertyFileLocation, const int_fast64_t propertyFileLocationLength){
-	UTIL_LOG_CONSOLE(LOG_DEBUG, "Server: Initialising server...");
-
 	ERROR_CODE error;
 
 	memset(server, 0, sizeof(Server));
+
+	UTIL_LOG_CONSOLE(LOG_DEBUG, "Server: Initialising server...");
+
+	// Check if settings file exists.
+	if(!util_fileExists(propertyFileLocation)){
+		if((error = server_createPropertyFile(propertyFileLocation, propertyFileLocationLength)) != ERROR_NO_ERROR){
+			return ERROR(error);
+		}
+	}else{
+		if((error = server_loadProperties(server, propertyFileLocation, propertyFileLocationLength))){
+			return ERROR(error);
+		}
+	}
 
 	// Block default signal handler.
 	sigset_t signalMask;
@@ -154,17 +173,6 @@ ERROR_CODE server_init(Server* server, char* propertyFileLocation, const int_fas
 	sigaction(SIGUSR1, &signalhandler, NULL);
 	sigaction(SIGINT, &signalhandler, NULL);
 	sigaction(SIGPIPE, &signalhandler, NULL);
-
-	// Check if settings file exists.
-	if(!util_fileExists(propertyFileLocation)){
-		if((error = server_createPropertyFile(propertyFileLocation, propertyFileLocationLength)) != ERROR_NO_ERROR){
-			return ERROR(error);
-		}
-	}else{
-		if((error = server_loadProperties(server, propertyFileLocation, propertyFileLocationLength))){
-			return ERROR(error);
-		}
-	}
 
 	// Syslog_ID.
 	Property* syslogID_Property = PROPERTIES_GET(&server->properties, SYSLOG_ID);
@@ -656,6 +664,7 @@ ERROR_CODE server_loadProperties(Server* server, char* propertyFileLocation, con
 		// TODO: Check that values are valid, like port range, directory strings are properly terminated/formated. (jan - 2022.09.29)
 		// #Server.
 		PROPERTY_EXISTS(PORT);
+		PROPERTY_EXISTS(DAEMONIZE);
 		PROPERTY_EXISTS(NUM_WORKER_THREADS);
 		PROPERTY_EXISTS(HTTP_ROOT_DIRECTORY);
 		PROPERTY_EXISTS(CUSTOM_ERROR_PAGES_DIRECTORY);
@@ -1000,5 +1009,55 @@ inline void server_freeContext(Context* context){
 	free(context->symbolicFileLocation);
 }
 
-#endif
+inline void server_daemonize(void){
+	if(daemon(!0, 0) == -1){
+		UTIL_LOG_CONSOLE_(LOG_ERR, "Failed to create daemon process. '%s'.", strerror(errno));
+	}
 
+	// The manual way as described by: https://web.archive.org/web/20120914180018/http://www.steve.org.uk/Reference/Unix/faq_2.html#SEC16
+ 	/*
+	// Ignore child signals, so we dont end up with a defunct zombie child process.
+ 	signal(SIGCHLD, SIG_IGN);
+
+ 	pid_t pid = fork();
+
+ 	if(pid < 0){
+ 	 	exit(EXIT_FAILURE);
+ 	}else if(pid > 0){
+ 	 	exit(EXIT_SUCCESS);
+ 	}
+
+ 	if(setsid() < 0){
+ 	 	exit(EXIT_FAILURE);
+ 	}
+
+ 	signal(SIGCHLD, SIG_IGN);
+ 	signal(SIGHUP, SIG_IGN);
+
+ 	pid = fork();
+
+ 	if(pid < 0){
+ 	 	exit(EXIT_FAILURE);
+ 	}else if(pid > 0){
+ 	 	exit(EXIT_SUCCESS);
+ 	}
+
+ 	umask(S_IWGRP | S_IWOTH /022/);
+
+ 	if(chdir(workingDirectory) != 0){
+ 	 	UTIL_LOG_ERROR("Failed to change working directory.");
+ 	}
+
+ 	int_fast32_t fileDescriptor;
+ 	for (fileDescriptor = sysconf(_SC_OPEN_MAX); fileDescriptor >= 0; fileDescriptor--){
+ 	 	close(fileDescriptor);
+ 	}
+
+ 	// Ignore TTY signals.
+	signal(SIGTSTP, SIG_IGN);
+	signal(SIGTTOU, SIG_IGN);
+	signal(SIGTTIN, SIG_IGN);
+	*/
+}
+
+#endif
