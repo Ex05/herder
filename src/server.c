@@ -4,6 +4,7 @@
 // POSIX Version ¢2008
 #include "util.h"
 #include <errno.h>
+#include <string.h>
 #include <sys/syslog.h>
 #include <unistd.h>
 #define _XOPEN_SOURCE 700
@@ -173,6 +174,17 @@ ERROR_CODE server_init(Server* server, char* propertyFileLocation, const int_fas
 	sigaction(SIGUSR1, &signalhandler, NULL);
 	sigaction(SIGINT, &signalhandler, NULL);
 	sigaction(SIGPIPE, &signalhandler, NULL);
+
+	// Daemonize.
+	Property* daemonizeProperty = PROPERTIES_GET(&server->properties, DAEMONIZE);
+
+	char* daemonize = alloca(sizeof(*daemonize) * (daemonizeProperty->dataLength + 1));
+	memcpy(daemonize, PROPERTIES_PROPERTY_DATA(daemonizeProperty), daemonizeProperty->dataLength);
+	daemonize[daemonizeProperty->dataLength] = '\0';
+
+	if(strncmp(daemonize, "true", daemonizeProperty->dataLength + 1) == 0){
+		server_daemonize();
+	}
 
 	// Syslog_ID.
 	Property* syslogID_Property = PROPERTIES_GET(&server->properties, SYSLOG_ID);
@@ -1010,6 +1022,8 @@ inline void server_freeContext(Context* context){
 }
 
 inline void server_daemonize(void){
+	UTIL_LOG_CONSOLE(LOG_DEBUG, "\t Server: Deamonizing server...");
+
 	if(daemon(!0, 0) == -1){
 		UTIL_LOG_CONSOLE_(LOG_ERR, "Failed to create daemon process. '%s'.", strerror(errno));
 	}
