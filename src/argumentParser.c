@@ -80,7 +80,6 @@ inline ERROR_CODE argumentParser_parse(ArgumentParser* parser, const int numArgu
 					}
 
 					void* values = realloc(argument->values, sizeof(*argument->values) * (argument->numValues + 1));
-
 					if(values == NULL){
 						return ERROR(ERROR_OUT_OF_MEMORY);
 					}
@@ -88,7 +87,6 @@ inline ERROR_CODE argumentParser_parse(ArgumentParser* parser, const int numArgu
 					argument->values = values;
 
 					void* valueLengths = realloc(argument->valueLengths, sizeof(*argument->valueLengths) * (argument->numValues + 1));
-
 					if(valueLengths == NULL){
 						return ERROR(ERROR_OUT_OF_MEMORY);
 					}
@@ -114,7 +112,6 @@ inline ERROR_CODE argumentParser_parse(ArgumentParser* parser, const int numArgu
 								// Continue if we have more than one value to an argument, e.g. '--rename "/home/29a" "/home/ex05"'
 								if(i + 1 < numArguments && !argumentParser_isArgument(arguments[i + 1])){
 									void* values = realloc(argument->values, sizeof(*argument->values) * (argument->numValues + 1));
-
 									if(values == NULL){
 										return ERROR(ERROR_OUT_OF_MEMORY);
 									}
@@ -122,7 +119,6 @@ inline ERROR_CODE argumentParser_parse(ArgumentParser* parser, const int numArgu
 									argument->values = values;
 
 									void* valueLengths = realloc(argument->valueLengths, sizeof(*argument->valueLengths) * (argument->numValues + 1));
-
 									if(valueLengths == NULL){
 										return ERROR(ERROR_OUT_OF_MEMORY);
 									}
