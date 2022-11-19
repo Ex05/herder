@@ -92,6 +92,26 @@ void server_printHelp(void){
 }
 
 ERROR_CODE server_showSettings(void){
+	ERROR_CODE error;
+
+	PropertyFile properties;
+	if((error = properties_load(&properties, RESOURCES_PROPERTY_FILE_LOCATION, strlen(RESOURCES_PROPERTY_FILE_LOCATION))) != ERROR_NO_ERROR){
+		return ERROR(error);
+	}
+
+	UTIL_LOG_CONSOLE_(LOG_INFO, "'%s':\n", RESOURCES_PROPERTY_FILE_LOCATION);
+
+	LinkedListIterator it;
+	linkedList_initIterator(&it, &properties.properties);
+
+	while(LINKED_LIST_ITERATOR_HAS_NEXT(&it)){
+		Property* property = LINKED_LIST_ITERATOR_NEXT_PTR(&it, Property);
+
+		UTIL_LOG_CONSOLE_(LOG_INFO, "%s = \"%s\".", PROPERTIES_PROPERTY_NAME(property), PROPERTIES_PROPERTY_DATA(property));
+	}
+
+	properties_free(&properties);
+
 	return ERROR(ERROR_NO_ERROR);
 }
 
