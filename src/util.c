@@ -850,4 +850,15 @@ inline bool util_isDirectory(const char* file_path){
 	return S_ISDIR(fileInfo.st_mode);
 }
 
+inline ERROR_CODE util_getFileSize(const char* filePath, uint_fast64_t* fileSize){
+	struct stat fileInfo;
+	if(lstat(filePath, &fileInfo) == -1){
+		return ERROR_(ERROR_FAILED_TO_RETRIEV_FILE_INFO, "File:'%s'", filePath);
+	}
+
+	*fileSize = fileInfo.st_size;
+
+	return ERROR(ERROR_NO_ERROR);
+}
+
 #endif

@@ -45,4 +45,6 @@
 #define CONSTANTS_SERVER_USAGE_ARGUMENT_HELP_NAME "-?, -h, --help"
 #define CONSTANTS_SERVER_USAGE_ARGUMENT_HELP_DESCRIPTION "Displays this help message."
 
+#define CONSTANTS_CHARACTER_LINE_FEED 0x0a
+
 #endif

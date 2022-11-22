@@ -679,7 +679,7 @@ ERROR_CODE server_loadProperties(Server* server, char* propertyFileLocation, con
 	UTIL_LOG_CONSOLE(LOG_DEBUG, "Server: \tLoading settings from disk...");
 
 	ERROR_CODE error;
-		if((error = properties_load(&server->properties, propertyFileLocation, propertyFileLocationLength)) != ERROR_NO_ERROR){
+		if((error = properties_loadFromDisk(&server->properties, propertyFileLocation, propertyFileLocationLength)) != ERROR_NO_ERROR){
 			goto label_return;
 		}
 

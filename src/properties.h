@@ -71,6 +71,8 @@ Property* properties_get(PropertyFile*, const char*, const uint_fast64_t);
 
 ERROR_CODE properties_updateProperty(PropertyFile*, const char*, const uint_fast64_t, const int8_t data[]);
 
+ERROR_CODE properties_parse(PropertyFile*, char*, uint_fast64_t);
+
 ERROR_CODE properties_parseLine(PropertyFile*, PropertyFileEntry**, char*, uint_fast64_t);
 
 bool properties_propertyExists(PropertyFile*, const char*, const uint_fast64_t);

@@ -14,77 +14,41 @@
 
 #define PROPERTY_FILE_READ_BUFFER 8192
 
-ERROR_CODE properties_load(PropertyFile* propertyFile, const char* filePath, const uint_fast64_t filePathLength){
-	propertyFile->filePathLength = filePathLength;
-	propertyFile->filePath = malloc(sizeof(*propertyFile->filePath) * (filePathLength + 1));
-	memcpy(propertyFile->filePath, filePath, filePathLength + 1);
+ERROR_CODE properties_loadFromDisk(PropertyFile* properties, const char* filePath, const uint_fast64_t filePathLength){
+	ERROR_CODE error;
 
-	memset(&propertyFile->properties, 0, sizeof(propertyFile->properties));
+	properties->filePathLength = filePathLength;
+	properties->filePath = malloc(sizeof(*properties->filePath) * (filePathLength + 1));
+	memcpy(properties->filePath, filePath, filePathLength + 1);
 
-	FILE* filePtr = fopen(propertyFile->filePath, "r");
+	memset(&properties->properties, 0, sizeof(properties->properties));
 
+	uint_fast64_t fileSize;
+	if((error = util_getFileSize(filePath, &fileSize)) != ERROR_NO_ERROR){
+		return ERROR(error);
+	}
+
+	u_int8_t* readBuffer = malloc(sizeof(*readBuffer) * fileSize);
+	if(readBuffer == NULL){
+		return ERROR(ERROR_OUT_OF_MEMORY);
+	}
+
+	FILE* filePtr = fopen(properties->filePath, "r");
 	if(filePtr == NULL){
 		return ERROR_(ERROR_FAILED_TO_OPEN_FILE, "File: '%s'.", filePath);
 	}
 
-	PropertyFileEntry* currentPropertyFileSection = NULL;
+	if(fread(readBuffer, 1, fileSize, filePtr) != fileSize){
+		fclose(filePtr);
 
-	u_int8_t readBuffer[PROPERTY_FILE_READ_BUFFER];
-	uint_fast64_t lineNumber = 0;
-	// TODO: Add handling of running out of buffer space and having to copy not completly parsed buffer into the ne buffer before continuing to read from disk. (jan - 2022.05.16)
-	for(;;){
-		uint_fast64_t bytesRead = fread(readBuffer, 1, PROPERTY_FILE_READ_BUFFER, filePtr);
-
-		uint_fast64_t readOffset = 0;
-		for(;;){
-			lineNumber += 1;
-
-			const int_fast64_t lineSplitt = util_findFirst((char*) (readBuffer + readOffset), bytesRead - readOffset, 0x0a/*Line feed character*/);
-
-			// Current line.
-			char* line = (char*) (readBuffer + readOffset);
-
-			uint_fast64_t lineLength;
-			// The last line in every file will not be terminated by a line feed character so lineSplitt will be '-1'.
-			if(lineSplitt == -1){
-				lineLength = bytesRead - readOffset;
-
-				UTIL_LOG_CONSOLE_(LOG_DEBUG, "LineLength: '%" PRIuFAST64 "'", lineLength);
-			}else{
-				lineLength = lineSplitt;
-			}		
-
-			line = util_trim(line, &lineLength);
-
-			ERROR_CODE error;
-			if((error = properties_parseLine(propertyFile, &currentPropertyFileSection, line, lineLength) != ERROR_NO_ERROR)){
-				// Termianted string to print an acceptable error message.
-				// NOTE: This will remove the last character of the line if we are on the last line of the file. (jan - 2022.11.19)
-				line[lineLength] = '\0';
-
-				UTIL_LOG_CONSOLE_(LOG_DEBUG, "Failed to parse line: '%s' of '%s' (%s)", line, filePath, util_toErrorString(error));
-			}
-
-			// Advance read offset by line length plus the line feed character.
-			readOffset += lineSplitt + 1;
-			if(readOffset >= bytesRead){
-				break;
-			}
-		}
-
-		if(bytesRead < PROPERTY_FILE_READ_BUFFER){
-			if(feof(filePtr) != 0){
-				// End of file.
-				break;
-			}
-		}else{
-			return ERROR(ERROR_FUNCTION_NOT_IMPLEMENTED);
-		}
+		return ERROR_(ERROR_FAILED_TO_LOAD_FILE, "Failed to load file: '%s'.", filePath);
 	}
-
+	
 	fclose(filePtr);
 
-	return ERROR(ERROR_NO_ERROR);
+	error = properties_parse(properties, (char*) readBuffer, fileSize);
+
+	return ERROR(error);
 }
 
 ERROR_CODE properties_initPropertyFileSection(PropertyFileEntry** section, char* name, uint_fast64_t nameLength){
@@ -111,7 +75,8 @@ ERROR_CODE properties_initPropertyFileSection(PropertyFileEntry** section, char*
 }
 
 ERROR_CODE properties_addPropertyFileEntry(PropertyFile* properties, PropertyFileEntry* section, Property* property){
-	linkedList_add((section != NULL ? (&section->properties) : (&properties->properties)), &property, sizeof(Property*));
+	// Adds the property either to the current property file section, or the property file directly if no section is passed.
+	linkedList_add(((section != NULL) ? (&section->properties) : (&properties->properties)), &property, sizeof(Property*));
 
 	return ERROR(ERROR_NO_ERROR);
 }
@@ -232,6 +197,44 @@ inline Property* properties_get(PropertyFile* propertyFile, const char* name, co
 
 inline bool properties_propertyExists(PropertyFile* propertyFile, const char* name, const uint_fast64_t nameLength){
 	return properties_get(propertyFile, name, nameLength) != NULL;
+}
+
+ERROR_CODE properties_parse(PropertyFile* properties, char* buffer, uint_fast64_t bufferSize){
+	PropertyFileEntry* currentPropertyFileSection = NULL;
+
+	uint_fast64_t readOffset;
+	uint_fast64_t lineNumber;
+	for(lineNumber = 0, readOffset = 0; readOffset < bufferSize ;lineNumber++){
+		const int_fast64_t lineSplitt = util_findFirst((char*) (buffer + readOffset), bufferSize - readOffset, CONSTANTS_CHARACTER_LINE_FEED);
+
+		// Current line.
+		char* line = (char*) (buffer + readOffset);
+
+		uint_fast64_t lineLength;
+		// The last line in every file will not be terminated by a line feed character so lineSplitt will be '-1'.
+		if(lineSplitt == -1){
+			lineLength = bufferSize - readOffset;
+		}else{
+			lineLength = lineSplitt;
+		}		
+
+		line = util_trim(line, &lineLength);
+
+		ERROR_CODE error;
+		if((error = properties_parseLine(properties, &currentPropertyFileSection, line, lineLength) != ERROR_NO_ERROR)){
+			// Because line is not '\0' terminated an we would overwrite data if a line is not line feed terminated, we create a '\0' termianted temp copy of line for our error message.
+			char* _line = alloca(sizeof(*_line) * lineLength + 1);
+			memcpy(_line, line, lineLength);
+			_line[lineLength] = '\0';
+
+			return ERROR_(error, "Failed to parse line: (%" PRIuFAST64 ") '%s'.", lineNumber, _line);
+		}
+
+		// Advance read offset by line length plus the line feed character.
+		readOffset += lineLength + 1;
+	}
+
+	return ERROR(ERROR_NO_ERROR);
 }
 
 ERROR_CODE properties_initProperty(Property** property, char* name, const int_fast64_t nameLength, int8_t* data, const int_fast64_t dataLength){

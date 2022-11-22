@@ -360,4 +360,6 @@ ERROR_CODE util_createAllDirectories(const char*, const uint_fast64_t);
 
 ERROR_CODE util_fileCopy(const char*, const char*);
 
+ERROR_CODE util_getFileSize(const char*, uint_fast64_t*);
+
 #endif
