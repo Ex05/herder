@@ -454,12 +454,21 @@ TEST_TEST_FUNCTION(util_replace){
 
 TEST_TEST_FUNCTION(util_trim){
 	char s[] = " 123_457 8910 ";
+	#define UTIL_TRIM_RESULT "123_457 8910"
 
-	util_trim(s, strlen(s));
+	uint_fast64_t length = strlen(s);
 
-	if(strcmp(s, "123_457 8910") != 0){
+	util_trim(s, &length);
+
+	if(strcmp(s, UTIL_TRIM_RESULT) != 0){
 		return TEST_FAILURE("'util_trim' '%s' != '%s'.", s, "123_457 8910");
 	}
+
+	if(strlen(UTIL_TRIM_RESULT) != length){
+		return TEST_FAILURE("'util_trim' '%" PRIuFAST64 "' != '%" PRIuFAST64 "'.", length, strlen(UTIL_TRIM_RESULT));
+	}
+
+	#undef UTIL_TRIM_RESULT
 
 	return TEST_SUCCESS;
 }

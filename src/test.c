@@ -230,12 +230,6 @@ void test_test(test_testFunction* func, const char* name){
 	TEST_SUIT_END();
 
 	TEST_SUIT_BEGIN("properties");
-		TEST(properties_newPropertyFileTemplate);
-		TEST(properties_newPropertyTemplate);
-		TEST(properties_newPropertyFileSection);
-		TEST(properties_propertyFileSectionAddProperty);
-		TEST(properties_propertryFileTemplateAddSection);
-		TEST(properties_createPropertyFileFromTemplate);
 	TEST_SUIT_END();
 
 	TEST_SUIT_BEGIN("http");

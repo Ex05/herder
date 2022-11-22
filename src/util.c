@@ -407,7 +407,7 @@ inline void util_stringCopy(char* a, char* b, uint_fast64_t length){
 }
 
 // http://www.stroustrup.com/new_learning.pdf
-ERROR_CODE util_readUserInput(char** s, int_fast64_t* charRead){
+ERROR_CODE util_readUserInput(char** s, uint_fast64_t* charRead){
 	uint_fast16_t limit = 64;
 	*s = malloc(limit);
 	if(*s == NULL){
@@ -533,24 +533,36 @@ inline void util_replace(char* buffer, const uint_fast64_t bufferLength, uint_fa
 	}
 }
 
-inline char* util_trim(char* s, const uint_fast64_t length) {
+inline char* util_trim(char* s, uint_fast64_t* length){
+	const uint_fast64_t stringLength = *length;
+
 	char c;
 	uint_fast64_t i = -1;
+
+	// Start at the end and find the first non white space.
 	do{
-		c = *(s + (length - ++i) - 1);
+		c = *(s + (stringLength - ++i) - 1);
 	}while(isspace(c));
 
-	*(s + length - i) = '\0';
+	*(s + stringLength - i) = '\0';
 
+	// Adjust length.
+	*length -= i;
+
+	// Start at the beginning of the string and find the first non white space character.
 	i = -1;
 	do{
 		c = *(s + ++i);
 	}while(isspace(c));
 
+	// Shift entire string forward to cover white space.
 	uint_fast64_t j;
-	for (j = 0; j < length; j++){
+	for (j = 0; j < stringLength; j++){
 		*(s + j) = *(s + j + i);
 	}
+
+	// Adjust length.
+	*length -= i;
 
 	return s;
 }

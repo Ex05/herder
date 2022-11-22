@@ -27,9 +27,11 @@ ERROR_CODE properties_load(PropertyFile* propertyFile, const char* filePath, con
 		return ERROR_(ERROR_FAILED_TO_OPEN_FILE, "File: '%s'.", filePath);
 	}
 
+	PropertyFileEntry* currentPropertyFileSection = NULL;
+
 	u_int8_t readBuffer[PROPERTY_FILE_READ_BUFFER];
 	uint_fast64_t lineNumber = 0;
-	// TODO: Add handling of running out of bnuffer space and having to copy not completly parsed buffer into the ne buffer before continuing to read from disk. (jan - 2022.05.16)
+	// TODO: Add handling of running out of buffer space and having to copy not completly parsed buffer into the ne buffer before continuing to read from disk. (jan - 2022.05.16)
 	for(;;){
 		uint_fast64_t bytesRead = fread(readBuffer, 1, PROPERTY_FILE_READ_BUFFER, filePtr);
 
@@ -37,71 +39,37 @@ ERROR_CODE properties_load(PropertyFile* propertyFile, const char* filePath, con
 		for(;;){
 			lineNumber += 1;
 
-			const int_fast64_t lineSplitt = util_findFirst((char*) (readBuffer + readOffset), bytesRead - readOffset, 0x0a);
+			const int_fast64_t lineSplitt = util_findFirst((char*) (readBuffer + readOffset), bytesRead - readOffset, 0x0a/*Line feed character*/);
 
+			// Current line.
 			char* line = (char*) (readBuffer + readOffset);
 
-			if(lineSplitt != -1){
-				line[lineSplitt] = '\0';
+			uint_fast64_t lineLength;
+			// The last line in every file will not be terminated by a line feed character so lineSplitt will be '-1'.
+			if(lineSplitt == -1){
+				lineLength = bytesRead - readOffset;
 
-				line = util_trim(line, lineSplitt);
+				UTIL_LOG_CONSOLE_(LOG_DEBUG, "LineLength: '%" PRIuFAST64 "'", lineLength);
 			}else{
-				line = util_trim(line, bytesRead - readOffset);
-			}		 
+				lineLength = lineSplitt;
+			}		
 
-			if(util_stringStartsWith(line, '#')){
-				goto label_continue;
-			}else{
-				if(util_stringStartsWith_s(line, "//", 2)){
-					goto label_continue;
-				}else if(strncmp(line, "Version:", 8) == 0){
-					// TODO: Handle different versions. (jan - 2022.05.16)
-					goto label_continue;
-				}
-			}
-
-			const int_fast64_t lineLength = strlen(line);
-
-			if(lineLength == 0){
-				goto label_continue;
-			}
-
-			// Name.
-			const int_fast64_t nameSplitt = util_findFirst(line, lineLength, '=');
-
-			if(nameSplitt == -1){
-				UTIL_LOG_CONSOLE_(LOG_INFO, "Invalid property defenition in '%s' at line: %" PRIiFAST64 ". \"%s\" missing assignment.", filePath, lineNumber, line);
-
-				goto label_continue;
-			}
-
-			line[nameSplitt] = '\0';
-			line = util_trim(line, nameSplitt);
-
-			char* name = line;
-			const int_fast64_t nameLength = strlen(name);
-
-			line += nameSplitt + 1;
-			line = util_trim(line, strlen(line));
-
-			// Value.
-			char* value = line;
-			const int_fast64_t valueLength = strlen(value);
+			line = util_trim(line, &lineLength);
 
 			ERROR_CODE error;
-			Property* property;
-			if((error = properties_initProperty(&property, name, nameLength, (int8_t*) value, valueLength)) != ERROR_NO_ERROR){
-				return ERROR(error);
+			if((error = properties_parseLine(propertyFile, &currentPropertyFileSection, line, lineLength) != ERROR_NO_ERROR)){
+				// Termianted string to print an acceptable error message.
+				// NOTE: This will remove the last character of the line if we are on the last line of the file. (jan - 2022.11.19)
+				line[lineLength] = '\0';
+
+				UTIL_LOG_CONSOLE_(LOG_DEBUG, "Failed to parse line: '%s' of '%s' (%s)", line, filePath, util_toErrorString(error));
 			}
 
-			linkedList_add(&propertyFile->properties, &property, sizeof(Property*));
-
-		label_continue:
-			if(lineSplitt == -1){
+			// Advance read offset by line length plus the line feed character.
+			readOffset += lineSplitt + 1;
+			if(readOffset >= bytesRead){
 				break;
 			}
-
-			readOffset += lineSplitt + 1;
 		}
 
 		if(bytesRead < PROPERTY_FILE_READ_BUFFER){
@@ -119,18 +87,140 @@ ERROR_CODE properties_load(PropertyFile* propertyFile, const char* filePath, con
 	return ERROR(ERROR_NO_ERROR);
 }
 
+ERROR_CODE properties_initPropertyFileSection(PropertyFileEntry** section, char* name, uint_fast64_t nameLength){
+	(*section) = malloc(sizeof((**section)));
+	if((*section) == NULL){
+		return ERROR(ERROR_OUT_OF_MEMORY);
+	}
+
+	// Make sure properties is '0' initialised.
+	memset((*section), 0 , sizeof(PropertyFileEntry));
+
+	(*section)->nameLength = nameLength;
+
+	(*section)->name = malloc(sizeof(*(*section)->name * (nameLength + 1)));
+	if((*section)->name == NULL){
+		return ERROR(ERROR_OUT_OF_MEMORY);
+	}
+
+	memcpy((*section)->name, name, nameLength);
+	
+	*section = (*section);
+
+	return ERROR(ERROR_NO_ERROR);
+}
+
+ERROR_CODE properties_addPropertyFileEntry(PropertyFile* properties, PropertyFileEntry* section, Property* property){
+	linkedList_add((section != NULL ? (&section->properties) : (&properties->properties)), &property, sizeof(Property*));
+
+	return ERROR(ERROR_NO_ERROR);
+}
+
 void properties_free(PropertyFile* propertyFile){
 	linkedList_free(&propertyFile->properties);
 
 	free(propertyFile->filePath);
 }
 
-inline Property* properties_get(PropertyFile* propertyFile, const char* name, const int_fast64_t nameLength){
+inline ERROR_CODE properties_parseLine(PropertyFile* properties, PropertyFileEntry** section, char* line, uint_fast64_t lineLength){	
+	ERROR_CODE error;
+
+	Property* property;
+
+	// Empty line
+	if(lineLength == 0){
+		*section = NULL;
+		
+		// Create a property with dataLength 0 to represent an empty line.
+		if((error = properties_initProperty(&property, NULL, 0, NULL, 0)) != ERROR_NO_ERROR){
+			return ERROR(error);
+		}
+
+		goto label_addProperty;
+	}
+
+	// Remove leading and trailing white space from line.
+	line = util_trim(line, &lineLength);
+
+	if(util_stringStartsWith(line, '#')){
+		// Skip leading '#' symbol.
+		line += 1;
+		lineLength -= 1;
+
+		line = util_trim(line, &lineLength);
+
+		if((error = properties_initPropertyFileSection(&property, line, lineLength)) != ERROR_NO_ERROR){
+			return ERROR(error);
+		}
+
+		properties_addPropertyFileEntry(properties, (*section != NULL ? (*section) : NULL), property);
+
+		// Make _section the currently active section.
+		*section = property;
+
+		return ERROR(ERROR_NO_ERROR);
+	}else if(util_stringStartsWith_s(line, "//", 2)){
+			if((error = properties_initProperty(&property, line, lineLength, NULL, -1)) != ERROR_NO_ERROR){
+				return ERROR(error);
+			}
+
+			goto label_addProperty;
+		}else if(strncmp(line, "Version:", 8) == 0){
+			// TODO: Handle different versions. (jan - 2022.05.16)
+
+			return ERROR(ERROR_NO_ERROR);
+		}
+
+	// Name.
+	const int_fast64_t nameSplitt = util_findFirst(line, lineLength, '=');
+
+	if(nameSplitt == -1){
+		return ERROR(ERROR_INVALID_VALUE);
+	}
+
+	line[nameSplitt] = '\0';
+	lineLength = nameSplitt;
+	line = util_trim(line, &lineLength);
+
+	char* name = line;
+	const int_fast64_t nameLength = lineLength;
+
+	line += nameSplitt + 1;
+
+	lineLength = strlen(line);
+	line = util_trim(line, &lineLength);
+
+	// Value.
+	char* value = line;
+	const int_fast64_t valueLength = lineLength;
+
+	if((error = properties_initProperty(&property, name, nameLength, (int8_t*) value, valueLength)) != ERROR_NO_ERROR){
+		return ERROR(error);
+	}
+
+label_addProperty:
+	return ERROR(properties_addPropertyFileEntry(properties, (*section != NULL ? (*section) : NULL), property));
+}
+
+inline Property* properties_get(PropertyFile* propertyFile, const char* name, const uint_fast64_t nameLength){
 	LinkedListIterator it;
 	linkedList_initIterator(&it, &propertyFile->properties);
 
 	while(LINKED_LIST_ITERATOR_HAS_NEXT(&it)){
-		Property* _property = LINKED_LIST_ITERATOR_NEXT(&it);
+		Property* _property = LINKED_LIST_ITERATOR_NEXT_PTR(&it, Property);
+
+		if(PROPERTIES_IS_ENTRY_SECTION(_property)){
+			LinkedListIterator _it;
+			linkedList_initIterator(&_it, &_property->properties);
+
+			while(LINKED_LIST_ITERATOR_HAS_NEXT(&_it)){
+				Property* _property = LINKED_LIST_ITERATOR_NEXT_PTR(&_it, Property);
+
+				if(strncmp(name, PROPERTIES_PROPERTY_NAME(_property), (nameLength > _property->nameLength ? nameLength : _property->nameLength) + 1) == 0){
+					return _property;
+				}
+			}
+		}
 
 		if(strncmp(name, PROPERTIES_PROPERTY_NAME(_property), (nameLength > _property->nameLength ? nameLength : _property->nameLength) + 1) == 0){
 			return _property;
@@ -154,9 +244,13 @@ ERROR_CODE properties_initProperty(Property** property, char* name, const int_fa
 	(*property)->nameLength = nameLength;
 	(*property)->dataLength = dataLength;
 
-	memcpy(&(*property)->data, name, sizeof(*name) * (nameLength + 1));
-	memcpy(((*property)->data + nameLength + 1), data, dataLength);
-	(*property)->data[nameLength + 1 + dataLength] = '\0';
+	if(name != NULL){
+		memcpy(&(*property)->data, name, sizeof(*name) * (nameLength + 1));
+	}
+
+	if(data != NULL){
+		memcpy(((*property)->data + nameLength + 1), data, dataLength);
+	}
 
 	return ERROR(ERROR_NO_ERROR);
 }
@@ -165,150 +259,6 @@ ERROR_CODE properties_updateProperty(PropertyFile* propertyFile, const char* nam
 	// TODO: ...
 
 	return ERROR(ERROR_FUNCTION_NOT_IMPLEMENTED);
-}
-
-inline void properties_propertyFileTemplateSetVersion(PropertyFileTemplate* template, Version version){
-	template->version.release = version.release;
-	template->version.update = version.update;
-	template->version.hotfix = version.hotfix;
-}
-
-inline void properties_propertyFileTemplateSetFilePath(PropertyFileTemplate* template, char* filePath, int_fast64_t filePathLength){
-	template->filePathLength = filePathLength;
-	template->filePath = malloc(sizeof(*template->filePath) * (filePathLength + 1));
-	memcpy(template->filePath, filePath, filePathLength + 1);
-}
-
-inline void properties_propertyFileTemplateAddSection(PropertyFileTemplate* template, PropertyFileSection* section){
-	linkedList_add(&template->sections, section, sizeof(*section));
-}
-
-inline void properties_propertyFileTemplateFileSectionAddProperty(PropertyFileSection* section, PropertyTemplate* property){
-	linkedList_add(&section->properties, property, sizeof(*property));
-}
-
-void properties_propertyFileTemplateAddProperty(PropertyFileTemplate* template, PropertyTemplate* property){
-	linkedList_add(&template->properties, property, sizeof(*property));
-}
-
-ERROR_CODE properties_createPropertyFileFromTemplate(PropertyFileTemplate* template){
-	ERROR_CODE error = ERROR_NO_ERROR;
-
-	if(util_fileExists(template->filePath)){
-		return ERROR_(ERROR_ALREADY_EXIST, "The file:'%s' already exists.", template->filePath);
-	}
-
-	FILE* filePtr = fopen(template->filePath, "w");
-
-	if(filePtr == NULL){
-		return ERROR_(ERROR_FAILED_TO_CREATE_FILE, "Failed to create the file:'%s'.", template->filePath);
-	}
-
-	const char versionString[] = "Version: ";
-	fwrite(versionString, sizeof(char), strlen(versionString), filePtr);
-
-	char formatedNumber[UTIL_FORMATTED_NUMBER_LENGTH];
-
-	uint_fast64_t stringLength = UTIL_FORMATTED_NUMBER_LENGTH;
-	stringLength = snprintf(formatedNumber, stringLength, "%" PRIdFAST64, (long) template->version.release);
-	fwrite(formatedNumber, sizeof(char), stringLength, filePtr);
-
-	fwrite(".", sizeof(char), 1, filePtr);
-
-	stringLength = UTIL_FORMATTED_NUMBER_LENGTH;
-	stringLength = snprintf(formatedNumber, stringLength, "%" PRIdFAST64, (long) template->version.update);
-	fwrite(formatedNumber, sizeof(char), stringLength, filePtr);
-	fwrite(".", sizeof(char), 1, filePtr);
-
-	stringLength = UTIL_FORMATTED_NUMBER_LENGTH;
-	stringLength = snprintf(formatedNumber, stringLength, "%" PRIdFAST64, (long) template->version.hotfix);
-	fwrite(formatedNumber, sizeof(char), stringLength, filePtr);
-
-	fwrite("\n", sizeof(char), 1, filePtr);
-
-	// Sections.
-	LinkedListIterator sectionIterator;
-	linkedList_initIterator(&sectionIterator, &template->sections);
-
-	while(LINKED_LIST_ITERATOR_HAS_NEXT(&sectionIterator)){
-		PropertyFileSection* section = LINKED_LIST_ITERATOR_NEXT(&sectionIterator);
-
-		fwrite("\n# ", sizeof(char), 3, filePtr);
-		fwrite(section->name, sizeof(char), section->nameLength, filePtr);
-		fwrite("\n", sizeof(char), 1, filePtr);
-
-		// Properties.
-		LinkedListIterator propertyIterator;
-		linkedList_initIterator(&propertyIterator, &section->properties);
-		while(LINKED_LIST_ITERATOR_HAS_NEXT(&propertyIterator)){
-			PropertyTemplate* property = LINKED_LIST_ITERATOR_NEXT(&propertyIterator);
-			
-			fwrite(property->name, sizeof(char), property->nameLength, filePtr);
-			fwrite(" = ", sizeof(char), 3, filePtr);
-			fwrite(property->value, sizeof(char), property->valueLength, filePtr);
-			fwrite("\n", sizeof(char), 1, filePtr);
-		}
-	}
-
-	// Properties.
-	if(template->properties.length > 0){
-		fwrite("\n", sizeof(char), 1, filePtr);
-	}
-
-	LinkedListIterator propertyIterator;
-	linkedList_initIterator(&propertyIterator, &template->properties);
-
-	while(LINKED_LIST_ITERATOR_HAS_NEXT(&propertyIterator)){
-		PropertyTemplate* property = LINKED_LIST_ITERATOR_NEXT(&propertyIterator);
-
-		fwrite(property->name, sizeof(char), property->nameLength, filePtr);
-		fwrite(" = ", sizeof(char), 3, filePtr);
-		fwrite(property->value, sizeof(char), property->valueLength, filePtr);
-		fwrite("\n", sizeof(char), 1, filePtr);
-	}
-
-	fclose(filePtr);
-
-	return ERROR(error);
-}
-
-void properties_freePropertyFileTemplate(PropertyFileTemplate* template){
-	free(template->filePath);
-
-	LinkedListIterator sectionIterator;
-	linkedList_initIterator(&sectionIterator, &template->sections);
-
-	while(LINKED_LIST_ITERATOR_HAS_NEXT(&sectionIterator)){
-		PropertyFileSection* section = LINKED_LIST_ITERATOR_NEXT(&sectionIterator);
-
-		LinkedListIterator propertyIterator;
-		linkedList_initIterator(&propertyIterator, &section->properties);
-
-		while(LINKED_LIST_ITERATOR_HAS_NEXT(&propertyIterator)){
-			PropertyTemplate* property = LINKED_LIST_ITERATOR_NEXT(&propertyIterator);
-
-			free(property->name);
-			free(property->value);
-		}
-
-		free(section->name);
-		
-		linkedList_free(&section->properties);
-	}
-
-	linkedList_free(&template->sections);
-
-	LinkedListIterator propertyIterator;
-	linkedList_initIterator(&propertyIterator, &template->properties);
-
-	while(LINKED_LIST_ITERATOR_HAS_NEXT(&propertyIterator)){
-		PropertyTemplate* property = LINKED_LIST_ITERATOR_NEXT(&propertyIterator);
-
-		free(property->name);
-		free(property->value);
-	}
-
-	linkedList_free(&template->properties);
 }
 
 #endif

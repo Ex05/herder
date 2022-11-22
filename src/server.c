@@ -2,6 +2,9 @@
 #define SERVER_C
 
 // POSIX Version ¢2008
+#include "util.h"
+#include <stdint.h>
+#include <string.h>
 #define _XOPEN_SOURCE 700
 
 #define _GNU_SOURCE
@@ -118,86 +121,32 @@ ERROR_CODE server_showSettings(void){
 ERROR_CODE server_writeTemplatePropertyFileToDisk(char* propertyFileLocation, const int_fast64_t propertyFileLocationLength){
 	UTIL_LOG_CONSOLE(LOG_DEBUG, "Writing template seetings file to disk...");
 
-	// PropertyFile.		
-	PROPERTIES_NEW_PROPERTY_FILE_TEMPLATE(Template, RESOURCES_PROPERTY_FILE_LOCATION);
+	// PROPERTIES_CREATE_FROM_TEMPLATE(
+	// 	"Version: 1.0.0
 
-	// Security
-	PROPERTIES_NEW_PROPERTY_FILE_SECTION(Security, CONSTANTS_PROPERTY_FILE_SECTION_SECURITY);	
+	// 	# Server
+	// 	port = 1869
+	// 	daemonize = true
+	// 	num_worker_threads = 1
+	// 	http_root_directory = 
+	// 	custom_error_pages_directoory = 
+	// 	logfile_directory = 
+	// 	epoll_event_buffer_size = 32
+	// 	http_cache_size = 256
+	// 	error_page_cache_size = 4
 
-		// SSL_Certificate
-		PROPERTIES_NEW_PROPERTY_TEMPLATE(SSL_Certificate, CONSTANTS_SSL_CERTIFICATE_LOCATION_PROPERTY_NAME, CONSTANTS_SSL_CERTIFICATE_LOCATION_DEFAULT_VALUE);
-		PROPERTIES_PROPERTY_FILE_SECTION_ADD_PROPERTY(Security, SSL_Certificate);
+	// 	// Max architecture independant guaranteed size is 2pow(16) or 65_535 Bytes.
+	// 	http_read_buffer_size = 8096
+	// 	TEST
+	// 	# Security
+	// 	ssl_privateKeyFile = 
+	// 	ssl_certificate = 
 
-		// SSL_PrivateKeyFile
-		PROPERTIES_NEW_PROPERTY_TEMPLATE(SSL_PrivateKeyFile, CONSTANTS_SSL_PRIVATE_KEY_FILE_PROPERTY_NAME, CONSTANTS_SSL_PRIVATE_KEY_FILE_PROPERTY_DEFAULT_VALUE);
-		PROPERTIES_PROPERTY_FILE_SECTION_ADD_PROPERTY(Security, SSL_PrivateKeyFile);
+	// 	work_directory =
+	// 	system_log_id = herder_server
+	// ", propertyFileLocation, propertyFileLocationLength);
 
-		PROPERTIES_PROPERTRY_FILE_TEMPLATE_ADD_SECTION(Template, Security);
-
-	// Server
-	PROPERTIES_NEW_PROPERTY_FILE_SECTION(Server, CONSTANTS_PROPERTY_FILE_SECTION_SERVER);	
-
-		// HTTP_ReadBufferSize
-		PROPERTIES_NEW_PROPERTY_TEMPLATE(HTTP_ReadBufferSize, CONSTANTS_HTTP_READ_BUFFER_SIZE_PROPERTY_NAME, CONSTANTS_HTTP_READ_BUFFER_SIZE_PROPERTY_DEFAULT_VALUE);
-		PROPERTIES_PROPERTY_FILE_SECTION_ADD_PROPERTY(Server, HTTP_ReadBufferSize);
-
-		// ErrorPageChacheSize
-		PROPERTIES_NEW_PROPERTY_TEMPLATE(ErrorPageChacheSize, CONSTANTS_ERROR_PAGE_CACHE_SIZE_PROPERTY_NAME, CONSTANTS_ERROR_PAGE_CACHE_SIZE_POPERTY_DEFAULT_VALUE);
-		PROPERTIES_PROPERTY_FILE_SECTION_ADD_PROPERTY(Server, ErrorPageChacheSize);
-
-		// HTTP_CacheSize
-		PROPERTIES_NEW_PROPERTY_TEMPLATE(HTTP_CacheSize, CONSTANTS_HTTP_CACHE_SIZE_PROPERTY_NAME, CONSTANTS_HTTP_CACHE_SIZE_POPERTY_DEFAULT_VALUE);
-		PROPERTIES_PROPERTY_FILE_SECTION_ADD_PROPERTY(Server, HTTP_CacheSize);
-
-		// EpollEventBufferSize
-		PROPERTIES_NEW_PROPERTY_TEMPLATE(EpollEventBufferSize, CONSTANTS_EPOLL_EVENT_BUFFER_SIZE_PROPERTY_NAME, CONSTANTS_EPOLL_EVENT_BUFFER_SIZE_PROPERTY_DEFAULT_VALUE);
-		PROPERTIES_PROPERTY_FILE_SECTION_ADD_PROPERTY(Server, EpollEventBufferSize);
-
-		// LogFileDirectory
-		PROPERTIES_NEW_PROPERTY_TEMPLATE(LogFileDirectory, CONSTANTS_LOGFILE_DIRECTORY_PROPERTY_NAME, CONSTANTS_LOGFILE_DIRECTORY_POPERTY_DEFAULT_VALUE);
-		PROPERTIES_PROPERTY_FILE_SECTION_ADD_PROPERTY(Server, LogFileDirectory);
-
-		// CustomErrorPagesDirectory
-		PROPERTIES_NEW_PROPERTY_TEMPLATE(CustomErrorPagesDirectory, CONSTANTS_CUSTOM_ERROR_PAGES_DIRECTORY_PROPERTY_NAME, CONSTANTS_CUSTOM_ERROR_PAGES_DIRECTORY_PROPERTY_DEFAULT_VALUE);
-		PROPERTIES_PROPERTY_FILE_SECTION_ADD_PROPERTY(Server, CustomErrorPagesDirectory);
-
-		// HTTP_RootDirectory
-		PROPERTIES_NEW_PROPERTY_TEMPLATE(HTTP_RootDirectory, CONSTANTS_HTTP_ROOT_DIRECTORY_PROPERTY_NAME, CONSTANTS_HTTP_ROOT_DIRECTORY_POPERTY_DEFAULT_VALUE);
-		PROPERTIES_PROPERTY_FILE_SECTION_ADD_PROPERTY(Server, HTTP_RootDirectory);
-
-		// NumWorkerThreads
-		PROPERTIES_NEW_PROPERTY_TEMPLATE(NumWorkerThreads, CONSTANTS_NUM_WORKER_THREADS_PROPERTY_NAME, CONSTANTS_NUM_WORKER_THREADS_PROPERTY_DEFAULT_VALUE);
-		PROPERTIES_PROPERTY_FILE_SECTION_ADD_PROPERTY(Server, NumWorkerThreads);
-
-		// Daemonize
-		PROPERTIES_NEW_PROPERTY_TEMPLATE(Daemonize, CONSTANTS_DAEMONIZE_PROPERTY_NAME, CONSTANTS_DAEMONIZE_PROPERTY_DEFAULT_VALUE);
-		PROPERTIES_PROPERTY_FILE_SECTION_ADD_PROPERTY(Server, Daemonize);
-
-		// Port
-		PROPERTIES_NEW_PROPERTY_TEMPLATE(Port, CONSTANTS_PORT_PROPERTY_NAME, CONSTANTS_PORT_PROPERTY_DEFAULT_VALUE);
-		PROPERTIES_PROPERTY_FILE_SECTION_ADD_PROPERTY(Server, Port);
-
-		PROPERTIES_PROPERTRY_FILE_TEMPLATE_ADD_SECTION(Template, Server);
-
-	// Syslog_ID
-	PROPERTIES_NEW_PROPERTY_TEMPLATE(SYSLOG_ID, CONSTANTS_SYSLOG_ID_PROPERTY_NAME, CONSTANTS_SYSLOG_ID_PROPERTY_DEFAULT_VALUE);
-	PROPERTIES_PROPERTY_FILE_ADD_PROPERTY(Template, SYSLOG_ID);			
-
-	// WorkDirectory
-	PROPERTIES_NEW_PROPERTY_TEMPLATE(WorkDirectory, CONSTANTS_WORK_DIRECTORY_PROPERTY_NAME, CONSTANTS_WORK_DIRECTORY_PROPERTY_DEFAULT_VALUE);
-
-	PROPERTIES_PROPERTY_FILE_ADD_PROPERTY(Template, WorkDirectory);			
-
-	ERROR_CODE error;
-	if((error = PROPERTIES_CREATE_PROPERTY_FILE(Template)) != ERROR_NO_ERROR){
-		PROPERTIES_FREE_PROPERTY_FILE_TEMPLATE(Template);
-
-		return ERROR(error);
-	}
-
-	PROPERTIES_FREE_PROPERTY_FILE_TEMPLATE(Template);
-
-	return ERROR(error);	
+	return ERROR(ERROR_NO_ERROR);	
 }
 
 ERROR_CODE server_init(Server* server, char* propertyFileLocation, const int_fast64_t propertyFileLocationLength){
@@ -767,14 +716,14 @@ ERROR_CODE server_createPropertyFile(char* propertyFileLocation, const uint_fast
 	label_readUserInput:
 		UTIL_LOG_CONSOLE_(LOG_INFO, "The file: '%s' does not exist do you want to create it? Yes/No.", propertyFileLocation);
 
-		int_fast64_t userInputLength;
+		uint_fast64_t userInputLength;
 		char* userInput;
 
 		if((error = util_readUserInput(&userInput, &userInputLength)) != ERROR_NO_ERROR){
 			goto label_return;
 		}
 
-		userInput = util_trim(userInput, userInputLength);
+		userInput = util_trim(userInput, &userInputLength);
 		util_toLowerChase(userInput);
 
 		if(strncmp(userInput, "yes", 4) == 0){
