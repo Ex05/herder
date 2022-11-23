@@ -4,6 +4,9 @@
 #include "properties.h"
 #include "linkedList.h"
 #include "util.h"
+
+#include "doublyLinkedList.c"
+
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -11,6 +14,7 @@
 #include <sys/syslog.h>
 #include <sys/types.h>
 #include <unistd.h>
+
 
 #define PROPERTY_FILE_READ_BUFFER 8192
 

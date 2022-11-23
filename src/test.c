@@ -143,6 +143,7 @@ void test_test(test_testFunction* func, const char* name){
 
 #include "test/arrayList_test.c"
 #include "test/linkedList_test.c"
+#include "test/doublyLinkedList_test.c"
 #include "test/argumentParser_test.c"
 #include "test/que_test.c"
 #include "test/threadPool_test.c"
@@ -170,6 +171,11 @@ void test_test(test_testFunction* func, const char* name){
 		TEST(linkedList_iteration);
 		TEST(linkedList_remove);
 		TEST(linkedList_contains);
+	TEST_SUIT_END();
+
+	TEST_SUIT_BEGIN_(doublyLinkedList);
+		TEST(doublyLinkedList_add);
+		TEST(doublyLinkedList_iteration);
 	TEST_SUIT_END();
 
 	TEST_SUIT_BEGIN("argumentParser");
