@@ -176,6 +176,8 @@ void test_test(test_testFunction* func, const char* name){
 	TEST_SUIT_BEGIN_(doublyLinkedList);
 		TEST(doublyLinkedList_add);
 		TEST(doublyLinkedList_iteration);
+		TEST(doublyLinkedList_remove);
+		TEST(doublyLinkedList_contains);
 	TEST_SUIT_END();
 
 	TEST_SUIT_BEGIN("argumentParser");

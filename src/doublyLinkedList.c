@@ -3,6 +3,7 @@
 
 #include "doublyLinkedList.h"
 #include "util.h"
+#include <sys/syslog.h>
 
 ERROR_CODE doublyLinkedList_add(DoublyLinkedList* list, void* data, uint_fast64_t size){
 	DoublyLinkedList_Node* newNode = malloc(sizeof(*newNode) + size);
@@ -15,7 +16,7 @@ ERROR_CODE doublyLinkedList_add(DoublyLinkedList* list, void* data, uint_fast64_
 	newNode->previousNode = NULL;
 
 	// Insert data into the node struct after 'nextNode' member.
-	memcpy(&newNode->nextNode + 1, data, size);
+	memcpy((&(newNode->nextNode)) + 1, data, size);
 
 	// Add newNode to the end of the list.
 	doublyLinkedList_addNode(list, newNode);
@@ -82,24 +83,37 @@ inline void doublyLinkedList_free(DoublyLinkedList* list){
 }
 
 ERROR_CODE doublyLinkedList_remove(DoublyLinkedList* list, void* data, const uint_fast64_t size){
-/* This is Linus Torvalds double pointer based approach to removing nodes in linked lists, which compared to
-	other approachs (like the one shown below) removes a branch from the code.
-	*/
- DoublyLinkedList_Node** node;
-	for(node = &list->head; *node;){
-		DoublyLinkedList_Node* current = *node;
+// This is Linus Torvalds double pointer based approach to removing nodes in linked lists.
+DoublyLinkedList_Node** node;
+	for(node = &list->tail; *node;){
+		DoublyLinkedList_Node* currentNode = *node;
 
-		if(memcmp(current + 1, data, size) == 0){
-			*node = current->nextNode;
-			current->previousNode->nextNode = current->nextNode;
+		// Compare data.
+		if(memcmp((&(currentNode->nextNode)) + 1, data, size) == 0){
+			// Advance to the next (the element bevor this one) in the list.
+			// *node = currentNode->previousNode;
+
+			// Handle special case for when we want to remove the list head.
+			if(currentNode != list->head){
+				currentNode->previousNode->nextNode = currentNode->nextNode;
+			}else{
+				list->head = currentNode->nextNode;
+			}
+
+			// Handle special case for when we want to remove the list tail.
+			if(currentNode->previousNode != list->tail){
+				currentNode->nextNode->previousNode = currentNode->previousNode;
+			}else{
+				list->tail = currentNode->previousNode;
+			}
 
 			list->length -= 1;
 
-			free(current);
+			free(currentNode);
 
 			return ERROR(ERROR_NO_ERROR);
 		}else{
-			node = &current->nextNode;
+			node = &(currentNode->previousNode);
 		}
 	}
 
