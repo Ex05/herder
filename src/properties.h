@@ -3,7 +3,7 @@
 
 #include "util.h"
 
-#include "linkedList.h"
+#include "doublyLinkedList.h"
 #include <stdint.h>
 
 #define PROPERTIES_SIZEOF_PROPERTY(property) ((2 * sizeof(int_fast64_t)) + sizeof(int8_t) + (sizeof(int8_t) * (property->nameLength + property->dataLength)))
@@ -22,10 +22,10 @@
 
 #define PROPERTIES_GET(propertyFile, name) properties_get(propertyFile, CONSTANTS_ ## name ## _PROPERTY_NAME, strlen(CONSTANTS_ ## name ## _PROPERTY_NAME))
 
-#define PROPERTIES_IS_ENTRY_PROPERTY(entry) (!PROPERTIES_IS_ENTRY_SECTION(entry) &&!PROPERTIES_IS_ENTRY_COMMENT(entry) && !PROPERTIES_IS_ENTRY_EMPTY_LINE(entry))
-#define PROPERTIES_IS_ENTRY_COMMENT(entry) (entry->dataLength == -1)
-#define PROPERTIES_IS_ENTRY_SECTION(entry) (entry->dataLength == 0 && !PROPERTIES_IS_ENTRY_EMPTY_LINE(entry))
-#define PROPERTIES_IS_ENTRY_EMPTY_LINE(entry) (entry->nameLength == 0)
+#define PROPERTIES_IS_PROPERTY_FILE_ENTRY_PROPERTY(entry) (!PROPERTIES_IS_PROPERTY_FILE_ENTRY_PROPERTY_FILE_SECTION(entry) &&!PROPERTIES_IS_PROPERTY_FILE_ENTRY_COMMENT(entry) && !PROPERTIES_IS_PROPERTY_FILE_ENTRY_EMPTY_LINE(entry))
+#define PROPERTIES_IS_PROPERTY_FILE_ENTRY_COMMENT(entry) (entry->dataLength == -1)
+#define PROPERTIES_IS_PROPERTY_FILE_ENTRY_PROPERTY_FILE_SECTION(entry) (entry->dataLength == 0 && !PROPERTIES_IS_PROPERTY_FILE_ENTRY_EMPTY_LINE(entry))
+#define PROPERTIES_IS_PROPERTY_FILE_ENTRY_EMPTY_LINE(entry) (entry->nameLength == 0)
 
 typedef struct version{
 	uint_fast8_t release;
@@ -41,7 +41,7 @@ typedef struct{
 	union{
 			struct{
 				char* name;
-				LinkedList properties;
+				DoublyLinkedList properties;
 			};
 		// NOTE: Due to missing complier/language support for variable length members in unions we have to set data to a static size here. (jan - 2022.11.22)
 		int8_t data[1];
@@ -51,8 +51,7 @@ typedef struct{
 typedef struct{
 	char* filePath;
 	uint_fast64_t filePathLength;
-	LinkedList sections;
-	LinkedList properties;
+	DoublyLinkedList properties;
 }PropertyFile;
 
 typedef PropertyFileEntry Property;

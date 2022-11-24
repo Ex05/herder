@@ -2,6 +2,7 @@
 #define PROPERTIES_C
 
 #include "properties.h"
+#include "doublyLinkedList.h"
 #include "linkedList.h"
 #include "util.h"
 
@@ -80,15 +81,34 @@ ERROR_CODE properties_initPropertyFileSection(PropertyFileEntry** section, char*
 
 ERROR_CODE properties_addPropertyFileEntry(PropertyFile* properties, PropertyFileEntry* section, Property* property){
 	// Adds the property either to the current property file section, or the property file directly if no section is passed.
-	linkedList_add(((section != NULL) ? (&section->properties) : (&properties->properties)), &property, sizeof(Property*));
+	doublyLinkedList_add(((section != NULL) ? (&section->properties) : (&properties->properties)), &property, sizeof(Property*));
 
 	return ERROR(ERROR_NO_ERROR);
 }
 
-void properties_free(PropertyFile* propertyFile){
-	linkedList_free(&propertyFile->properties);
+inline local void _properties_free(DoublyLinkedList* list){
+	DoublyLinkedListIterator it;
+	doublyLinkedList_initIterator(&it, list);
 
-	free(propertyFile->filePath);
+	while(DOUBLY_LINKED_LIST_ITERATOR_HAS_NEXT(&it)){
+		Property* property = DOUBLY_LINKED_LIST_ITERATOR_NEXT_PTR(&it, Property);
+
+		if(PROPERTIES_IS_PROPERTY_FILE_ENTRY_PROPERTY_FILE_SECTION(property)){
+			_properties_free(list);
+
+			doublyLinkedList_free(list);
+
+			free(property->name);
+		}
+
+		free(property);
+	}
+}
+
+inline void properties_free(PropertyFile* properties){
+	_properties_free(&properties->properties);
+
+	free(properties->filePath);
 }
 
 inline ERROR_CODE properties_parseLine(PropertyFile* properties, PropertyFileEntry** section, char* line, uint_fast64_t lineLength){	
@@ -171,32 +191,32 @@ label_addProperty:
 	return ERROR(properties_addPropertyFileEntry(properties, (*section != NULL ? (*section) : NULL), property));
 }
 
-inline Property* properties_get(PropertyFile* propertyFile, const char* name, const uint_fast64_t nameLength){
-	LinkedListIterator it;
-	linkedList_initIterator(&it, &propertyFile->properties);
+inline local Property* _properties_get(DoublyLinkedList* list, const char* name, const uint_fast64_t nameLength){
+	DoublyLinkedListIterator it;
+	doublyLinkedList_initIterator(&it, list);
 
-	while(LINKED_LIST_ITERATOR_HAS_NEXT(&it)){
-		Property* _property = LINKED_LIST_ITERATOR_NEXT_PTR(&it, Property);
+	// Iterate over all property file entries.
+	while(DOUBLY_LINKED_LIST_ITERATOR_HAS_NEXT(&it)){
+		Property* property = DOUBLY_LINKED_LIST_ITERATOR_NEXT_PTR(&it, Property);
 
-		if(PROPERTIES_IS_ENTRY_SECTION(_property)){
-			LinkedListIterator _it;
-			linkedList_initIterator(&_it, &_property->properties);
-
-			while(LINKED_LIST_ITERATOR_HAS_NEXT(&_it)){
-				Property* _property = LINKED_LIST_ITERATOR_NEXT_PTR(&_it, Property);
-
-				if(strncmp(name, PROPERTIES_PROPERTY_NAME(_property), (nameLength > _property->nameLength ? nameLength : _property->nameLength) + 1) == 0){
-					return _property;
-				}
+		// If an entry is a section, search in the section.
+		if(PROPERTIES_IS_PROPERTY_FILE_ENTRY_PROPERTY_FILE_SECTION(property)){
+			Property* _property = _properties_get(&property->properties, name, nameLength);
+			if(_property != NULL){
+				return _property;
 			}
-		}
-
-		if(strncmp(name, PROPERTIES_PROPERTY_NAME(_property), (nameLength > _property->nameLength ? nameLength : _property->nameLength) + 1) == 0){
-			return _property;
+		}else if(PROPERTIES_IS_PROPERTY_FILE_ENTRY_PROPERTY(property)){
+			if(strncmp(name, PROPERTIES_PROPERTY_NAME(property), nameLength + 1) == 0){
+				return property;
+			}
 		}
 	}
 
 	return NULL;
+}
+
+inline Property* properties_get(PropertyFile* properties, const char* name, const uint_fast64_t nameLength){
+	return _properties_get(&properties->properties, name, nameLength);
 }
 
 inline bool properties_propertyExists(PropertyFile* propertyFile, const char* name, const uint_fast64_t nameLength){
@@ -262,7 +282,7 @@ ERROR_CODE properties_initProperty(Property** property, char* name, const int_fa
 	return ERROR(ERROR_NO_ERROR);
 }
 
-ERROR_CODE properties_updateProperty(PropertyFile* propertyFile, const char* name, const uint_fast64_t nameLength, const int8_t data[]){
+ERROR_CODE properties_updateProperty(PropertyFile* properties, const char* name, const uint_fast64_t nameLength, const int8_t data[]){
 	// TODO: ...
 
 	return ERROR(ERROR_FUNCTION_NOT_IMPLEMENTED);

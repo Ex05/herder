@@ -2,8 +2,6 @@
 #define DOUBLY_LINKED_LIST_TEST_C
 
 #include "../test.c"
-#include <stdint.h>
-#include <sys/syslog.h>
 
 TEST_TEST_SUIT_CONSTRUCT_FUNCTION(doublyLinkedList, list){
 	*list = calloc(1, sizeof(DoublyLinkedList));
@@ -70,7 +68,7 @@ TEST_TEST_FUNCTION_(doublyLinkedList_iteration, DoublyLinkedList, list){
 	}
 
 	if(buf[0] != 0 || buf[1] != 1 || buf[2] != 2 || buf[3] != 3){
-		return TEST_FAILURE("%s", "Failed to iterate over linked list.");
+		return TEST_FAILURE("%s", "Failed to iterate over doubly linked list.");
 	}
 
 	return TEST_SUCCESS;
@@ -110,11 +108,11 @@ TEST_TEST_FUNCTION_(doublyLinkedList_remove, DoublyLinkedList, list){
 	}
 
 	if(buf[0] != 2 || buf[1] != 3){
-	 	return TEST_FAILURE("%s", "Failed to remove link from linked list.");
+	 	return TEST_FAILURE("%s", "Failed to remove entry from doubly linked list.");
 	}
 
 	if(list->length != 2){
-		return TEST_FAILURE("Linked list length '%" PRIuFAST64 "' != '%d'.", list->length, 2);
+		return TEST_FAILURE("Doubly linked list length '%" PRIuFAST64 "' != '%d'.", list->length, 2);
 	}
 
 	return TEST_SUCCESS;
@@ -137,7 +135,7 @@ TEST_TEST_FUNCTION_(doublyLinkedList_contains, DoublyLinkedList, list){
 	DOUBLY_LINKED_LIST_ADD_PTR(list, d);
 
 	if(!doublyLinkedList_contains(list, c, sizeof(*c))){
-		return TEST_FAILURE("%s", "Failed to find value in linked list.");
+		return TEST_FAILURE("%s", "Failed to find value in doubly linked list.");
 	}
 
 	free(a);
