@@ -159,8 +159,7 @@ void test_test(test_testFunction* func, const char* name){
 #else
 	int main(const int argc, const char* argv[]){
 #endif
-	TEST_BEGIN();
-
+TEST_BEGIN();
 	TEST_SUIT_BEGIN("arrayList");
 		TEST(arraylist_iteration);
 		TEST(arraylist_fixedSizedStackList);
@@ -238,6 +237,7 @@ void test_test(test_testFunction* func, const char* name){
 	TEST_SUIT_END();
 
 	TEST_SUIT_BEGIN("properties");
+		// TEST(properties_parse);
 	TEST_SUIT_END();
 
 	TEST_SUIT_BEGIN("http");

@@ -453,22 +453,66 @@ TEST_TEST_FUNCTION(util_replace){
 }
 
 TEST_TEST_FUNCTION(util_trim){
-	char s[] = " 123_457 8910 ";
-	#define UTIL_TRIM_RESULT "123_457 8910"
+	char* testStrings[] = {
+		"      ",
+		"",
+		"    9    ",
+		" 123_457 8910 ",
+		" 123_457 8910",
+		"123_457 8910 ",
+		"   123_457 8910     ",
+	};
 
-	uint_fast64_t length = strlen(s);
+	char* expectedResults[] = {
+		"",
+	 	"",
+		"9",
+		"123_457 8910",
+		"123_457 8910",
+		"123_457 8910",
+		"123_457 8910",
+	};
 
-	util_trim(s, &length);
+	uint_fast64_t i;
+	for(i = 0; i < UTIL_ARRAY_LENGTH(testStrings); i++){
+		uint_fast64_t testStringLength = strlen(testStrings[i]);
 
-	if(strcmp(s, UTIL_TRIM_RESULT) != 0){
-		return TEST_FAILURE("'util_trim' '%s' != '%s'.", s, "123_457 8910");
+		char* testString = alloca(sizeof(*testString) * testStringLength + 1);
+		memcpy(testString, testStrings[i], testStringLength + 1);
+
+		testStringLength += 1;
+
+		testString = util_trim(testString, &testStringLength);
+
+		if(strncmp(testString, expectedResults[i], strlen(expectedResults[i]) + 1) != 0){
+			return TEST_FAILURE("'util_trim' '%s' != '%s'.", testString, expectedResults[i]);
+		}
+
+		if(strlen(expectedResults[i]) + 1 != testStringLength){
+			return TEST_FAILURE("'util_trim' '%" PRIuFAST64 "' != '%" PRIuFAST64 "'.", testStringLength, strlen(expectedResults[i]));
+		}
 	}
 
-	if(strlen(UTIL_TRIM_RESULT) != length){
-		return TEST_FAILURE("'util_trim' '%" PRIuFAST64 "' != '%" PRIuFAST64 "'.", length, strlen(UTIL_TRIM_RESULT));
-	}
+	for(i = 0; i < UTIL_ARRAY_LENGTH(testStrings); i++){
+		uint_fast64_t testStringLength = strlen(testStrings[i]);
 
-	#undef UTIL_TRIM_RESULT
+		char* testString = alloca(sizeof(*testString) * testStringLength + 1);
+		memcpy(testString, testStrings[i], testStringLength + 1);
+
+		testString = util_trim(testString, &testStringLength);
+
+		char* trimedString = alloca(sizeof(*testString) * testStringLength + 1);
+		memcpy(trimedString, testString, testStringLength);
+		trimedString[testStringLength] = '\0';
+
+		if(strncmp(trimedString, expectedResults[i], strlen(expectedResults[i]) + 1) != 0){
+			return TEST_FAILURE("'util_trim' '%s' != '%s'.", trimedString, expectedResults[i]);
+		}
+
+		if(strlen(expectedResults[i]) != testStringLength){
+			return TEST_FAILURE("'util_trim' '%" PRIuFAST64 "' != '%" PRIuFAST64 "'.", testStringLength, strlen(expectedResults[i]));
+		}
+	}
 
 	return TEST_SUCCESS;
 }

@@ -22,10 +22,6 @@
 ERROR_CODE properties_loadFromDisk(PropertyFile* properties, const char* filePath, const uint_fast64_t filePathLength){
 	ERROR_CODE error;
 
-	properties->filePathLength = filePathLength;
-	properties->filePath = malloc(sizeof(*properties->filePath) * (filePathLength + 1));
-	memcpy(properties->filePath, filePath, filePathLength + 1);
-
 	memset(&properties->properties, 0, sizeof(properties->properties));
 
 	uint_fast64_t fileSize;
@@ -38,7 +34,7 @@ ERROR_CODE properties_loadFromDisk(PropertyFile* properties, const char* filePat
 		return ERROR(ERROR_OUT_OF_MEMORY);
 	}
 
-	FILE* filePtr = fopen(properties->filePath, "r");
+	FILE* filePtr = fopen(filePath, "r");
 	if(filePtr == NULL){
 		return ERROR_(ERROR_FAILED_TO_OPEN_FILE, "File: '%s'.", filePath);
 	}
@@ -57,13 +53,13 @@ ERROR_CODE properties_loadFromDisk(PropertyFile* properties, const char* filePat
 }
 
 ERROR_CODE properties_initPropertyFileSection(PropertyFileEntry** section, char* name, uint_fast64_t nameLength){
-	(*section) = malloc(sizeof((**section)));
-	if((*section) == NULL){
+	*section = malloc(sizeof((**section)));
+	if(*section == NULL){
 		return ERROR(ERROR_OUT_OF_MEMORY);
 	}
 
 	// Make sure properties is '0' initialised.
-	memset((*section), 0 , sizeof(PropertyFileEntry));
+	memset(*section, 0 , sizeof(PropertyFileEntry));
 
 	(*section)->nameLength = nameLength;
 
@@ -74,8 +70,6 @@ ERROR_CODE properties_initPropertyFileSection(PropertyFileEntry** section, char*
 
 	memcpy((*section)->name, name, nameLength);
 	
-	*section = (*section);
-
 	return ERROR(ERROR_NO_ERROR);
 }
 
@@ -107,8 +101,6 @@ inline local void _properties_free(DoublyLinkedList* list){
 
 inline void properties_free(PropertyFile* properties){
 	_properties_free(&properties->properties);
-
-	free(properties->filePath);
 }
 
 inline ERROR_CODE properties_parseLine(PropertyFile* properties, PropertyFileEntry** section, char* line, uint_fast64_t lineLength){	
@@ -129,14 +121,15 @@ inline ERROR_CODE properties_parseLine(PropertyFile* properties, PropertyFileEnt
 	}
 
 	// Remove leading and trailing white space from line.
-	line = util_trim(line, &lineLength);
+	// line = util_trim(line, &lineLength);
 
+	// Section.
 	if(util_stringStartsWith(line, '#')){
 		// Skip leading '#' symbol.
 		line += 1;
 		lineLength -= 1;
 
-		line = util_trim(line, &lineLength);
+		// line = util_trim(line, &lineLength);
 
 		if((error = properties_initPropertyFileSection(&property, line, lineLength)) != ERROR_NO_ERROR){
 			return ERROR(error);
@@ -144,21 +137,26 @@ inline ERROR_CODE properties_parseLine(PropertyFile* properties, PropertyFileEnt
 
 		properties_addPropertyFileEntry(properties, (*section != NULL ? (*section) : NULL), property);
 
-		// Make _section the currently active section.
+		// Make property the currently active section.
 		*section = property;
 
 		return ERROR(ERROR_NO_ERROR);
-	}else if(util_stringStartsWith_s(line, "//", 2)){
-			if((error = properties_initProperty(&property, line, lineLength, NULL, -1)) != ERROR_NO_ERROR){
-				return ERROR(error);
-			}
+	}
 
-			goto label_addProperty;
-		}else if(strncmp(line, "Version:", 8) == 0){
-			// TODO: Handle different versions. (jan - 2022.05.16)
-
-			return ERROR(ERROR_NO_ERROR);
+	// Comment.
+	if(util_stringStartsWith_s(line, "//", 2)){
+		if((error = properties_initProperty(&property, line, lineLength, NULL, -1)) != ERROR_NO_ERROR){
+			return ERROR(error);
 		}
+
+		goto label_addProperty;
+	}
+
+	// Version.
+	if(strncmp(line, "Version:", 8) == 0){
+		// TODO: Handle different versions. (jan - 2022.05.16)
+		return ERROR(ERROR_NO_ERROR);
+	}
 
 	// Name.
 	const int_fast64_t nameSplitt = util_findFirst(line, lineLength, '=');
@@ -167,21 +165,19 @@ inline ERROR_CODE properties_parseLine(PropertyFile* properties, PropertyFileEnt
 		return ERROR(ERROR_INVALID_VALUE);
 	}
 
-	line[nameSplitt] = '\0';
-	lineLength = nameSplitt;
-	line = util_trim(line, &lineLength);
-
 	char* name = line;
-	const int_fast64_t nameLength = lineLength;
-
-	line += nameSplitt + 1;
-
-	lineLength = strlen(line);
-	line = util_trim(line, &lineLength);
+	uint_fast64_t nameLength = nameSplitt;
+	// name = util_trim(name, &nameLength);
 
 	// Value.
-	char* value = line;
-	const int_fast64_t valueLength = lineLength;
+	char* value = name + nameSplitt + 1;
+	uint_fast64_t valueLength = lineLength;
+
+	// value = util_trim(value, &valueLength);
+
+	printf("Name: '");
+	util_printBuffer(name, nameLength);
+	printf("', NameLength: '%" PRIuFAST64 "'.\n", nameLength);
 
 	if((error = properties_initProperty(&property, name, nameLength, (int8_t*) value, valueLength)) != ERROR_NO_ERROR){
 		return ERROR(error);
@@ -251,7 +247,7 @@ ERROR_CODE properties_parse(PropertyFile* properties, char* buffer, uint_fast64_
 			memcpy(_line, line, lineLength);
 			_line[lineLength] = '\0';
 
-			return ERROR_(error, "Failed to parse line: (%" PRIuFAST64 ") '%s'.", lineNumber, _line);
+			return ERROR_(error, "Failed to parse line:[%" PRIuFAST64 "] '%s'.", lineNumber, _line);
 		}
 
 		// Advance read offset by line length plus the line feed character.

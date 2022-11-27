@@ -2,6 +2,7 @@
 #define UTIL_C
 
 #include "util.h"
+#include <ctype.h>
 #include <stdint.h>
 #include <string.h>
 #include <sys/syslog.h>
@@ -533,36 +534,75 @@ inline void util_replace(char* buffer, const uint_fast64_t bufferLength, uint_fa
 	}
 }
 
-inline char* util_trim(char* s, uint_fast64_t* length){
-	const uint_fast64_t stringLength = *length;
+char* util_trimTrailingWhiteSpace(char* s, uint_fast64_t* length, const bool isStringNullTerminated){
+	uint_fast64_t searchOffset = *length - (isStringNullTerminated ? 1 : 0);
 
-	char c;
-	uint_fast64_t i = -1;
-
-	// Start at the end and find the first non white space.
+	// Count number of trailing white spaces.
+	char character;
 	do{
-		c = *(s + (stringLength - ++i) - 1);
-	}while(isspace(c));
+		searchOffset -= 1;
 
-	*(s + stringLength - i) = '\0';
+		character = s[searchOffset];
 
-	// Adjust length.
-	*length -= i;
+		if(searchOffset == 0){
+			break;
+		}
 
-	// Start at the beginning of the string and find the first non white space character.
-	i = -1;
-	do{
-		c = *(s + ++i);
-	}while(isspace(c));
+		if(!isspace(character)){
+			searchOffset += 1;
 
-	// Shift entire string forward to cover white space.
-	uint_fast64_t j;
-	for (j = 0; j < stringLength; j++){
-		*(s + j) = *(s + j + i);
+			break;
+		}
+
+	}while(true);
+
+	// Set new string length.
+	*length -= (*length) - (searchOffset + (isStringNullTerminated ? 1 : 0));
+	
+	// If the base string was null terminated we can shift the '\0' character to the new end of the string to 'cut' the trailing white space of.
+	if(isStringNullTerminated){
+		s[(*length) - 1] = '\0';
 	}
 
-	// Adjust length.
-	*length -= i;
+	return s;
+}
+
+char* util_trimLeadingWhiteSpace(char* s, uint_fast64_t* length, const bool isStringNullTerminated){
+	// Count the number of leading white spaces.
+	uint_fast64_t searchIndex;
+	for(searchIndex = 0; searchIndex < (*length) - 1; searchIndex++){
+		if(!isspace(s[searchIndex])){
+			break;
+		}
+	}
+
+	// Adjust string length by number of removed white spaces.
+	*length -= searchIndex;
+
+	// Shift string by number of white spaces to the left.
+	uint_fast64_t i;
+	for(i = 0; i < (*length); i++){
+		s[i] = s[i + searchIndex];
+	}
+
+	return s;
+}
+
+char* util_trim(char* s, uint_fast64_t* length){
+	// 
+	if(*length == 0 || s[0] == '\0'){
+		return s;
+	}
+
+	// To not put a trailing '\0' at the end 's' if 's' is a sub string, we check if 's' is null terminated.
+	const bool isStringNullTerminated = s[(*length) - 1] == '\0';
+
+	s = util_trimTrailingWhiteSpace(s, length, isStringNullTerminated);
+
+	// Cover the special case where an all white space string was passed and 'util_trimTrailingWhiteSpace' has already squashed it to zero-length.
+	if(*length > 0){
+		s = util_trimLeadingWhiteSpace(s, length, isStringNullTerminated);
+	}
 
 	return s;
 }
@@ -572,8 +612,6 @@ uint_fast64_t i;
 	for(i = 0; i < length; i++){
 		printf("%c", ((char*) buffer)[i]);
 	}
-
-	printf("\n");
 }
 
 inline char* util_getHomeDirectory(void){

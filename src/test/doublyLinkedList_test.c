@@ -93,6 +93,7 @@ TEST_TEST_FUNCTION_(doublyLinkedList_remove, DoublyLinkedList, list){
 	doublyLinkedList_remove(list, &a, sizeof(a));
 	doublyLinkedList_remove(list, &b, sizeof(b));
 
+	__UTIL_SUPPRESS_NEXT_ERROR_OF_TYPE__(ERROR_ENTRY_NOT_FOUND);
 	if(doublyLinkedList_remove(list, &e, sizeof(e)) != ERROR_ENTRY_NOT_FOUND){
 		return TEST_FAILURE("%s", "Failed to indicate error condition when trying to remove non included element from doubly linked list.");
 	}
