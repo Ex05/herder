@@ -238,6 +238,7 @@ TEST_BEGIN();
 
 	TEST_SUIT_BEGIN_(properties);
 		TEST(properties_parse);
+		TEST(properties_get);
 	TEST_SUIT_END();
 
 	TEST_SUIT_BEGIN("http");
