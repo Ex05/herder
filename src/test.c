@@ -236,8 +236,8 @@ TEST_BEGIN();
 		TEST(util_blockAlloc);
 	TEST_SUIT_END();
 
-	TEST_SUIT_BEGIN("properties");
-		// TEST(properties_parse);
+	TEST_SUIT_BEGIN_(properties);
+		TEST(properties_parse);
 	TEST_SUIT_END();
 
 	TEST_SUIT_BEGIN("http");

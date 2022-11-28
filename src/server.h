@@ -52,26 +52,26 @@ typedef struct{
 	ContextHandler* contextHandler;
 }Context;
 
-#define SERVER_TRANSLATE_SYMBOLIC_FILE_LOCATION(varName, server, symbolicFileLocation, symbolicFileLocationLength) char* varName; \
+/* #define SERVER_TRANSLATE_SYMBOLIC_FILE_LOCATION(varName, server, symbolicFileLocation, symbolicFileLocationLength) char* varName; \
 	uint_fast64_t varName ## Length; \
 	do{ \
 		varName ## Length = server->httpRootDirectory->dataLength + symbolicFileLocationLength; \
-		varName = alloca(sizeof(*fileLocation) * (fileLocationLength + 1/*'\0'*/ )); \
+		varName = alloca(sizeof(*fileLocation) * (fileLocationLength + 1/'\0'/ )); \
 		\
 		strncpy(fileLocation,(char*) PROPERTIES_PROPERTY_DATA(server->httpRootDirectory), server->httpRootDirectory->dataLength); \
 		strncpy(fileLocation + server->httpRootDirectory->dataLength , symbolicFileLocation, symbolicFileLocationLength + 1); \
 	}while(0)
 
-#define SERVER_TRANSLATE_SYMBOLIC_FILE_LOCATION_ERROR_PAGE(varName, server, symbolicFileLocation, symbolicFileLocationLength) char* varName; \
+// #define SERVER_TRANSLATE_SYMBOLIC_FILE_LOCATION_ERROR_PAGE(varName, server, symbolicFileLocation, symbolicFileLocationLength) char* varName; \
 	uint_fast64_t varName ## Length; \
 	varName ## Length = server->customErrorPageDirectory->dataLength + symbolicFileLocationLength; \
 	do{ \
-	varName = alloca(sizeof(*fileLocation) * (varName ## Length + 1/*'\0'*/ )); \
+	varName = alloca(sizeof(*fileLocation) * (varName ## Length + 1/'\0'/ )); \
 	\
 	strncpy(varName, (char*) PROPERTIES_PROPERTY_DATA(server->customErrorPageDirectory), server->customErrorPageDirectory->dataLength); \
 	strncpy(varName + server->customErrorPageDirectory->dataLength , symbolicFileLocation, symbolicFileLocationLength + 1); \
 	}while(0);
-
+*/ 
 void server_sigHandler(int);
 
 ERROR_CODE server_init(Server*, char*, const int_fast64_t);
