@@ -2,16 +2,14 @@
 #define PROPERTIES_C
 
 #include "properties.h"
+#include "doublyLinkedList.h"
 #include "util.h"
 
 #include "doublyLinkedList.c"
+#include <sys/syslog.h>
 
-#define PROPERTY_FILE_READ_BUFFER 8192
-
-ERROR_CODE properties_loadFromDisk(PropertyFile* properties, const char* filePath, const uint_fast64_t filePathLength){
+ERROR_CODE properties_loadFromDisk(PropertyFile* properties, const char* filePath){
 	ERROR_CODE error;
-
-	memset(&properties->properties, 0, sizeof(properties->properties));
 
 	uint_fast64_t fileSize;
 	if((error = util_getFileSize(filePath, &fileSize)) != ERROR_NO_ERROR){
@@ -37,6 +35,91 @@ ERROR_CODE properties_loadFromDisk(PropertyFile* properties, const char* filePat
 	fclose(filePtr);
 
 	return ERROR(properties_parse(properties, (char*) readBuffer, fileSize));
+}
+
+ERROR_CODE _properties_writeToDisk(DoublyLinkedList* properties, FILE* filePtr){
+	DoublyLinkedListIterator it;
+	doublyLinkedList_initIterator(&it, properties);
+
+	// Iterate over all property file entries.
+	while(DOUBLY_LINKED_LIST_ITERATOR_HAS_NEXT(&it)){
+		Property* property = DOUBLY_LINKED_LIST_ITERATOR_NEXT_PTR(&it, Property);
+
+		switch (property->type){
+			case PROPERTY_FILE_ENTRY_TYPE_PROPERTY:{
+				if(fwrite(property->name, 1, property->nameLength, filePtr) != property->nameLength){
+					return ERROR_(ERROR_WRITE_ERROR, "%s", "Failed to write property name.");
+				}
+
+				if(fwrite(" = ", 1, 3, filePtr) != 3){
+					return ERROR_(ERROR_WRITE_ERROR, "%s", "Failed to write property name value seperator.");
+				}
+
+				if(fwrite(property->value, 1, property->valueLength, filePtr) != property->valueLength){
+					return ERROR_(ERROR_WRITE_ERROR, "%s", "Failed to write property value.");
+				}
+
+				break;
+			}
+
+			case PROPERTY_FILE_ENTRY_TYPE_COMMENT:{
+				if(fwrite(property->name, 1, property->nameLength, filePtr) != property->nameLength){
+					return ERROR_(ERROR_WRITE_ERROR, "%s", "Failed to write property name.");
+				}
+
+				break;
+			}
+
+			case PROPERTY_FILE_ENTRY_TYPE_SECTION:{
+				if(fwrite("# ", 1, 2, filePtr) != 2){
+					return ERROR_(ERROR_WRITE_ERROR, "Failed to write section marker for section: '%s'.", property->name );
+				}
+
+				if(fwrite(property->name, 1, property->nameLength, filePtr) != property->nameLength){
+					return ERROR_(ERROR_WRITE_ERROR, "%s", "Failed to write property name.");
+				}
+
+				if(fwrite("\n", 1, 1, filePtr) != 1){
+					return ERROR_(ERROR_WRITE_ERROR, "%s", "Failed to write line feed character.");
+				}
+
+				ERROR_CODE error;
+				if((error = _properties_writeToDisk(&property->properties, filePtr)) != ERROR_NO_ERROR){
+					return ERROR(error);
+				}
+
+				break;
+			}
+
+			default:{
+				break;
+			}
+		}
+
+		if(property->type != PROPERTY_FILE_ENTRY_TYPE_SECTION){
+			if(fwrite("\n", 1, 1, filePtr) != 1){
+				return ERROR_(ERROR_WRITE_ERROR, "%s", "Failed to write line feed character.");
+			}
+		}
+	}
+
+	return ERROR(ERROR_NO_ERROR);
+}
+
+ERROR_CODE properties_saveToDisk(PropertyFile* properties, const char* filePath){
+	FILE* filePtr = fopen(filePath, "w");
+	if(filePtr == NULL){
+		return ERROR_(ERROR_FAILED_TO_OPEN_FILE, "File: '%s'.", filePath);
+	}
+
+	ERROR_CODE error;
+	if((error = _properties_writeToDisk(&properties->properties, filePtr)) != ERROR_NO_ERROR){
+		return ERROR(error);
+	}
+
+	fclose(filePtr);
+
+	return ERROR(ERROR_NO_ERROR);
 }
 
 ERROR_CODE properties_addPropertyFileEntry(PropertyFile* properties, PropertyFileEntry* section, Property* property){
@@ -210,7 +293,7 @@ inline local Property* _properties_get(DoublyLinkedList* list, const char* name,
 				return property;
 			 }
 		}else if(property->type == PROPERTY_FILE_ENTRY_TYPE_PROPERTY){
-			if(strncmp(name, property->name, nameLength + 1)){
+			if(strncmp(name, property->name, nameLength) == 0){
 				return property;
 			}
 		}
@@ -270,6 +353,7 @@ ERROR_CODE properties_initProperty(Property** property, PropertyFileEntryType ty
 	(*property)->type = type;
 
 	switch (type) {
+		case PROPERTY_FILE_ENTRY_TYPE_SECTION:
 		case PROPERTY_FILE_ENTRY_TYPE_PROPERTY:
 		case PROPERTY_FILE_ENTRY_TYPE_COMMENT:{
 			(*property)->name = malloc(sizeof(*name) * (nameLength + 1));
@@ -277,10 +361,12 @@ ERROR_CODE properties_initProperty(Property** property, PropertyFileEntryType ty
 				return ERROR(ERROR_OUT_OF_MEMORY);
 			}
 
-			strncpy((*property)->name, name, nameLength + 1);
+			memcpy((*property)->name, name, nameLength);
+			(*property)->name[nameLength] = '\0';
+
 			(*property)->nameLength = nameLength;
 
-			if(type == PROPERTY_FILE_ENTRY_TYPE_COMMENT){
+			if(type == PROPERTY_FILE_ENTRY_TYPE_COMMENT || type == PROPERTY_FILE_ENTRY_TYPE_SECTION){
 				break;
 			}
 
@@ -295,13 +381,6 @@ ERROR_CODE properties_initProperty(Property** property, PropertyFileEntryType ty
 			(*property)->data[dataLength] = '\0';
 		}
 
-		case PROPERTY_FILE_ENTRY_TYPE_EMPTY_LINE:{
-			break;
-		}
-		case PROPERTY_FILE_ENTRY_TYPE_SECTION:{
-			break;
-		}
-		
 		default:{
 			break;
 		}

@@ -60,7 +60,9 @@ typedef PropertyFileEntry Property;
 
 local const Version VERSION = {1, 0, 0};
 
-ERROR_CODE properties_loadFromDisk(PropertyFile*, const char*, const uint_fast64_t);
+ERROR_CODE properties_loadFromDisk(PropertyFile*, const char*);
+
+ERROR_CODE properties_saveToDisk(PropertyFile*, const char*);
 
 ERROR_CODE properties_initProperty(Property**, PropertyFileEntryType, char*, const int_fast64_t, int8_t*, const int_fast64_t);
 
