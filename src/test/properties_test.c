@@ -31,7 +31,10 @@ TEST_TEST_FUNCTION_(properties_parse, PropertyFile, properties){
 		return TEST_FAILURE("%s", "Failed to parse settings string.");
 	}
 
-	Property* portProperty = properties_get(properties, "port", strlen("port"));
+	Property* portProperty;
+	if(properties_get(properties, &portProperty, "port", strlen("port")) != ERROR_NO_ERROR){
+		return TEST_FAILURE("Failed to retrieve propertry: '%s'.", "port");
+	}
 
 	if(portProperty == NULL){
 		return TEST_FAILURE("Failed to parse property: '%s'.", "port");
@@ -54,10 +57,13 @@ TEST_TEST_FUNCTION_(properties_get, PropertyFile, properties){
 		return TEST_FAILURE("Failed to add propertry: '%s' to property file.", "port");
 	}
 
-	Property* portProperty = properties_get(properties, "port", strlen("port"));
+		Property* portProperty;
+	if(properties_get(properties, &portProperty, "port", strlen("port")) != ERROR_NO_ERROR){
+		return TEST_FAILURE("Failed to retrieve propertry: '%s'.", "port");
+	}
 
 	if(portProperty == NULL){
-		return TEST_FAILURE("Failed to parse propertry: '%s'.", "port");
+		return TEST_FAILURE("Failed to retrieve propertry: '%s'.", "port");
 	}
 
 	if(strncmp(portProperty->value, "1869", strlen("1869")) != 0){

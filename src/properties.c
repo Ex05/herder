@@ -280,34 +280,40 @@ ERROR_CODE properties_parseLine(PropertyFile* properties, PropertyFileEntry** se
 	return ERROR(_properties_parseProperty(properties, line, lineLength));
 }
 
-inline local Property* _properties_get(DoublyLinkedList* list, const char* name, const uint_fast64_t nameLength){
+inline local ERROR_CODE _properties_get(DoublyLinkedList* list, Property** property, const char* name, const uint_fast64_t nameLength){
 	DoublyLinkedListIterator it;
 	doublyLinkedList_initIterator(&it, list);
 
 	// Iterate over all property file entries.
 	while(DOUBLY_LINKED_LIST_ITERATOR_HAS_NEXT(&it)){
-		Property* property = DOUBLY_LINKED_LIST_ITERATOR_NEXT_PTR(&it, Property);
+		Property* _property = DOUBLY_LINKED_LIST_ITERATOR_NEXT_PTR(&it, Property);
 
-		if(property->type == PROPERTY_FILE_ENTRY_TYPE_SECTION){
-			 if((property = _properties_get(&property->properties, name, nameLength)) != NULL){
-				return property;
+		if(_property->type == PROPERTY_FILE_ENTRY_TYPE_SECTION){
+			ERROR_CODE error;
+			 if((error = _properties_get(&_property->properties, property, name, nameLength)) == ERROR_NO_ERROR){
+				return ERROR(ERROR_NO_ERROR);
 			 }
-		}else if(property->type == PROPERTY_FILE_ENTRY_TYPE_PROPERTY){
-			if(strncmp(name, property->name, nameLength) == 0){
-				return property;
+		}else if(_property->type == PROPERTY_FILE_ENTRY_TYPE_PROPERTY){
+			if(strncmp(name, _property->name, nameLength) == 0){
+				*property = _property;
+
+				return ERROR(ERROR_NO_ERROR);
 			}
 		}
 	}
 
-	return NULL;
+	*property = NULL;
+
+	return ERROR(ERROR_ENTRY_NOT_FOUND);
 }
 
-inline Property* properties_get(PropertyFile* properties, const char* name, const uint_fast64_t nameLength){
-	return _properties_get(&properties->properties, name, nameLength);
+inline ERROR_CODE properties_get(PropertyFile* properties, Property** property, const char* name, const uint_fast64_t nameLength){
+	return _properties_get(&properties->properties, property, name, nameLength);
 }
 
 inline bool properties_propertyExists(PropertyFile* propertyFile, const char* name, const uint_fast64_t nameLength){
-	return properties_get(propertyFile, name, nameLength) != NULL;
+	Property* property;
+	return properties_get(propertyFile, &property, name, nameLength) != ERROR_NO_ERROR;
 }
 
 ERROR_CODE properties_parse(PropertyFile* properties, char* buffer, uint_fast64_t bufferSize){

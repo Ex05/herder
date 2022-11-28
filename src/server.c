@@ -197,7 +197,8 @@ ERROR_CODE server_init(Server* server, char* propertyFileLocation, const int_fas
 	}
 
 	// Syslog_ID.
-	Property* syslogID_Property = PROPERTIES_GET(&server->properties, SYSLOG_ID);
+	Property* syslogID_Property;
+	PROPERTIES_GET(&server->properties, syslogID_Property, SYSLOG_ID);
 
 	char* syslogID = alloca(sizeof(*syslogID) * (syslogID_Property->dataLength + 1));
 	// memcpy(syslogID, PROPERTIES_PROPERTY_DATA(syslogID_Property), syslogID_Property->dataLength);
@@ -210,16 +211,17 @@ ERROR_CODE server_init(Server* server, char* propertyFileLocation, const int_fas
 	}
 
 	// HTTP_RootDirectory.
-	server->httpRootDirectory = PROPERTIES_GET(&server->properties, HTTP_ROOT_DIRECTORY);
+	PROPERTIES_GET(&server->properties, server->httpRootDirectory, HTTP_ROOT_DIRECTORY);
 
 	// WorkDirectory.
-	server->workDirectory = PROPERTIES_GET(&server->properties, WORK_DIRECTORY);
+	PROPERTIES_GET(&server->properties, server->workDirectory, WORK_DIRECTORY);
 
 	// CustomErrorPageDirectory.
-	server->customErrorPageDirectory = PROPERTIES_GET(&server->properties, CUSTOM_ERROR_PAGES_DIRECTORY);
+	PROPERTIES_GET(&server->properties, server->customErrorPageDirectory, CUSTOM_ERROR_PAGES_DIRECTORY);
 
 	// NumWorkerThreads.
-	Property* numWorkerThreadsProperty = PROPERTIES_GET(&server->properties, NUM_WORKER_THREADS);
+	Property* numWorkerThreadsProperty;
+	 PROPERTIES_GET(&server->properties, numWorkerThreadsProperty, NUM_WORKER_THREADS);
 
 	char* numWorkerThreadsString = alloca(sizeof(*numWorkerThreadsString) * (numWorkerThreadsProperty->dataLength + 1));
 	// memcpy(numWorkerThreadsString, PROPERTIES_PROPERTY_DATA(numWorkerThreadsProperty), numWorkerThreadsProperty->dataLength);
@@ -286,7 +288,8 @@ ERROR_CODE server_init(Server* server, char* propertyFileLocation, const int_fas
 THREAD_POOL_RUNNABLE_(epoll_run, Server, server){
 	ERROR_CODE error;
 
-	Property* httpReadBufferSizeProperty = PROPERTIES_GET(&server->properties, HTTP_READ_BUFFER_SIZE);
+	Property* httpReadBufferSizeProperty;
+	PROPERTIES_GET(&server->properties, httpReadBufferSizeProperty, HTTP_READ_BUFFER_SIZE);
 
 	char* httpReadBufferSizeString = alloca(sizeof(*httpReadBufferSizeString) * (httpReadBufferSizeProperty->dataLength + 1));
 	// memcpy(httpReadBufferSizeString, PROPERTIES_PROPERTY_DATA(httpReadBufferSizeProperty), httpReadBufferSizeProperty->dataLength);
@@ -297,7 +300,8 @@ THREAD_POOL_RUNNABLE_(epoll_run, Server, server){
 		THREAD_POOL_RUNNABLE_RETURN(error);
 	}
 
-	Property* epollReadBufferSizePoroperty = PROPERTIES_GET(&server->properties, HTTP_READ_BUFFER_SIZE);
+	Property* epollReadBufferSizePoroperty;
+	PROPERTIES_GET(&server->properties, epollReadBufferSizePoroperty, HTTP_READ_BUFFER_SIZE);
 
 	char* epollReadBufferSizeString = alloca(sizeof(*epollReadBufferSizeString) * (epollReadBufferSizePoroperty->dataLength + 1));
 	// memcpy(epollReadBufferSizeString, PROPERTIES_PROPERTY_DATA(epollReadBufferSizePoroperty), epollReadBufferSizePoroperty->dataLength);
@@ -748,13 +752,15 @@ ERROR_CODE server_initSSL_Context(Server* server){
 	UTIL_LOG_CONSOLE(LOG_DEBUG, "Server: \tInitialising SSL...");
 
 	// Note: All properties are guaranteed to be available at this point in time, but there validity is not guaranteed. (jan - 2022.06.11)
-	Property* sslCertificateLocationProperty = PROPERTIES_GET(&server->properties, SSL_CERTIFICATE_LOCATION);
+	Property* sslCertificateLocationProperty;
+	PROPERTIES_GET(&server->properties, sslCertificateLocationProperty, SSL_CERTIFICATE_LOCATION);
 
 	char* sslCertificateLocation = alloca(sizeof(*sslCertificateLocation) * (sslCertificateLocationProperty->dataLength + 1));
 	// memcpy(sslCertificateLocation, PROPERTIES_PROPERTY_DATA(sslCertificateLocationProperty), sslCertificateLocationProperty->dataLength);
 	sslCertificateLocation[sslCertificateLocationProperty->dataLength] = '\0';
 
-	Property* sslPrivateKeyProperty = PROPERTIES_GET(&server->properties, SSL_PRIVATE_KEY_FILE);
+	Property* sslPrivateKeyProperty;
+	PROPERTIES_GET(&server->properties, sslPrivateKeyProperty, SSL_PRIVATE_KEY_FILE);
 
 	char* sslPrivateKeyLocation = alloca(sizeof(*sslPrivateKeyLocation) * (sslPrivateKeyProperty->dataLength + 1));
 	//memcpy(sslPrivateKeyLocation, PROPERTIES_PROPERTY_DATA(sslPrivateKeyProperty), sslPrivateKeyProperty->dataLength);
@@ -911,7 +917,8 @@ void server_run(Server* server){
 		threadPool_run(&server->epollWorkerThreads, (Runnable*) epoll_run, server);
 	}
 
-	Property* epollReadBufferSizePoroperty = PROPERTIES_GET(&server->properties, HTTP_READ_BUFFER_SIZE);
+	Property* epollReadBufferSizePoroperty;
+	PROPERTIES_GET(&server->properties, epollReadBufferSizePoroperty, HTTP_READ_BUFFER_SIZE);
 
 	char* epollReadBufferSizeString = alloca(sizeof(*epollReadBufferSizeString) * (epollReadBufferSizePoroperty->dataLength + 1));
 	// memcpy(epollReadBufferSizeString, PROPERTIES_PROPERTY_DATA(epollReadBufferSizePoroperty), epollReadBufferSizePoroperty->dataLength);

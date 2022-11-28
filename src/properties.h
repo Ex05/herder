@@ -14,7 +14,7 @@
 	} \
 }while(0)
 
-#define PROPERTIES_GET(propertyFile, name) properties_get(propertyFile, CONSTANTS_ ## name ## _PROPERTY_NAME, strlen(CONSTANTS_ ## name ## _PROPERTY_NAME))
+#define PROPERTIES_GET(propertyFile, property, name) properties_get(propertyFile, &property, CONSTANTS_ ## name ## _PROPERTY_NAME, strlen(CONSTANTS_ ## name ## _PROPERTY_NAME))
 
 typedef struct version{
 	uint_fast8_t release;
@@ -68,7 +68,7 @@ ERROR_CODE properties_initProperty(Property**, PropertyFileEntryType, char*, con
 
 ERROR_CODE properties_addPropertyFileEntry(PropertyFile*, PropertyFileEntry*, Property*);
 
-Property* properties_get(PropertyFile*, const char*, const uint_fast64_t);
+ERROR_CODE properties_get(PropertyFile*, Property**, const char*, const uint_fast64_t);
 
 ERROR_CODE properties_updateProperty(PropertyFile*, const char*, const uint_fast64_t, const int8_t data[]);
 
