@@ -9,7 +9,7 @@
 // NOTE: A variable of type 'ERROR_CODE' named 'error' has to be in scope. (jan - 2022.06.08)
 #define PROPERTY_EXISTS(name)do{ \
 	if(!properties_propertyExists(&server->properties, CONSTANTS_ ## name ## _PROPERTY_NAME, strlen(CONSTANTS_ ## name ## _PROPERTY_NAME))){ \
-		UTIL_LOG_CONSOLE_(LOG_DEBUG, "Failed to retrieve property: '%s' from property file.", CONSTANTS_ ## name ## _PROPERTY_NAME); \
+		UTIL_LOG_CONSOLE_(LOG_DEBUG, "Failed to retrieve property '%s' from settings file.", CONSTANTS_ ## name ## _PROPERTY_NAME); \
 		error = ERRROR_MISSING_PROPERTY;\
 	} \
 }while(0)

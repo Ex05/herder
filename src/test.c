@@ -239,6 +239,7 @@ TEST_BEGIN();
 	TEST_SUIT_BEGIN_(properties);
 		TEST(properties_parse);
 		TEST(properties_get);
+		TEST(properties_propertyExists);
 	TEST_SUIT_END();
 
 	TEST_SUIT_BEGIN("http");

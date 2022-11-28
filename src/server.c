@@ -224,7 +224,7 @@ ERROR_CODE server_init(Server* server, char* propertyFileLocation, const int_fas
 	 PROPERTIES_GET(&server->properties, numWorkerThreadsProperty, NUM_WORKER_THREADS);
 
 	char* numWorkerThreadsString = alloca(sizeof(*numWorkerThreadsString) * (numWorkerThreadsProperty->dataLength + 1));
-	// memcpy(numWorkerThreadsString, PROPERTIES_PROPERTY_DATA(numWorkerThreadsProperty), numWorkerThreadsProperty->dataLength);
+	memcpy(numWorkerThreadsString, numWorkerThreadsProperty->value, numWorkerThreadsProperty->dataLength);
 	numWorkerThreadsString[numWorkerThreadsProperty->dataLength] = '\0';
 
 	int_fast64_t numWorkerThreads;
@@ -292,7 +292,7 @@ THREAD_POOL_RUNNABLE_(epoll_run, Server, server){
 	PROPERTIES_GET(&server->properties, httpReadBufferSizeProperty, HTTP_READ_BUFFER_SIZE);
 
 	char* httpReadBufferSizeString = alloca(sizeof(*httpReadBufferSizeString) * (httpReadBufferSizeProperty->dataLength + 1));
-	// memcpy(httpReadBufferSizeString, PROPERTIES_PROPERTY_DATA(httpReadBufferSizeProperty), httpReadBufferSizeProperty->dataLength);
+	memcpy(httpReadBufferSizeString, httpReadBufferSizeProperty->value, httpReadBufferSizeProperty->dataLength);
 	httpReadBufferSizeString[httpReadBufferSizeProperty->dataLength] = '\0';
 
 	int_fast64_t httpReadBufferSize;
@@ -304,7 +304,7 @@ THREAD_POOL_RUNNABLE_(epoll_run, Server, server){
 	PROPERTIES_GET(&server->properties, epollReadBufferSizePoroperty, HTTP_READ_BUFFER_SIZE);
 
 	char* epollReadBufferSizeString = alloca(sizeof(*epollReadBufferSizeString) * (epollReadBufferSizePoroperty->dataLength + 1));
-	// memcpy(epollReadBufferSizeString, PROPERTIES_PROPERTY_DATA(epollReadBufferSizePoroperty), epollReadBufferSizePoroperty->dataLength);
+	memcpy(epollReadBufferSizeString, epollReadBufferSizePoroperty->value, epollReadBufferSizePoroperty->dataLength);
 	epollReadBufferSizeString[epollReadBufferSizePoroperty->dataLength] = '\0';
 
 	int_fast64_t epollReadBufferSize;
@@ -536,7 +536,7 @@ ERROR_CODE server_constructErrorPage(Server* server, HTTP_Request* request, HTTP
 	char* symbolicFileLocation = alloca(sizeof(*symbolicFileLocation) * (symbolicFileLocationLength + 1));
 	snprintf(symbolicFileLocation, symbolicFileLocationLength + 1, "/%s.html", httpStatusCodeString);
 
-	// SERVER_TRANSLATE_SYMBOLIC_FILE_LOCATION_ERROR_PAGE(fileLocation, server, symbolicFileLocation, symbolicFileLocationLength);
+	SERVER_TRANSLATE_SYMBOLIC_FILE_LOCATION_ERROR_PAGE(fileLocation, server, symbolicFileLocation, symbolicFileLocationLength);
 	
 	CacheObject* cacheObject = NULL;
 	// TODO: Clean up this type cast and see if we cant make the "symbolicFileLocation" parameter in 'cache_get' a constant char pointer.(jan - 2022.09.07)
@@ -546,18 +546,18 @@ ERROR_CODE server_constructErrorPage(Server* server, HTTP_Request* request, HTTP
 			return ERROR(error);
 		}
 		else{
-			// SERVER_TRANSLATE_SYMBOLIC_FILE_LOCATION_ERROR_PAGE(fileLocation, server, symbolicFileLocation, symbolicFileLocationLength);
+			SERVER_TRANSLATE_SYMBOLIC_FILE_LOCATION_ERROR_PAGE(fileLocation, server, symbolicFileLocation, symbolicFileLocationLength);
 
 			__UTIL_ENABLE_ERROR_LOGGING__();
 			__UTIL_SUPPRESS_NEXT_ERROR_OF_TYPE__(ERROR_FAILED_TO_RETRIEV_FILE_INFO);
-			/*if((error = cache_load(&server->errorPageCache, &cacheObject, fileLocation, fileLocationLength, (char*) symbolicFileLocation, symbolicFileLocationLength)) != ERROR_NO_ERROR){
+			if((error = cache_load(&server->errorPageCache, &cacheObject, fileLocation, fileLocationLength, (char*) symbolicFileLocation, symbolicFileLocationLength)) != ERROR_NO_ERROR){
 				if(error != ERROR_FAILED_TO_RETRIEV_FILE_INFO){
 					return ERROR(error);
 				}else{
 					// Load default error page into cache.
 					cache_add(&server->errorPageCache, &cacheObject,(uint8_t*) CONSTANTS_MINIMAL_HTTP_ERROR_PAGE, strlen(CONSTANTS_MINIMAL_HTTP_ERROR_PAGE) + 1, NULL, 0, symbolicFileLocation, symbolicFileLocationLength);
 				}
-			}*/
+			}
 		}
 		__UTIL_ENABLE_ERROR_LOGGING__();
 	}
@@ -645,7 +645,7 @@ SERVER_CONTEXT_HANDLER(server_defaultContextHandler){
 			return ERROR(error);
 		}
 		else{
-			/*SERVER_TRANSLATE_SYMBOLIC_FILE_LOCATION(fileLocation, server, symbolicFileLocation, symbolicFileLocationLength);
+			SERVER_TRANSLATE_SYMBOLIC_FILE_LOCATION(fileLocation, server, symbolicFileLocation, symbolicFileLocationLength);
 
 			__UTIL_ENABLE_ERROR_LOGGING__();
 			__UTIL_SUPPRESS_NEXT_ERROR_OF_TYPE__(ERROR_FAILED_TO_RETRIEV_FILE_INFO);
@@ -655,7 +655,7 @@ SERVER_CONTEXT_HANDLER(server_defaultContextHandler){
 				UTIL_LOG_CONSOLE(LOG_ERR, "Failed to load cacheObject.");
 
 				return ERROR(error);
-			}*/
+			}
 		}
 		__UTIL_ENABLE_ERROR_LOGGING__();
 	}else{
@@ -756,14 +756,14 @@ ERROR_CODE server_initSSL_Context(Server* server){
 	PROPERTIES_GET(&server->properties, sslCertificateLocationProperty, SSL_CERTIFICATE_LOCATION);
 
 	char* sslCertificateLocation = alloca(sizeof(*sslCertificateLocation) * (sslCertificateLocationProperty->dataLength + 1));
-	// memcpy(sslCertificateLocation, PROPERTIES_PROPERTY_DATA(sslCertificateLocationProperty), sslCertificateLocationProperty->dataLength);
+	memcpy(sslCertificateLocation, sslCertificateLocationProperty->value, sslCertificateLocationProperty->dataLength);
 	sslCertificateLocation[sslCertificateLocationProperty->dataLength] = '\0';
 
 	Property* sslPrivateKeyProperty;
 	PROPERTIES_GET(&server->properties, sslPrivateKeyProperty, SSL_PRIVATE_KEY_FILE);
 
 	char* sslPrivateKeyLocation = alloca(sizeof(*sslPrivateKeyLocation) * (sslPrivateKeyProperty->dataLength + 1));
-	//memcpy(sslPrivateKeyLocation, PROPERTIES_PROPERTY_DATA(sslPrivateKeyProperty), sslPrivateKeyProperty->dataLength);
+	memcpy(sslPrivateKeyLocation, sslPrivateKeyProperty->value, sslPrivateKeyProperty->dataLength);
 	sslPrivateKeyLocation[sslPrivateKeyProperty->dataLength] = '\0';
 
 	// Init SSL context.
@@ -921,7 +921,7 @@ void server_run(Server* server){
 	PROPERTIES_GET(&server->properties, epollReadBufferSizePoroperty, HTTP_READ_BUFFER_SIZE);
 
 	char* epollReadBufferSizeString = alloca(sizeof(*epollReadBufferSizeString) * (epollReadBufferSizePoroperty->dataLength + 1));
-	// memcpy(epollReadBufferSizeString, PROPERTIES_PROPERTY_DATA(epollReadBufferSizePoroperty), epollReadBufferSizePoroperty->dataLength);
+	memcpy(epollReadBufferSizeString, epollReadBufferSizePoroperty->value, epollReadBufferSizePoroperty->dataLength);
 	epollReadBufferSizeString[epollReadBufferSizePoroperty->dataLength] = '\0';
 
 	int_fast64_t epollReadBufferSize;

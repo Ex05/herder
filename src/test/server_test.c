@@ -76,47 +76,53 @@ TEST_TEST_FUNCTION_(server_getContextHandler, Server, server){
 }
 
 TEST_TEST_FUNCTION_(server_translateSymbolicFileLocation, Server, server){
-	// #define HTTP_ROOT_DIRECTORY "/home/ex05/herder/www"
+	#define HTTP_ROOT_DIRECTORY "/home/ex05/herder/www"
 
-	// #define PROPERTY_NAME "httpRootDirectory"
-	// properties_initProperty(&server->httpRootDirectory, PROPERTY_NAME, strlen(PROPERTY_NAME), (int8_t*) HTTP_ROOT_DIRECTORY, strlen(HTTP_ROOT_DIRECTORY));
-	// #undef PROPERTY_NAME
+	#define PROPERTY_NAME "httpRootDirectory"
+	properties_initProperty(&server->httpRootDirectory, PROPERTY_FILE_ENTRY_TYPE_PROPERTY, PROPERTY_NAME, strlen(PROPERTY_NAME), (int8_t*) HTTP_ROOT_DIRECTORY, strlen(HTTP_ROOT_DIRECTORY));
+	#undef PROPERTY_NAME
 
-	// char symbolicFileLocation[] = "/img/img_001.jpg";
-	// const uint_fast64_t symbolicFileLocationLength = strlen(symbolicFileLocation);
+	char symbolicFileLocation[] = "/img/img_001.jpg";
+	const uint_fast64_t symbolicFileLocationLength = strlen(symbolicFileLocation);
 
-	// SERVER_TRANSLATE_SYMBOLIC_FILE_LOCATION(fileLocation, server, symbolicFileLocation, symbolicFileLocationLength);
+	SERVER_TRANSLATE_SYMBOLIC_FILE_LOCATION(fileLocation, server, symbolicFileLocation, symbolicFileLocationLength);
 
-	// if(strncmp(fileLocation, HTTP_ROOT_DIRECTORY "/img/img_001.jpg", symbolicFileLocationLength + 1) != 0){
-	// 	return TEST_FAILURE("Failed to translate symbolic file location '%s'.", symbolicFileLocation);
-	// }
-	// #undef HTTP_ROOT_DIRECTORY
+	if(strncmp(fileLocation, HTTP_ROOT_DIRECTORY "/img/img_001.jpg", symbolicFileLocationLength + 1) != 0){
+		return TEST_FAILURE("Failed to translate symbolic file location '%s'.", symbolicFileLocation);
+	}
+	#undef HTTP_ROOT_DIRECTORY
 
-	// free(server->httpRootDirectory);
+	free(server->httpRootDirectory->name);
+	free(server->httpRootDirectory->data);
+
+	free(server->httpRootDirectory);
 
 	return TEST_SUCCESS;
 }
 
 TEST_TEST_FUNCTION_(server_translateSymbolicFileLocationErrorPage, Server, server){
-	// #define CUSTOM_ERROR_PAGES_DIRECTORY "/home/ex05/herder/error_pages"
+	#define CUSTOM_ERROR_PAGES_DIRECTORY "/home/ex05/herder/error_pages"
 
-	// #define PROPERTY_NAME "customErrorPageDirectory"
-	// properties_initProperty(&server->customErrorPageDirectory, PROPERTY_NAME, strlen(PROPERTY_NAME), (int8_t*) CUSTOM_ERROR_PAGES_DIRECTORY, strlen(CUSTOM_ERROR_PAGES_DIRECTORY));
-	// #undef PROPERTY_NAME
+	#define PROPERTY_NAME "customErrorPageDirectory"
+	properties_initProperty(&server->customErrorPageDirectory, PROPERTY_FILE_ENTRY_TYPE_PROPERTY, PROPERTY_NAME, strlen(PROPERTY_NAME), (int8_t*) CUSTOM_ERROR_PAGES_DIRECTORY, strlen(CUSTOM_ERROR_PAGES_DIRECTORY));
+	#undef PROPERTY_NAME
 
-	// const uint_fast64_t symbolicFileLocationLength = + 5/*".html"*/ + 1/*'/'*/ + 1/*_*/+ 3/*http status code*/;
-	// char* symbolicFileLocation = alloca(sizeof(*symbolicFileLocation) * (symbolicFileLocationLength + 1));
-	// snprintf(symbolicFileLocation, symbolicFileLocationLength + 1, "/%03ld.html", http_getNumericalStatusCode(_404_NOT_FOUND));
+	const uint_fast64_t symbolicFileLocationLength = + 5/*".html"*/ + 1/*'/'*/ + 1/*_*/+ 3/*http status code*/;
+	char* symbolicFileLocation = alloca(sizeof(*symbolicFileLocation) * (symbolicFileLocationLength + 1));
+	snprintf(symbolicFileLocation, symbolicFileLocationLength + 1, "/%03ld.html", http_getNumericalStatusCode(_404_NOT_FOUND));
 
-	// SERVER_TRANSLATE_SYMBOLIC_FILE_LOCATION_ERROR_PAGE(fileLocation, server, symbolicFileLocation, symbolicFileLocationLength);
+	SERVER_TRANSLATE_SYMBOLIC_FILE_LOCATION_ERROR_PAGE(fileLocation, server, symbolicFileLocation, symbolicFileLocationLength);
 
-	// if(strncmp(fileLocation, CUSTOM_ERROR_PAGES_DIRECTORY "/404.html", fileLocationLength + 1) != 0){
-	// 	return TEST_FAILURE("Failed to translate symbolic file location '%s'.", symbolicFileLocation);
-	// }
+	if(strncmp(fileLocation, CUSTOM_ERROR_PAGES_DIRECTORY "/404.html", fileLocationLength + 1) != 0){
+		return TEST_FAILURE("Failed to translate symbolic file location '%s'.", symbolicFileLocation);
+	}
 
-	// #undef CUSTOM_ERROR_PAGES_DIRECTORY
+	#undef CUSTOM_ERROR_PAGES_DIRECTORY
 
-	// free(server->customErrorPageDirectory);
+	free(server->customErrorPageDirectory->name);
+	free(server->customErrorPageDirectory->data);
+
+	free(server->customErrorPageDirectory);
 
 	return TEST_SUCCESS;
 }

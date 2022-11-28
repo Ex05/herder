@@ -6,6 +6,7 @@
 #include "util.h"
 
 #include "doublyLinkedList.c"
+#include <stdbool.h>
 #include <sys/syslog.h>
 
 ERROR_CODE properties_loadFromDisk(PropertyFile* properties, const char* filePath){
@@ -313,7 +314,7 @@ inline ERROR_CODE properties_get(PropertyFile* properties, Property** property, 
 
 inline bool properties_propertyExists(PropertyFile* propertyFile, const char* name, const uint_fast64_t nameLength){
 	Property* property;
-	return properties_get(propertyFile, &property, name, nameLength) != ERROR_NO_ERROR;
+	return properties_get(propertyFile, &property, name, nameLength) == ERROR_NO_ERROR;
 }
 
 ERROR_CODE properties_parse(PropertyFile* properties, char* buffer, uint_fast64_t bufferSize){
