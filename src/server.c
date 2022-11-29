@@ -2,9 +2,11 @@
 #define SERVER_C
 
 // POSIX Version ¢2008
+#include "doublyLinkedList.h"
 #include "util.h"
 #include <stdint.h>
 #include <string.h>
+#include <sys/syslog.h>
 #define _XOPEN_SOURCE 700
 
 #define _GNU_SOURCE
@@ -94,26 +96,59 @@ void server_printHelp(void){
 	UTIL_LOG_CONSOLE_(LOG_INFO, "\t%s\t\t%s", CONSTANTS_SERVER_USAGE_ARGUMENT_HELP_NAME, CONSTANTS_SERVER_USAGE_ARGUMENT_HELP_DESCRIPTION);
 }
 
+void _server_printSettings(DoublyLinkedList* list){
+	DoublyLinkedListIterator it;
+	doublyLinkedList_initIterator(&it, list);
+
+	// Iterate over all property file entries.
+	while(DOUBLY_LINKED_LIST_ITERATOR_HAS_NEXT(&it)){
+		Property* property = DOUBLY_LINKED_LIST_ITERATOR_NEXT_PTR(&it, Property);
+
+		switch (property->type){
+			case PROPERTY_FILE_ENTRY_TYPE_PROPERTY:{
+				UTIL_LOG_CONSOLE_(LOG_INFO, "%s = %s", property->name, property->value);
+
+				break;
+			}
+		
+			case PROPERTY_FILE_ENTRY_TYPE_SECTION:{
+				UTIL_LOG_CONSOLE_(LOG_INFO, "# %s", property->name);
+
+				_server_printSettings(&property->properties);
+				break;
+			}
+
+			case PROPERTY_FILE_ENTRY_TYPE_EMPTY_LINE:{
+				UTIL_LOG_CONSOLE(LOG_INFO, "");
+
+				break;
+			}
+
+			case PROPERTY_FILE_ENTRY_TYPE_COMMENT:{
+				UTIL_LOG_CONSOLE_(LOG_INFO, "%s", property->name);
+
+				break;
+			}
+
+			default:{
+				break;
+			}
+		}
+	}
+}
+
 ERROR_CODE server_showSettings(void){
 	ERROR_CODE error;
 
-	PropertyFile properties;
-	if((error = properties_load(&properties, RESOURCES_PROPERTY_FILE_LOCATION, strlen(RESOURCES_PROPERTY_FILE_LOCATION))) != ERROR_NO_ERROR){
+	Server server = {0};
+	if((error = server_loadProperties(&server, RESOURCES_PROPERTY_FILE_LOCATION, strlen(RESOURCES_PROPERTY_FILE_LOCATION)))){
 		return ERROR(error);
 	}
 
-	UTIL_LOG_CONSOLE_(LOG_INFO, "'%s':\n", RESOURCES_PROPERTY_FILE_LOCATION);
+	UTIL_LOG_CONSOLE_(LOG_INFO, "'%s':", RESOURCES_PROPERTY_FILE_LOCATION);
+	_server_printSettings(&server.properties.properties);
 
-	LinkedListIterator it;
-	linkedList_initIterator(&it, &properties.properties);
-
-	while(LINKED_LIST_ITERATOR_HAS_NEXT(&it)){
-		Property* property = LINKED_LIST_ITERATOR_NEXT_PTR(&it, Property);
-
-		UTIL_LOG_CONSOLE_(LOG_INFO, "%s = \"%s\".", PROPERTIES_PROPERTY_NAME(property), PROPERTIES_PROPERTY_DATA(property));
-	}
-
-	properties_free(&properties);
+	properties_free(&server.properties);
 
 	return ERROR(ERROR_NO_ERROR);
 }
@@ -186,10 +221,11 @@ ERROR_CODE server_init(Server* server, char* propertyFileLocation, const int_fas
 	sigaction(SIGPIPE, &signalhandler, NULL);
 
 	// Daemonize.
-	Property* daemonizeProperty = PROPERTIES_GET(&server->properties, DAEMONIZE);
-
+	Property* daemonizeProperty;
+	PROPERTIES_GET(&server->properties, daemonizeProperty, DAEMONIZE);
+	
 	char* daemonize = alloca(sizeof(*daemonize) * (daemonizeProperty->dataLength + 1));
-	memcpy(daemonize, PROPERTIES_PROPERTY_DATA(daemonizeProperty), daemonizeProperty->dataLength);
+	memcpy(daemonize, daemonizeProperty->value, daemonizeProperty->dataLength);
 	daemonize[daemonizeProperty->dataLength] = '\0';
 
 	if(strncmp(daemonize, "true", daemonizeProperty->dataLength + 1) == 0){
@@ -683,30 +719,30 @@ ERROR_CODE server_loadProperties(Server* server, char* propertyFileLocation, con
 	UTIL_LOG_CONSOLE(LOG_DEBUG, "Server: \tLoading settings from disk...");
 
 	ERROR_CODE error;
-		if((error = properties_loadFromDisk(&server->properties, propertyFileLocation)) != ERROR_NO_ERROR){
-			goto label_return;
-		}
+	if((error = properties_loadFromDisk(&server->properties, propertyFileLocation)) != ERROR_NO_ERROR){
+		goto label_return;
+	}
 
-		// TODO: Check that values are valid, like port range, directory strings are properly terminated/formated. (jan - 2022.09.29)
-		// #Server.
-		PROPERTY_EXISTS(PORT);
-		PROPERTY_EXISTS(DAEMONIZE);
-		PROPERTY_EXISTS(NUM_WORKER_THREADS);
-		PROPERTY_EXISTS(HTTP_ROOT_DIRECTORY);
-		PROPERTY_EXISTS(CUSTOM_ERROR_PAGES_DIRECTORY);
-		PROPERTY_EXISTS(LOGFILE_DIRECTORY);
-		PROPERTY_EXISTS(EPOLL_EVENT_BUFFER_SIZE);
-		PROPERTY_EXISTS(HTTP_CACHE_SIZE);
-		PROPERTY_EXISTS(ERROR_PAGE_CACHE_SIZE);
+	// TODO: Check that values are valid, like port range, directory strings are properly terminated/formated. (jan - 2022.09.29)
+	// #Server.
+	PROPERTY_EXISTS(PORT);
+	PROPERTY_EXISTS(DAEMONIZE);
+	PROPERTY_EXISTS(NUM_WORKER_THREADS);
+	PROPERTY_EXISTS(HTTP_ROOT_DIRECTORY);
+	PROPERTY_EXISTS(CUSTOM_ERROR_PAGES_DIRECTORY);
+	PROPERTY_EXISTS(LOGFILE_DIRECTORY);
+	PROPERTY_EXISTS(EPOLL_EVENT_BUFFER_SIZE);
+	PROPERTY_EXISTS(HTTP_CACHE_SIZE);
+	PROPERTY_EXISTS(ERROR_PAGE_CACHE_SIZE);
 
-		PROPERTY_EXISTS(HTTP_READ_BUFFER_SIZE);
-		
-		// #Security
-		PROPERTY_EXISTS(SSL_CERTIFICATE_LOCATION);
-		PROPERTY_EXISTS(SSL_PRIVATE_KEY_FILE);
+	PROPERTY_EXISTS(HTTP_READ_BUFFER_SIZE);
+	
+	// #Security
+	PROPERTY_EXISTS(SSL_CERTIFICATE_LOCATION);
+	PROPERTY_EXISTS(SSL_PRIVATE_KEY_FILE);
 
-		PROPERTY_EXISTS(SYSLOG_ID);
-		PROPERTY_EXISTS(WORK_DIRECTORY);
+	PROPERTY_EXISTS(SYSLOG_ID);
+	PROPERTY_EXISTS(WORK_DIRECTORY);
 
 label_return:
 	return ERROR(error);
