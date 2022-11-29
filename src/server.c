@@ -2,11 +2,6 @@
 #define SERVER_C
 
 // POSIX Version ¢2008
-#include "util.h"
-#include <errno.h>
-#include <string.h>
-#include <sys/syslog.h>
-#include <unistd.h>
 #define _XOPEN_SOURCE 700
 
 #define _GNU_SOURCE
@@ -23,18 +18,50 @@
 #include "properties.c"
 #include "http.c"
 #include "cache.c"
+#include "argumentParser.c"
 
 THREAD_POOL_RUNNABLE_(epoll_run, Server, server);
 
 local Server* server;
 
-// main
+// main1
 #ifdef TEST_BUILD
 	int server_totalyNotMain(const int argc, const char* argv[]){
 #else
 	int main(const int argc, const char* argv[]){
 #endif
 	ERROR_CODE error;
+
+		ArgumentParser parser;
+		if((error = argumentParser_init(&parser)) != ERROR_NO_ERROR){
+			goto label_return;
+		}
+	
+		ARGUMENT_PARSER_ADD_ARGUMENT(Help, 3, "-?", "-h", "--help");
+		ARGUMENT_PARSER_ADD_ARGUMENT(ShowSettings, 1, "--showSettings");
+
+		__UTIL_SUPPRESS_NEXT_ERROR_OF_TYPE__(ERROR_NO_VALID_ARGUMENT);
+		if((error = argumentParser_parse(&parser, argc, argv)) != ERROR_NO_ERROR){
+			if(error == ERROR_DUPLICATE_ENTRY){
+				UTIL_LOG_CONSOLE(LOG_ERR, "Duplicate argument.");
+
+				goto label_return;
+			}
+		}
+
+	// --help
+	if(argumentParser_contains(&parser, &argumentHelp)){
+		server_printHelp();
+
+		goto label_return;
+	}
+
+	// --showSettings
+	if(argumentParser_contains(&parser, &argumentShowSettings)){
+		server_showSettings();
+
+		goto label_return;
+	}
 
 	server = malloc(sizeof(Server));
 	if(server == NULL){
@@ -51,7 +78,41 @@ local Server* server;
 label_free:
 	server_free(server);
 
+label_return:
+	argumentParser_free(&parser);
+
 	return 0;
+}
+
+void server_printHelp(void){
+	UTIL_LOG_CONSOLE(LOG_INFO, "Usage: herder --[command]/-[alias] <arguments>.\n");
+
+	UTIL_LOG_CONSOLE_(LOG_INFO, "\t%s\t\t%s", CONSTANTS_SERVER_USAGE_ARGUMENT_SHOW_SETTINGS_NAME, CONSTANTS_SERVER_USAGE_ARGUMENT_SHOW_SETTINGS_DESCRIPTION);
+	UTIL_LOG_CONSOLE_(LOG_INFO, "\t%s\t\t%s", CONSTANTS_SERVER_USAGE_ARGUMENT_HELP_NAME, CONSTANTS_SERVER_USAGE_ARGUMENT_HELP_DESCRIPTION);
+}
+
+ERROR_CODE server_showSettings(void){
+	ERROR_CODE error;
+
+	PropertyFile properties;
+	if((error = properties_load(&properties, RESOURCES_PROPERTY_FILE_LOCATION, strlen(RESOURCES_PROPERTY_FILE_LOCATION))) != ERROR_NO_ERROR){
+		return ERROR(error);
+	}
+
+	UTIL_LOG_CONSOLE_(LOG_INFO, "'%s':\n", RESOURCES_PROPERTY_FILE_LOCATION);
+
+	LinkedListIterator it;
+	linkedList_initIterator(&it, &properties.properties);
+
+	while(LINKED_LIST_ITERATOR_HAS_NEXT(&it)){
+		Property* property = LINKED_LIST_ITERATOR_NEXT_PTR(&it, Property);
+
+		UTIL_LOG_CONSOLE_(LOG_INFO, "%s = \"%s\".", PROPERTIES_PROPERTY_NAME(property), PROPERTIES_PROPERTY_DATA(property));
+	}
+
+	properties_free(&properties);
+
+	return ERROR(ERROR_NO_ERROR);
 }
 
 ERROR_CODE server_writeTemplatePropertyFileToDisk(char* propertyFileLocation, const int_fast64_t propertyFileLocationLength){

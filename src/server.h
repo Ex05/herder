@@ -110,6 +110,10 @@ ERROR_CODE server_sendResponse(SSL*, HTTP_Response*);
 
 void server_daemonize(void);
 
+void server_printHelp(void);
+
+ERROR_CODE server_showSettings(void);
+
 #endif
 
 /*

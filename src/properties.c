@@ -94,9 +94,7 @@ ERROR_CODE properties_load(PropertyFile* propertyFile, const char* filePath, con
 				return ERROR(error);
 			}
 
-			linkedList_add(&propertyFile->properties, property, PROPERTIES_SIZEOF_PROPERTY(property));
-
-			free(property);
+			linkedList_add(&propertyFile->properties, &property, sizeof(Property*));
 
 		label_continue:
 			if(lineSplitt == -1){
@@ -132,7 +130,7 @@ inline Property* properties_get(PropertyFile* propertyFile, const char* name, co
 	linkedList_initIterator(&it, &propertyFile->properties);
 
 	while(LINKED_LIST_ITERATOR_HAS_NEXT(&it)){
-		Property* _property = (Property*) LINKED_LIST_ITERATOR_NEXT(&it);
+		Property* _property = LINKED_LIST_ITERATOR_NEXT(&it);
 
 		if(strncmp(name, PROPERTIES_PROPERTY_NAME(_property), (nameLength > _property->nameLength ? nameLength : _property->nameLength) + 1) == 0){
 			return _property;
@@ -158,13 +156,13 @@ ERROR_CODE properties_initProperty(Property** property, char* name, const int_fa
 
 	memcpy(&(*property)->data, name, sizeof(*name) * (nameLength + 1));
 	memcpy(((*property)->data + nameLength + 1), data, dataLength);
+	(*property)->data[nameLength + 1 + dataLength] = '\0';
 
 	return ERROR(ERROR_NO_ERROR);
 }
 
 ERROR_CODE properties_updateProperty(PropertyFile* propertyFile, const char* name, const uint_fast64_t nameLength, const int8_t data[]){
-	
-
+	// TODO: ...
 
 	return ERROR(ERROR_FUNCTION_NOT_IMPLEMENTED);
 }

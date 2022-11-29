@@ -67,4 +67,9 @@
 
 #define CONSTANTS_HTTP_HEADER_FIELD_SERVER_VALUE "Herder Server"
 
+#define CONSTANTS_SERVER_USAGE_ARGUMENT_SHOW_SETTINGS_NAME "--showSettings"
+#define CONSTANTS_SERVER_USAGE_ARGUMENT_SHOW_SETTINGS_DESCRIPTION "Shows a quick overview of all user definable settings."
+#define CONSTANTS_SERVER_USAGE_ARGUMENT_HELP_NAME "-?, -h, --help"
+#define CONSTANTS_SERVER_USAGE_ARGUMENT_HELP_DESCRIPTION "Displays this help message."
+
 #endif
