@@ -3,6 +3,7 @@
 
 // POSIX Version ¢2008
 #include "doublyLinkedList.h"
+#include "properties.h"
 #include "util.h"
 #include <stdint.h>
 #include <string.h>
@@ -156,30 +157,39 @@ ERROR_CODE server_showSettings(void){
 ERROR_CODE server_writeTemplatePropertyFileToDisk(char* propertyFileLocation, const int_fast64_t propertyFileLocationLength){
 	UTIL_LOG_CONSOLE(LOG_DEBUG, "Writing template seetings file to disk...");
 
-	// PROPERTIES_CREATE_FROM_TEMPLATE(
-	// 	"Version: 1.0.0
+	char propertyFileTemplate[] = "Version: 1.0.0\n \
+\n \
+# Server\n \
+port = 1869\n \
+daemonize = true\n \
+num_worker_threads = 1\n \
+http_root_directory = /home/ex05/herder/www\n \
+custom_error_pages_directoory = /home/ex05/herder/error_pages\n \
+logfile_directory = /home/ex05/herder/log\n \
+epoll_event_buffer_size = 32\n \
+http_cache_size = 256\n \
+error_page_cache_size = 4\n \
+// Max architecture independant guaranteed size is 2pow(16) or 65_535 Bytes.\n \
+http_read_buffer_size = 8096\n \
+\n \
+# Security\n \
+ssl_privateKeyFile = ./res/testCertificate.pem\n \
+ssl_certificate = ./res/testCertificate.pem\n \
+\n \
+work_directory = /home/exo5/herder\n \
+system_log_id = herder_server";
 
-	// 	# Server
-	// 	port = 1869
-	// 	daemonize = true
-	// 	num_worker_threads = 1
-	// 	http_root_directory = 
-	// 	custom_error_pages_directoory = 
-	// 	logfile_directory = 
-	// 	epoll_event_buffer_size = 32
-	// 	http_cache_size = 256
-	// 	error_page_cache_size = 4
+	ERROR_CODE error;
+	PropertyFile properties = {0};
+	if((error = properties_parse(&properties, propertyFileTemplate, strlen(propertyFileTemplate))) != ERROR_NO_ERROR){
+		return ERROR(error);
+	}
 
-	// 	// Max architecture independant guaranteed size is 2pow(16) or 65_535 Bytes.
-	// 	http_read_buffer_size = 8096
-	// 	TEST
-	// 	# Security
-	// 	ssl_privateKeyFile = 
-	// 	ssl_certificate = 
+	if((error = properties_saveToDisk(&properties, RESOURCES_PROPERTY_FILE_LOCATION)) != ERROR_NO_ERROR){
+		return ERROR(error);
+	}
 
-	// 	work_directory =
-	// 	system_log_id = herder_server
-	// ", propertyFileLocation, propertyFileLocationLength);
+	properties_free(&properties);
 
 	return ERROR(ERROR_NO_ERROR);	
 }
