@@ -57,7 +57,7 @@ TEST_TEST_FUNCTION_(properties_get, PropertyFile, properties){
 		return TEST_FAILURE("Failed to add propertry: '%s' to property file.", "port");
 	}
 
-		Property* portProperty;
+	Property* portProperty;
 	if(properties_get(properties, &portProperty, "port", strlen("port")) != ERROR_NO_ERROR){
 		return TEST_FAILURE("Failed to retrieve propertry: '%s'.", "port");
 	}
@@ -68,6 +68,10 @@ TEST_TEST_FUNCTION_(properties_get, PropertyFile, properties){
 
 	if(strncmp(portProperty->value, "1869", strlen("1869")) != 0){
 		return TEST_FAILURE("Failed to parse property: '%s' '%s' != '%s'.", "port", portProperty->value, "1869");
+	}
+
+	if(properties_get(properties, &portProperty, "abbab", strlen("abbab")) == ERROR_NO_ERROR){
+		return TEST_FAILURE("False posetive for property: '%s'.", "abbab");
 	}
 
 	return TEST_SUCCESS;

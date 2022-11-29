@@ -305,15 +305,17 @@ inline local ERROR_CODE _properties_get(DoublyLinkedList* list, Property** prope
 
 	*property = NULL;
 
-	return ERROR(ERROR_ENTRY_NOT_FOUND);
+	return ERROR_(ERROR_ENTRY_NOT_FOUND, "Property name: '%s'.", name);
 }
 
 inline ERROR_CODE properties_get(PropertyFile* properties, Property** property, const char* name, const uint_fast64_t nameLength){
-	return _properties_get(&properties->properties, property, name, nameLength);
+	__UTIL_SUPPRESS_NEXT_ERROR_OF_TYPE__(ERROR_ENTRY_NOT_FOUND);
+	return ERROR(_properties_get(&properties->properties, property, name, nameLength));
 }
 
 inline bool properties_propertyExists(PropertyFile* propertyFile, const char* name, const uint_fast64_t nameLength){
 	Property* property;
+	__UTIL_SUPPRESS_NEXT_ERROR_OF_TYPE__(ERROR_ENTRY_NOT_FOUND);
 	return properties_get(propertyFile, &property, name, nameLength) == ERROR_NO_ERROR;
 }
 
