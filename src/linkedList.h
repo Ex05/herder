@@ -14,11 +14,10 @@
 
 #define LINKED_LIST_EMPTY(list) (list->tail == NULL)
 
-#define LINKED_LIST_INIT_NODE(size) ()
-
 struct linkedList_node{
 	struct linkedList_node* nextNode;
-	// void data;
+	// Note: data gets allocated at runtime.
+	// void data[];
 };
 
 typedef struct linkedList_node LinkedList_Node;

@@ -46,31 +46,31 @@ typedef struct {
 #define SERVER_CONTEXT_HANDLER(functionName) ERROR_CODE functionName(Server* server, HTTP_Request* request, HTTP_Response* response)
 typedef SERVER_CONTEXT_HANDLER(ContextHandler);
 
+#define SERVER_TRANSLATE_SYMBOLIC_FILE_LOCATION(varName, server, symbolicFileLocation, symbolicFileLocationLength) char* varName; \
+	uint_fast64_t varName ## Length; \
+	do{ \
+		varName ## Length = server->httpRootDirectory->valueLength + symbolicFileLocationLength; \
+		varName = alloca(sizeof(*varName) * (varName ## Length + 1/*'\0'*/ )); \
+ 		\
+		strncpy(varName, (char*) server->httpRootDirectory->value, server->httpRootDirectory->dataLength); \
+		strncpy(varName + server->httpRootDirectory->dataLength , symbolicFileLocation, symbolicFileLocationLength + 1); \
+	}while(0); 
+
+ #define SERVER_TRANSLATE_SYMBOLIC_FILE_LOCATION_ERROR_PAGE(varName, server, symbolicFileLocation, symbolicFileLocationLength) char* varName; \
+	uint_fast64_t varName ## Length; \
+	do{ \
+		varName ## Length = server->customErrorPageDirectory->valueLength + symbolicFileLocationLength; \
+		varName = alloca(sizeof(*varName) * (varName ## Length + 1/*'\0'*/ )); \
+ 		\
+		strncpy(varName, (char*) server->customErrorPageDirectory->value, server->customErrorPageDirectory->dataLength); \
+		strncpy(varName + server->customErrorPageDirectory->dataLength , symbolicFileLocation, symbolicFileLocationLength + 1); \
+	}while(0); 
+
 typedef struct{
 	char* symbolicFileLocation;
 	uint_fast64_t symbolicFileLocationLength;
 	ContextHandler* contextHandler;
 }Context;
-
-#define SERVER_TRANSLATE_SYMBOLIC_FILE_LOCATION(varName, server, symbolicFileLocation, symbolicFileLocationLength) char* varName; \
-	uint_fast64_t varName ## Length; \
-	do{ \
-		varName ## Length = server->httpRootDirectory->dataLength + symbolicFileLocationLength; \
-		varName = alloca(sizeof(*fileLocation) * (fileLocationLength + 1/*'\0'*/ )); \
-		\
-		strncpy(fileLocation,(char*) PROPERTIES_PROPERTY_DATA(server->httpRootDirectory), server->httpRootDirectory->dataLength); \
-		strncpy(fileLocation + server->httpRootDirectory->dataLength , symbolicFileLocation, symbolicFileLocationLength + 1); \
-	}while(0)
-
-#define SERVER_TRANSLATE_SYMBOLIC_FILE_LOCATION_ERROR_PAGE(varName, server, symbolicFileLocation, symbolicFileLocationLength) char* varName; \
-	uint_fast64_t varName ## Length; \
-	varName ## Length = server->customErrorPageDirectory->dataLength + symbolicFileLocationLength; \
-	do{ \
-	varName = alloca(sizeof(*fileLocation) * (varName ## Length + 1/*'\0'*/ )); \
-	\
-	strncpy(varName, (char*) PROPERTIES_PROPERTY_DATA(server->customErrorPageDirectory), server->customErrorPageDirectory->dataLength); \
-	strncpy(varName + server->customErrorPageDirectory->dataLength , symbolicFileLocation, symbolicFileLocationLength + 1); \
-	}while(0);
 
 void server_sigHandler(int);
 

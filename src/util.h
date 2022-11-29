@@ -300,11 +300,11 @@ ERROR_CODE util_blockAlloc(void**, const uint_fast64_t);
 
 ERROR_CODE util_unMap(void*, const uint_fast64_t);
 
-ERROR_CODE util_readUserInput(char**, int_fast64_t*);
+ERROR_CODE util_readUserInput(char**, uint_fast64_t*);
 
 ERROR_CODE util_stringToInt(const char*, int64_t*);
 
-char* util_trim(char*, const uint_fast64_t);
+char* util_trim(char*, uint_fast64_t*);
 
 void util_printBuffer(void*, uint_fast64_t);
 
@@ -359,5 +359,7 @@ ERROR_CODE util_createDirectory(const char*);
 ERROR_CODE util_createAllDirectories(const char*, const uint_fast64_t);
 
 ERROR_CODE util_fileCopy(const char*, const char*);
+
+ERROR_CODE util_getFileSize(const char*, uint_fast64_t*);
 
 #endif

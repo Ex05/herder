@@ -143,6 +143,7 @@ void test_test(test_testFunction* func, const char* name){
 
 #include "test/arrayList_test.c"
 #include "test/linkedList_test.c"
+#include "test/doublyLinkedList_test.c"
 #include "test/argumentParser_test.c"
 #include "test/que_test.c"
 #include "test/threadPool_test.c"
@@ -158,8 +159,7 @@ void test_test(test_testFunction* func, const char* name){
 #else
 	int main(const int argc, const char* argv[]){
 #endif
-	TEST_BEGIN();
-
+TEST_BEGIN();
 	TEST_SUIT_BEGIN("arrayList");
 		TEST(arraylist_iteration);
 		TEST(arraylist_fixedSizedStackList);
@@ -170,6 +170,13 @@ void test_test(test_testFunction* func, const char* name){
 		TEST(linkedList_iteration);
 		TEST(linkedList_remove);
 		TEST(linkedList_contains);
+	TEST_SUIT_END();
+
+	TEST_SUIT_BEGIN_(doublyLinkedList);
+		TEST(doublyLinkedList_add);
+		TEST(doublyLinkedList_iteration);
+		TEST(doublyLinkedList_remove);
+		TEST(doublyLinkedList_contains);
 	TEST_SUIT_END();
 
 	TEST_SUIT_BEGIN("argumentParser");
@@ -229,13 +236,10 @@ void test_test(test_testFunction* func, const char* name){
 		TEST(util_blockAlloc);
 	TEST_SUIT_END();
 
-	TEST_SUIT_BEGIN("properties");
-		TEST(properties_newPropertyFileTemplate);
-		TEST(properties_newPropertyTemplate);
-		TEST(properties_newPropertyFileSection);
-		TEST(properties_propertyFileSectionAddProperty);
-		TEST(properties_propertryFileTemplateAddSection);
-		TEST(properties_createPropertyFileFromTemplate);
+	TEST_SUIT_BEGIN_(properties);
+		TEST(properties_parse);
+		TEST(properties_get);
+		TEST(properties_propertyExists);
 	TEST_SUIT_END();
 
 	TEST_SUIT_BEGIN("http");

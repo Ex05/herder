@@ -79,7 +79,7 @@ TEST_TEST_FUNCTION_(server_translateSymbolicFileLocation, Server, server){
 	#define HTTP_ROOT_DIRECTORY "/home/ex05/herder/www"
 
 	#define PROPERTY_NAME "httpRootDirectory"
-	properties_initProperty(&server->httpRootDirectory, PROPERTY_NAME, strlen(PROPERTY_NAME), (int8_t*) HTTP_ROOT_DIRECTORY, strlen(HTTP_ROOT_DIRECTORY));
+	properties_initProperty(&server->httpRootDirectory, PROPERTY_FILE_ENTRY_TYPE_PROPERTY, PROPERTY_NAME, strlen(PROPERTY_NAME), (int8_t*) HTTP_ROOT_DIRECTORY, strlen(HTTP_ROOT_DIRECTORY));
 	#undef PROPERTY_NAME
 
 	char symbolicFileLocation[] = "/img/img_001.jpg";
@@ -92,6 +92,9 @@ TEST_TEST_FUNCTION_(server_translateSymbolicFileLocation, Server, server){
 	}
 	#undef HTTP_ROOT_DIRECTORY
 
+	free(server->httpRootDirectory->name);
+	free(server->httpRootDirectory->data);
+
 	free(server->httpRootDirectory);
 
 	return TEST_SUCCESS;
@@ -101,7 +104,7 @@ TEST_TEST_FUNCTION_(server_translateSymbolicFileLocationErrorPage, Server, serve
 	#define CUSTOM_ERROR_PAGES_DIRECTORY "/home/ex05/herder/error_pages"
 
 	#define PROPERTY_NAME "customErrorPageDirectory"
-	properties_initProperty(&server->customErrorPageDirectory, PROPERTY_NAME, strlen(PROPERTY_NAME), (int8_t*) CUSTOM_ERROR_PAGES_DIRECTORY, strlen(CUSTOM_ERROR_PAGES_DIRECTORY));
+	properties_initProperty(&server->customErrorPageDirectory, PROPERTY_FILE_ENTRY_TYPE_PROPERTY, PROPERTY_NAME, strlen(PROPERTY_NAME), (int8_t*) CUSTOM_ERROR_PAGES_DIRECTORY, strlen(CUSTOM_ERROR_PAGES_DIRECTORY));
 	#undef PROPERTY_NAME
 
 	const uint_fast64_t symbolicFileLocationLength = + 5/*".html"*/ + 1/*'/'*/ + 1/*_*/+ 3/*http status code*/;
@@ -115,6 +118,9 @@ TEST_TEST_FUNCTION_(server_translateSymbolicFileLocationErrorPage, Server, serve
 	}
 
 	#undef CUSTOM_ERROR_PAGES_DIRECTORY
+
+	free(server->customErrorPageDirectory->name);
+	free(server->customErrorPageDirectory->data);
 
 	free(server->customErrorPageDirectory);
 

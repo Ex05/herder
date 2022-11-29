@@ -2,6 +2,12 @@
 #define SERVER_C
 
 // POSIX Version ¢2008
+#include "doublyLinkedList.h"
+#include "properties.h"
+#include "util.h"
+#include <stdint.h>
+#include <string.h>
+#include <sys/syslog.h>
 #define _XOPEN_SOURCE 700
 
 #define _GNU_SOURCE
@@ -91,26 +97,59 @@ void server_printHelp(void){
 	UTIL_LOG_CONSOLE_(LOG_INFO, "\t%s\t\t%s", CONSTANTS_SERVER_USAGE_ARGUMENT_HELP_NAME, CONSTANTS_SERVER_USAGE_ARGUMENT_HELP_DESCRIPTION);
 }
 
+void _server_printSettings(DoublyLinkedList* list){
+	DoublyLinkedListIterator it;
+	doublyLinkedList_initIterator(&it, list);
+
+	// Iterate over all property file entries.
+	while(DOUBLY_LINKED_LIST_ITERATOR_HAS_NEXT(&it)){
+		Property* property = DOUBLY_LINKED_LIST_ITERATOR_NEXT_PTR(&it, Property);
+
+		switch (property->type){
+			case PROPERTY_FILE_ENTRY_TYPE_PROPERTY:{
+				UTIL_LOG_CONSOLE_(LOG_INFO, "%s = %s", property->name, property->value);
+
+				break;
+			}
+		
+			case PROPERTY_FILE_ENTRY_TYPE_SECTION:{
+				UTIL_LOG_CONSOLE_(LOG_INFO, "# %s", property->name);
+
+				_server_printSettings(&property->properties);
+				break;
+			}
+
+			case PROPERTY_FILE_ENTRY_TYPE_EMPTY_LINE:{
+				UTIL_LOG_CONSOLE(LOG_INFO, "");
+
+				break;
+			}
+
+			case PROPERTY_FILE_ENTRY_TYPE_COMMENT:{
+				UTIL_LOG_CONSOLE_(LOG_INFO, "%s", property->name);
+
+				break;
+			}
+
+			default:{
+				break;
+			}
+		}
+	}
+}
+
 ERROR_CODE server_showSettings(void){
 	ERROR_CODE error;
 
-	PropertyFile properties;
-	if((error = properties_load(&properties, RESOURCES_PROPERTY_FILE_LOCATION, strlen(RESOURCES_PROPERTY_FILE_LOCATION))) != ERROR_NO_ERROR){
+	Server server = {0};
+	if((error = server_loadProperties(&server, RESOURCES_PROPERTY_FILE_LOCATION, strlen(RESOURCES_PROPERTY_FILE_LOCATION)))){
 		return ERROR(error);
 	}
 
-	UTIL_LOG_CONSOLE_(LOG_INFO, "'%s':\n", RESOURCES_PROPERTY_FILE_LOCATION);
+	UTIL_LOG_CONSOLE_(LOG_INFO, "'%s':", RESOURCES_PROPERTY_FILE_LOCATION);
+	_server_printSettings(&server.properties.properties);
 
-	LinkedListIterator it;
-	linkedList_initIterator(&it, &properties.properties);
-
-	while(LINKED_LIST_ITERATOR_HAS_NEXT(&it)){
-		Property* property = LINKED_LIST_ITERATOR_NEXT_PTR(&it, Property);
-
-		UTIL_LOG_CONSOLE_(LOG_INFO, "%s = \"%s\".", PROPERTIES_PROPERTY_NAME(property), PROPERTIES_PROPERTY_DATA(property));
-	}
-
-	properties_free(&properties);
+	properties_free(&server.properties);
 
 	return ERROR(ERROR_NO_ERROR);
 }
@@ -118,86 +157,41 @@ ERROR_CODE server_showSettings(void){
 ERROR_CODE server_writeTemplatePropertyFileToDisk(char* propertyFileLocation, const int_fast64_t propertyFileLocationLength){
 	UTIL_LOG_CONSOLE(LOG_DEBUG, "Writing template seetings file to disk...");
 
-	// PropertyFile.		
-	PROPERTIES_NEW_PROPERTY_FILE_TEMPLATE(Template, RESOURCES_PROPERTY_FILE_LOCATION);
-
-	// Security
-	PROPERTIES_NEW_PROPERTY_FILE_SECTION(Security, CONSTANTS_PROPERTY_FILE_SECTION_SECURITY);	
-
-		// SSL_Certificate
-		PROPERTIES_NEW_PROPERTY_TEMPLATE(SSL_Certificate, CONSTANTS_SSL_CERTIFICATE_LOCATION_PROPERTY_NAME, CONSTANTS_SSL_CERTIFICATE_LOCATION_DEFAULT_VALUE);
-		PROPERTIES_PROPERTY_FILE_SECTION_ADD_PROPERTY(Security, SSL_Certificate);
-
-		// SSL_PrivateKeyFile
-		PROPERTIES_NEW_PROPERTY_TEMPLATE(SSL_PrivateKeyFile, CONSTANTS_SSL_PRIVATE_KEY_FILE_PROPERTY_NAME, CONSTANTS_SSL_PRIVATE_KEY_FILE_PROPERTY_DEFAULT_VALUE);
-		PROPERTIES_PROPERTY_FILE_SECTION_ADD_PROPERTY(Security, SSL_PrivateKeyFile);
-
-		PROPERTIES_PROPERTRY_FILE_TEMPLATE_ADD_SECTION(Template, Security);
-
-	// Server
-	PROPERTIES_NEW_PROPERTY_FILE_SECTION(Server, CONSTANTS_PROPERTY_FILE_SECTION_SERVER);	
-
-		// HTTP_ReadBufferSize
-		PROPERTIES_NEW_PROPERTY_TEMPLATE(HTTP_ReadBufferSize, CONSTANTS_HTTP_READ_BUFFER_SIZE_PROPERTY_NAME, CONSTANTS_HTTP_READ_BUFFER_SIZE_PROPERTY_DEFAULT_VALUE);
-		PROPERTIES_PROPERTY_FILE_SECTION_ADD_PROPERTY(Server, HTTP_ReadBufferSize);
-
-		// ErrorPageChacheSize
-		PROPERTIES_NEW_PROPERTY_TEMPLATE(ErrorPageChacheSize, CONSTANTS_ERROR_PAGE_CACHE_SIZE_PROPERTY_NAME, CONSTANTS_ERROR_PAGE_CACHE_SIZE_POPERTY_DEFAULT_VALUE);
-		PROPERTIES_PROPERTY_FILE_SECTION_ADD_PROPERTY(Server, ErrorPageChacheSize);
-
-		// HTTP_CacheSize
-		PROPERTIES_NEW_PROPERTY_TEMPLATE(HTTP_CacheSize, CONSTANTS_HTTP_CACHE_SIZE_PROPERTY_NAME, CONSTANTS_HTTP_CACHE_SIZE_POPERTY_DEFAULT_VALUE);
-		PROPERTIES_PROPERTY_FILE_SECTION_ADD_PROPERTY(Server, HTTP_CacheSize);
-
-		// EpollEventBufferSize
-		PROPERTIES_NEW_PROPERTY_TEMPLATE(EpollEventBufferSize, CONSTANTS_EPOLL_EVENT_BUFFER_SIZE_PROPERTY_NAME, CONSTANTS_EPOLL_EVENT_BUFFER_SIZE_PROPERTY_DEFAULT_VALUE);
-		PROPERTIES_PROPERTY_FILE_SECTION_ADD_PROPERTY(Server, EpollEventBufferSize);
-
-		// LogFileDirectory
-		PROPERTIES_NEW_PROPERTY_TEMPLATE(LogFileDirectory, CONSTANTS_LOGFILE_DIRECTORY_PROPERTY_NAME, CONSTANTS_LOGFILE_DIRECTORY_POPERTY_DEFAULT_VALUE);
-		PROPERTIES_PROPERTY_FILE_SECTION_ADD_PROPERTY(Server, LogFileDirectory);
-
-		// CustomErrorPagesDirectory
-		PROPERTIES_NEW_PROPERTY_TEMPLATE(CustomErrorPagesDirectory, CONSTANTS_CUSTOM_ERROR_PAGES_DIRECTORY_PROPERTY_NAME, CONSTANTS_CUSTOM_ERROR_PAGES_DIRECTORY_PROPERTY_DEFAULT_VALUE);
-		PROPERTIES_PROPERTY_FILE_SECTION_ADD_PROPERTY(Server, CustomErrorPagesDirectory);
-
-		// HTTP_RootDirectory
-		PROPERTIES_NEW_PROPERTY_TEMPLATE(HTTP_RootDirectory, CONSTANTS_HTTP_ROOT_DIRECTORY_PROPERTY_NAME, CONSTANTS_HTTP_ROOT_DIRECTORY_POPERTY_DEFAULT_VALUE);
-		PROPERTIES_PROPERTY_FILE_SECTION_ADD_PROPERTY(Server, HTTP_RootDirectory);
-
-		// NumWorkerThreads
-		PROPERTIES_NEW_PROPERTY_TEMPLATE(NumWorkerThreads, CONSTANTS_NUM_WORKER_THREADS_PROPERTY_NAME, CONSTANTS_NUM_WORKER_THREADS_PROPERTY_DEFAULT_VALUE);
-		PROPERTIES_PROPERTY_FILE_SECTION_ADD_PROPERTY(Server, NumWorkerThreads);
-
-		// Daemonize
-		PROPERTIES_NEW_PROPERTY_TEMPLATE(Daemonize, CONSTANTS_DAEMONIZE_PROPERTY_NAME, CONSTANTS_DAEMONIZE_PROPERTY_DEFAULT_VALUE);
-		PROPERTIES_PROPERTY_FILE_SECTION_ADD_PROPERTY(Server, Daemonize);
-
-		// Port
-		PROPERTIES_NEW_PROPERTY_TEMPLATE(Port, CONSTANTS_PORT_PROPERTY_NAME, CONSTANTS_PORT_PROPERTY_DEFAULT_VALUE);
-		PROPERTIES_PROPERTY_FILE_SECTION_ADD_PROPERTY(Server, Port);
-
-		PROPERTIES_PROPERTRY_FILE_TEMPLATE_ADD_SECTION(Template, Server);
-
-	// Syslog_ID
-	PROPERTIES_NEW_PROPERTY_TEMPLATE(SYSLOG_ID, CONSTANTS_SYSLOG_ID_PROPERTY_NAME, CONSTANTS_SYSLOG_ID_PROPERTY_DEFAULT_VALUE);
-	PROPERTIES_PROPERTY_FILE_ADD_PROPERTY(Template, SYSLOG_ID);			
-
-	// WorkDirectory
-	PROPERTIES_NEW_PROPERTY_TEMPLATE(WorkDirectory, CONSTANTS_WORK_DIRECTORY_PROPERTY_NAME, CONSTANTS_WORK_DIRECTORY_PROPERTY_DEFAULT_VALUE);
-
-	PROPERTIES_PROPERTY_FILE_ADD_PROPERTY(Template, WorkDirectory);			
+	char propertyFileTemplate[] = "Version: 1.0.0\n \
+\n \
+# Server\n \
+port = 1869\n \
+daemonize = true\n \
+num_worker_threads = 1\n \
+http_root_directory = /home/ex05/herder/www\n \
+custom_error_pages_directoory = /home/ex05/herder/error_pages\n \
+logfile_directory = /home/ex05/herder/log\n \
+epoll_event_buffer_size = 32\n \
+http_cache_size = 256\n \
+error_page_cache_size = 4\n \
+// Max architecture independant guaranteed size is 2pow(16) or 65_535 Bytes.\n \
+http_read_buffer_size = 8096\n \
+\n \
+# Security\n \
+ssl_privateKeyFile = ./res/testCertificate.pem\n \
+ssl_certificate = ./res/testCertificate.pem\n \
+\n \
+work_directory = /home/exo5/herder\n \
+system_log_id = herder_server";
 
 	ERROR_CODE error;
-	if((error = PROPERTIES_CREATE_PROPERTY_FILE(Template)) != ERROR_NO_ERROR){
-		PROPERTIES_FREE_PROPERTY_FILE_TEMPLATE(Template);
-
+	PropertyFile properties = {0};
+	if((error = properties_parse(&properties, propertyFileTemplate, strlen(propertyFileTemplate))) != ERROR_NO_ERROR){
 		return ERROR(error);
 	}
 
-	PROPERTIES_FREE_PROPERTY_FILE_TEMPLATE(Template);
+	if((error = properties_saveToDisk(&properties, RESOURCES_PROPERTY_FILE_LOCATION)) != ERROR_NO_ERROR){
+		return ERROR(error);
+	}
 
-	return ERROR(error);	
+	properties_free(&properties);
+
+	return ERROR(ERROR_NO_ERROR);	
 }
 
 ERROR_CODE server_init(Server* server, char* propertyFileLocation, const int_fast64_t propertyFileLocationLength){
@@ -237,10 +231,11 @@ ERROR_CODE server_init(Server* server, char* propertyFileLocation, const int_fas
 	sigaction(SIGPIPE, &signalhandler, NULL);
 
 	// Daemonize.
-	Property* daemonizeProperty = PROPERTIES_GET(&server->properties, DAEMONIZE);
-
+	Property* daemonizeProperty;
+	PROPERTIES_GET(&server->properties, daemonizeProperty, DAEMONIZE);
+	
 	char* daemonize = alloca(sizeof(*daemonize) * (daemonizeProperty->dataLength + 1));
-	memcpy(daemonize, PROPERTIES_PROPERTY_DATA(daemonizeProperty), daemonizeProperty->dataLength);
+	memcpy(daemonize, daemonizeProperty->value, daemonizeProperty->dataLength);
 	daemonize[daemonizeProperty->dataLength] = '\0';
 
 	if(strncmp(daemonize, "true", daemonizeProperty->dataLength + 1) == 0){
@@ -248,10 +243,11 @@ ERROR_CODE server_init(Server* server, char* propertyFileLocation, const int_fas
 	}
 
 	// Syslog_ID.
-	Property* syslogID_Property = PROPERTIES_GET(&server->properties, SYSLOG_ID);
+	Property* syslogID_Property;
+	PROPERTIES_GET(&server->properties, syslogID_Property, SYSLOG_ID);
 
 	char* syslogID = alloca(sizeof(*syslogID) * (syslogID_Property->dataLength + 1));
-	memcpy(syslogID, PROPERTIES_PROPERTY_DATA(syslogID_Property), syslogID_Property->dataLength);
+	// memcpy(syslogID, PROPERTIES_PROPERTY_DATA(syslogID_Property), syslogID_Property->dataLength);
 	syslogID[syslogID_Property->dataLength] = '\0';
 
 	openlog(syslogID, LOG_PID, LOG_USER);
@@ -261,19 +257,20 @@ ERROR_CODE server_init(Server* server, char* propertyFileLocation, const int_fas
 	}
 
 	// HTTP_RootDirectory.
-	server->httpRootDirectory = PROPERTIES_GET(&server->properties, HTTP_ROOT_DIRECTORY);
+	PROPERTIES_GET(&server->properties, server->httpRootDirectory, HTTP_ROOT_DIRECTORY);
 
 	// WorkDirectory.
-	server->workDirectory = PROPERTIES_GET(&server->properties, WORK_DIRECTORY);
+	PROPERTIES_GET(&server->properties, server->workDirectory, WORK_DIRECTORY);
 
 	// CustomErrorPageDirectory.
-	server->customErrorPageDirectory = PROPERTIES_GET(&server->properties, CUSTOM_ERROR_PAGES_DIRECTORY);
+	PROPERTIES_GET(&server->properties, server->customErrorPageDirectory, CUSTOM_ERROR_PAGES_DIRECTORY);
 
 	// NumWorkerThreads.
-	Property* numWorkerThreadsProperty = PROPERTIES_GET(&server->properties, NUM_WORKER_THREADS);
+	Property* numWorkerThreadsProperty;
+	 PROPERTIES_GET(&server->properties, numWorkerThreadsProperty, NUM_WORKER_THREADS);
 
 	char* numWorkerThreadsString = alloca(sizeof(*numWorkerThreadsString) * (numWorkerThreadsProperty->dataLength + 1));
-	memcpy(numWorkerThreadsString, PROPERTIES_PROPERTY_DATA(numWorkerThreadsProperty), numWorkerThreadsProperty->dataLength);
+	memcpy(numWorkerThreadsString, numWorkerThreadsProperty->value, numWorkerThreadsProperty->dataLength);
 	numWorkerThreadsString[numWorkerThreadsProperty->dataLength] = '\0';
 
 	int_fast64_t numWorkerThreads;
@@ -337,10 +334,11 @@ ERROR_CODE server_init(Server* server, char* propertyFileLocation, const int_fas
 THREAD_POOL_RUNNABLE_(epoll_run, Server, server){
 	ERROR_CODE error;
 
-	Property* httpReadBufferSizeProperty = PROPERTIES_GET(&server->properties, HTTP_READ_BUFFER_SIZE);
+	Property* httpReadBufferSizeProperty;
+	PROPERTIES_GET(&server->properties, httpReadBufferSizeProperty, HTTP_READ_BUFFER_SIZE);
 
 	char* httpReadBufferSizeString = alloca(sizeof(*httpReadBufferSizeString) * (httpReadBufferSizeProperty->dataLength + 1));
-	memcpy(httpReadBufferSizeString, PROPERTIES_PROPERTY_DATA(httpReadBufferSizeProperty), httpReadBufferSizeProperty->dataLength);
+	memcpy(httpReadBufferSizeString, httpReadBufferSizeProperty->value, httpReadBufferSizeProperty->dataLength);
 	httpReadBufferSizeString[httpReadBufferSizeProperty->dataLength] = '\0';
 
 	int_fast64_t httpReadBufferSize;
@@ -348,10 +346,11 @@ THREAD_POOL_RUNNABLE_(epoll_run, Server, server){
 		THREAD_POOL_RUNNABLE_RETURN(error);
 	}
 
-	Property* epollReadBufferSizePoroperty = PROPERTIES_GET(&server->properties, HTTP_READ_BUFFER_SIZE);
+	Property* epollReadBufferSizePoroperty;
+	PROPERTIES_GET(&server->properties, epollReadBufferSizePoroperty, HTTP_READ_BUFFER_SIZE);
 
 	char* epollReadBufferSizeString = alloca(sizeof(*epollReadBufferSizeString) * (epollReadBufferSizePoroperty->dataLength + 1));
-	memcpy(epollReadBufferSizeString, PROPERTIES_PROPERTY_DATA(epollReadBufferSizePoroperty), epollReadBufferSizePoroperty->dataLength);
+	memcpy(epollReadBufferSizeString, epollReadBufferSizePoroperty->value, epollReadBufferSizePoroperty->dataLength);
 	epollReadBufferSizeString[epollReadBufferSizePoroperty->dataLength] = '\0';
 
 	int_fast64_t epollReadBufferSize;
@@ -730,30 +729,30 @@ ERROR_CODE server_loadProperties(Server* server, char* propertyFileLocation, con
 	UTIL_LOG_CONSOLE(LOG_DEBUG, "Server: \tLoading settings from disk...");
 
 	ERROR_CODE error;
-		if((error = properties_load(&server->properties, propertyFileLocation, propertyFileLocationLength)) != ERROR_NO_ERROR){
-			goto label_return;
-		}
+	if((error = properties_loadFromDisk(&server->properties, propertyFileLocation)) != ERROR_NO_ERROR){
+		goto label_return;
+	}
 
-		// TODO: Check that values are valid, like port range, directory strings are properly terminated/formated. (jan - 2022.09.29)
-		// #Server.
-		PROPERTY_EXISTS(PORT);
-		PROPERTY_EXISTS(DAEMONIZE);
-		PROPERTY_EXISTS(NUM_WORKER_THREADS);
-		PROPERTY_EXISTS(HTTP_ROOT_DIRECTORY);
-		PROPERTY_EXISTS(CUSTOM_ERROR_PAGES_DIRECTORY);
-		PROPERTY_EXISTS(LOGFILE_DIRECTORY);
-		PROPERTY_EXISTS(EPOLL_EVENT_BUFFER_SIZE);
-		PROPERTY_EXISTS(HTTP_CACHE_SIZE);
-		PROPERTY_EXISTS(ERROR_PAGE_CACHE_SIZE);
+	// TODO: Check that values are valid, like port range, directory strings are properly terminated/formated. (jan - 2022.09.29)
+	// #Server.
+	PROPERTY_EXISTS(PORT);
+	PROPERTY_EXISTS(DAEMONIZE);
+	PROPERTY_EXISTS(NUM_WORKER_THREADS);
+	PROPERTY_EXISTS(HTTP_ROOT_DIRECTORY);
+	PROPERTY_EXISTS(CUSTOM_ERROR_PAGES_DIRECTORY);
+	PROPERTY_EXISTS(LOGFILE_DIRECTORY);
+	PROPERTY_EXISTS(EPOLL_EVENT_BUFFER_SIZE);
+	PROPERTY_EXISTS(HTTP_CACHE_SIZE);
+	PROPERTY_EXISTS(ERROR_PAGE_CACHE_SIZE);
 
-		PROPERTY_EXISTS(HTTP_READ_BUFFER_SIZE);
-		
-		// #Security
-		PROPERTY_EXISTS(SSL_CERTIFICATE_LOCATION);
-		PROPERTY_EXISTS(SSL_PRIVATE_KEY_FILE);
+	PROPERTY_EXISTS(HTTP_READ_BUFFER_SIZE);
+	
+	// #Security
+	PROPERTY_EXISTS(SSL_CERTIFICATE_LOCATION);
+	PROPERTY_EXISTS(SSL_PRIVATE_KEY_FILE);
 
-		PROPERTY_EXISTS(SYSLOG_ID);
-		PROPERTY_EXISTS(WORK_DIRECTORY);
+	PROPERTY_EXISTS(SYSLOG_ID);
+	PROPERTY_EXISTS(WORK_DIRECTORY);
 
 label_return:
 	return ERROR(error);
@@ -767,14 +766,14 @@ ERROR_CODE server_createPropertyFile(char* propertyFileLocation, const uint_fast
 	label_readUserInput:
 		UTIL_LOG_CONSOLE_(LOG_INFO, "The file: '%s' does not exist do you want to create it? Yes/No.", propertyFileLocation);
 
-		int_fast64_t userInputLength;
+		uint_fast64_t userInputLength;
 		char* userInput;
 
 		if((error = util_readUserInput(&userInput, &userInputLength)) != ERROR_NO_ERROR){
 			goto label_return;
 		}
 
-		userInput = util_trim(userInput, userInputLength);
+		userInput = util_trim(userInput, &userInputLength);
 		util_toLowerChase(userInput);
 
 		if(strncmp(userInput, "yes", 4) == 0){
@@ -799,16 +798,18 @@ ERROR_CODE server_initSSL_Context(Server* server){
 	UTIL_LOG_CONSOLE(LOG_DEBUG, "Server: \tInitialising SSL...");
 
 	// Note: All properties are guaranteed to be available at this point in time, but there validity is not guaranteed. (jan - 2022.06.11)
-	Property* sslCertificateLocationProperty = PROPERTIES_GET(&server->properties, SSL_CERTIFICATE_LOCATION);
+	Property* sslCertificateLocationProperty;
+	PROPERTIES_GET(&server->properties, sslCertificateLocationProperty, SSL_CERTIFICATE_LOCATION);
 
 	char* sslCertificateLocation = alloca(sizeof(*sslCertificateLocation) * (sslCertificateLocationProperty->dataLength + 1));
-	memcpy(sslCertificateLocation, PROPERTIES_PROPERTY_DATA(sslCertificateLocationProperty), sslCertificateLocationProperty->dataLength);
+	memcpy(sslCertificateLocation, sslCertificateLocationProperty->value, sslCertificateLocationProperty->dataLength);
 	sslCertificateLocation[sslCertificateLocationProperty->dataLength] = '\0';
 
-	Property* sslPrivateKeyProperty = PROPERTIES_GET(&server->properties, SSL_PRIVATE_KEY_FILE);
+	Property* sslPrivateKeyProperty;
+	PROPERTIES_GET(&server->properties, sslPrivateKeyProperty, SSL_PRIVATE_KEY_FILE);
 
 	char* sslPrivateKeyLocation = alloca(sizeof(*sslPrivateKeyLocation) * (sslPrivateKeyProperty->dataLength + 1));
-	memcpy(sslPrivateKeyLocation, PROPERTIES_PROPERTY_DATA(sslPrivateKeyProperty), sslPrivateKeyProperty->dataLength);
+	memcpy(sslPrivateKeyLocation, sslPrivateKeyProperty->value, sslPrivateKeyProperty->dataLength);
 	sslPrivateKeyLocation[sslPrivateKeyProperty->dataLength] = '\0';
 
 	// Init SSL context.
@@ -962,10 +963,11 @@ void server_run(Server* server){
 		threadPool_run(&server->epollWorkerThreads, (Runnable*) epoll_run, server);
 	}
 
-	Property* epollReadBufferSizePoroperty = PROPERTIES_GET(&server->properties, HTTP_READ_BUFFER_SIZE);
+	Property* epollReadBufferSizePoroperty;
+	PROPERTIES_GET(&server->properties, epollReadBufferSizePoroperty, HTTP_READ_BUFFER_SIZE);
 
 	char* epollReadBufferSizeString = alloca(sizeof(*epollReadBufferSizeString) * (epollReadBufferSizePoroperty->dataLength + 1));
-	memcpy(epollReadBufferSizeString, PROPERTIES_PROPERTY_DATA(epollReadBufferSizePoroperty), epollReadBufferSizePoroperty->dataLength);
+	memcpy(epollReadBufferSizeString, epollReadBufferSizePoroperty->value, epollReadBufferSizePoroperty->dataLength);
 	epollReadBufferSizeString[epollReadBufferSizePoroperty->dataLength] = '\0';
 
 	int_fast64_t epollReadBufferSize;

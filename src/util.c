@@ -2,6 +2,7 @@
 #define UTIL_C
 
 #include "util.h"
+#include <ctype.h>
 #include <stdint.h>
 #include <string.h>
 #include <sys/syslog.h>
@@ -407,7 +408,7 @@ inline void util_stringCopy(char* a, char* b, uint_fast64_t length){
 }
 
 // http://www.stroustrup.com/new_learning.pdf
-ERROR_CODE util_readUserInput(char** s, int_fast64_t* charRead){
+ERROR_CODE util_readUserInput(char** s, uint_fast64_t* charRead){
 	uint_fast16_t limit = 64;
 	*s = malloc(limit);
 	if(*s == NULL){
@@ -533,23 +534,74 @@ inline void util_replace(char* buffer, const uint_fast64_t bufferLength, uint_fa
 	}
 }
 
-inline char* util_trim(char* s, const uint_fast64_t length) {
-	char c;
-	uint_fast64_t i = -1;
+char* util_trimTrailingWhiteSpace(char* s, uint_fast64_t* length, const bool isStringNullTerminated){
+	uint_fast64_t searchOffset = *length - (isStringNullTerminated ? 1 : 0);
+
+	// Count number of trailing white spaces.
+	char character;
 	do{
-		c = *(s + (length - ++i) - 1);
-	}while(isspace(c));
+		searchOffset -= 1;
 
-	*(s + length - i) = '\0';
+		character = s[searchOffset];
 
-	i = -1;
-	do{
-		c = *(s + ++i);
-	}while(isspace(c));
+		if(searchOffset == 0){
+			break;
+		}
 
-	uint_fast64_t j;
-	for (j = 0; j < length; j++){
-		*(s + j) = *(s + j + i);
+		if(!isspace(character)){
+			searchOffset += 1;
+
+			break;
+		}
+
+	}while(true);
+
+	// Set new string length.
+	*length -= (*length) - (searchOffset + (isStringNullTerminated ? 1 : 0));
+	
+	// If the base string was null terminated we can shift the '\0' character to the new end of the string to 'cut' the trailing white space of.
+	if(isStringNullTerminated){
+		s[(*length) - 1] = '\0';
+	}
+
+	return s;
+}
+
+char* util_trimLeadingWhiteSpace(char* s, uint_fast64_t* length, const bool isStringNullTerminated){
+	// Count the number of leading white spaces.
+	uint_fast64_t searchIndex;
+	for(searchIndex = 0; searchIndex < (*length) - 1; searchIndex++){
+		if(!isspace(s[searchIndex])){
+			break;
+		}
+	}
+
+	// Adjust string length by number of removed white spaces.
+	*length -= searchIndex;
+
+	// Shift string by number of white spaces to the left.
+	uint_fast64_t i;
+	for(i = 0; i < (*length); i++){
+		s[i] = s[i + searchIndex];
+	}
+
+	return s;
+}
+
+char* util_trim(char* s, uint_fast64_t* length){
+	// 
+	if(*length == 0 || s[0] == '\0'){
+		return s;
+	}
+
+	// To not put a trailing '\0' at the end 's' if 's' is a sub string, we check if 's' is null terminated.
+	const bool isStringNullTerminated = s[(*length) - 1] == '\0';
+
+	s = util_trimTrailingWhiteSpace(s, length, isStringNullTerminated);
+
+	// Cover the special case where an all white space string was passed and 'util_trimTrailingWhiteSpace' has already squashed it to zero-length.
+	if(*length > 0){
+		s = util_trimLeadingWhiteSpace(s, length, isStringNullTerminated);
 	}
 
 	return s;
@@ -560,8 +612,6 @@ uint_fast64_t i;
 	for(i = 0; i < length; i++){
 		printf("%c", ((char*) buffer)[i]);
 	}
-
-	printf("\n");
 }
 
 inline char* util_getHomeDirectory(void){
@@ -836,6 +886,17 @@ inline bool util_isDirectory(const char* file_path){
 	lstat(file_path, &fileInfo);
 
 	return S_ISDIR(fileInfo.st_mode);
+}
+
+inline ERROR_CODE util_getFileSize(const char* filePath, uint_fast64_t* fileSize){
+	struct stat fileInfo;
+	if(lstat(filePath, &fileInfo) == -1){
+		return ERROR_(ERROR_FAILED_TO_RETRIEV_FILE_INFO, "File:'%s'", filePath);
+	}
+
+	*fileSize = fileInfo.st_size;
+
+	return ERROR(ERROR_NO_ERROR);
 }
 
 #endif
