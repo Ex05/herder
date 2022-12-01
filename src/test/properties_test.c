@@ -3,7 +3,6 @@
 
 #include "../test.c"
 
-
 TEST_TEST_SUIT_CONSTRUCT_FUNCTION(properties, properties){
 	*properties = calloc(1, sizeof(DoublyLinkedList));
 		

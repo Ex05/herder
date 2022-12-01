@@ -1,10 +1,9 @@
 #ifndef TEST_C
 #define TEST_C
 
-#include "server.c"
-
 #include "test.h"
 
+#include "server.c"
 #include "argumentParser.c"
 #include "que.c"
 
@@ -193,12 +192,11 @@ TEST_BEGIN();
 	TEST_SUIT_END();
 
 	TEST_SUIT_BEGIN("util");
-		// ByteArray to Integer conversions.type
+		// Integer conversions.
 		TEST(util_uint16ToByteArray);
 		TEST(util_uint32ToByteArray);
 		TEST(util_uint64ToByteArray);
-		TEST(util_formatNumber);
-
+		
 		// String utils.
 		TEST(util_findFirst);
 		TEST(util_findFirst_s);
@@ -217,7 +215,7 @@ TEST_BEGIN();
 		TEST(util_stringEndsWith);
 		TEST(util_intToString);
 
-		// File I/O.
+		// File syste.
 		TEST(util_getBaseDirectory);
 		TEST(util_getFileName);
 		TEST(util_renameFile);
@@ -234,6 +232,7 @@ TEST_BEGIN();
 		// Other.
 		TEST(util_hash);
 		TEST(util_blockAlloc);
+		TEST(util_formatNumber);
 	TEST_SUIT_END();
 
 	TEST_SUIT_BEGIN_(properties);

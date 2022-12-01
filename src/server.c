@@ -282,6 +282,7 @@ ERROR_CODE server_init(Server* server, char* propertyFileLocation, const int_fas
 	}
 
 	UTIL_LOG_CONSOLE(LOG_DEBUG, "Server: \tCreating server socket...");
+	
 	// Create server socket.
 	struct sockaddr_in6 serverSocketAddress = {0};
 	serverSocketAddress.sin6_flowinfo = 0;
@@ -791,7 +792,7 @@ label_return:
 ERROR_CODE server_initSSL_Context(Server* server){
 	UTIL_LOG_CONSOLE(LOG_DEBUG, "Server: \tInitialising SSL...");
 
-	// Note: All properties are guaranteed to be available at this point in time, but there validity is not guaranteed. (jan - 2022.06.11)
+	// Note: All properties are guaranteed to be available at this point in time, but their validity is not guaranteed. (jan - 2022.06.11)
 	Property* sslCertificateLocationProperty;
 	PROPERTIES_GET(&server->properties, sslCertificateLocationProperty, SSL_CERTIFICATE_LOCATION);
 
