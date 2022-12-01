@@ -2,12 +2,6 @@
 #define SERVER_C
 
 // POSIX Version ¢2008
-#include "doublyLinkedList.h"
-#include "properties.h"
-#include "util.h"
-#include <stdint.h>
-#include <string.h>
-#include <sys/syslog.h>
 #define _XOPEN_SOURCE 700
 
 #define _GNU_SOURCE
@@ -30,7 +24,7 @@ THREAD_POOL_RUNNABLE_(epoll_run, Server, server);
 
 local Server* server;
 
-// main1
+// main
 #ifdef TEST_BUILD
 	int server_totalyNotMain(const int argc, const char* argv[]){
 #else
