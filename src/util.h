@@ -292,9 +292,9 @@ ERROR_CODE util_deleteFile(const char*);
 
 ERROR_CODE util_deleteDirectory(const char*, const bool, const bool);
 
-int_fast32_t util_fileExists(const char*);
+bool util_fileExists(const char*);
 
-int_fast32_t util_directoryExists(const char*);
+bool util_directoryExists(const char*);
 
 ERROR_CODE util_blockAlloc(void**, const uint_fast64_t);
 

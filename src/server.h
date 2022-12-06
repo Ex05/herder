@@ -78,6 +78,10 @@ ERROR_CODE server_init(Server*, char*, const int_fast64_t);
 
 ERROR_CODE server_initSSL_Context(Server*);
 
+ERROR_CODE server_checkWorkDirectoryStatus(Server*);
+
+ERROR_CODE server_checkDirectoryStatus(char*);
+
 ERROR_CODE server_writeTemplatePropertyFileToDisk(char*, const int_fast64_t);
 
 ERROR_CODE server_loadProperties(Server*, char*, const int_fast64_t);

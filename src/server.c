@@ -2,6 +2,8 @@
 #define SERVER_C
 
 // POSIX Version ¢2008
+#include "util.h"
+#include <sys/syslog.h>
 #define _XOPEN_SOURCE 700
 
 #define _GNU_SOURCE
@@ -76,6 +78,8 @@ local Server* server;
 	server_start(server);
 
 label_free:
+	UTIL_LOG_CONSOLE(LOG_DEBUG, "Server: Shutting down...");
+
 	server_free(server);
 
 label_return:
@@ -144,6 +148,43 @@ ERROR_CODE server_showSettings(void){
 	_server_printSettings(&server.properties.properties);
 
 	properties_free(&server.properties);
+
+	return ERROR(ERROR_NO_ERROR);
+}
+
+inline ERROR_CODE server_checkDirectoryStatus(char* directory){
+	if(!util_directoryExists(directory)){
+		return ERROR(ERROR_MISSING_DIRECTORY);
+	}
+
+	return ERROR(ERROR_NO_ERROR);
+}
+
+inline ERROR_CODE server_checkWorkDirectoryStatus(Server* server){
+	ERROR_CODE error;
+
+	// WorkDirectory.
+	PROPERTIES_GET(&server->properties, server->workDirectory, WORK_DIRECTORY);
+
+	if((error = server_checkDirectoryStatus(server->workDirectory->value)) != ERROR_NO_ERROR){
+		UTIL_LOG_CONSOLE_(LOG_ERR, "Error: The working directory: '%s' does not exist.", server->workDirectory->value);
+
+		return ERROR(error);
+	}
+
+	// HTTP_RootDirectory.
+	PROPERTIES_GET(&server->properties, server->httpRootDirectory, HTTP_ROOT_DIRECTORY);
+
+	if((error = server_checkDirectoryStatus(server->httpRootDirectory->value)) != ERROR_NO_ERROR){
+		UTIL_LOG_CONSOLE_(LOG_ERR, "Error: The http root directory: '%s' does not exist.", server->workDirectory->value);
+
+		return ERROR(error);
+	}
+
+	// CustomErrorPageDirectory.
+	// This is a optional directory, no need to see if it exists at this point so we just populate the property in the server struct.
+	PROPERTIES_GET(&server->properties, server->customErrorPageDirectory, CUSTOM_ERROR_PAGES_DIRECTORY);
+	
 
 	return ERROR(ERROR_NO_ERROR);
 }
@@ -250,14 +291,9 @@ ERROR_CODE server_init(Server* server, char* propertyFileLocation, const int_fas
 		return ERROR(ERROR_PTHREAD_SEMAPHOR_INITIALISATION_FAILED);
 	}
 
-	// HTTP_RootDirectory.
-	PROPERTIES_GET(&server->properties, server->httpRootDirectory, HTTP_ROOT_DIRECTORY);
-
-	// WorkDirectory.
-	PROPERTIES_GET(&server->properties, server->workDirectory, WORK_DIRECTORY);
-
-	// CustomErrorPageDirectory.
-	PROPERTIES_GET(&server->properties, server->customErrorPageDirectory, CUSTOM_ERROR_PAGES_DIRECTORY);
+	if((error = server_checkWorkDirectoryStatus(server)) != ERROR_NO_ERROR){
+		return ERROR(error);
+	}
 
 	// NumWorkerThreads.
 	Property* numWorkerThreadsProperty;
@@ -294,7 +330,6 @@ ERROR_CODE server_init(Server* server, char* propertyFileLocation, const int_fas
 	if(server->socketFileDescriptor == 0){		
 		return ERROR(ERROR_UNIX_DOMAIN_SOCKET_INITIALISATION_FAILED);
 	}
-
  	if(bind(server->socketFileDescriptor, (struct sockaddr*) &serverSocketAddress, sizeof(serverSocketAddress)) != 0){
 		return ERROR(ERROR_FAILED_TO_BIND_SERVER_SOCKET);
 	}
@@ -302,7 +337,6 @@ ERROR_CODE server_init(Server* server, char* propertyFileLocation, const int_fas
 	if(listen(server->socketFileDescriptor, 1) < 0){
 		return ERROR(ERROR_FAILED_TO_LISTEN_ON_SERVER_SOCKET);
 	}
-
 	if((error = server_initEpoll(server)) != ERROR_NO_ERROR){
 		return ERROR(error);
 	}

@@ -206,13 +206,13 @@ inline ERROR_CODE util_deleteFile(const char* file){
 	return ERROR(ERROR_NO_ERROR);
 }
 
-inline int_fast32_t util_fileExists(const char *file){
+inline bool util_fileExists(const char *file){
 	struct stat st = {0};
 
 	return stat(file, &st) == 0;
 }
 
-inline int_fast32_t util_directoryExists(const char* dir){
+inline bool util_directoryExists(const char* dir){
 	struct stat st = {0};
 
 	return stat(dir, &st) == 0 && S_ISDIR(st.st_mode);
