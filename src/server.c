@@ -140,7 +140,7 @@ ERROR_CODE server_showSettings(void){
 	ERROR_CODE error;
 
 	Server server = {0};
-	if((error = server_loadProperties(&server, RESOURCES_PROPERTY_FILE_LOCATION, strlen(RESOURCES_PROPERTY_FILE_LOCATION)))){
+	if((error = properties_loadFromDisk(&server.properties, RESOURCES_PROPERTY_FILE_LOCATION)) != ERROR_NO_ERROR){
 		return ERROR(error);
 	}
 
