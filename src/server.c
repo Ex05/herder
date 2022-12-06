@@ -185,7 +185,6 @@ inline ERROR_CODE server_checkWorkDirectoryStatus(Server* server){
 	// This is a optional directory, no need to see if it exists at this point so we just populate the property in the server struct.
 	PROPERTIES_GET(&server->properties, server->customErrorPageDirectory, CUSTOM_ERROR_PAGES_DIRECTORY);
 	
-
 	return ERROR(ERROR_NO_ERROR);
 }
 

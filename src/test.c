@@ -228,6 +228,7 @@ TEST_BEGIN();
 		TEST(util_createDirectory);
 		TEST(util_createAllDirectories);
 		TEST(util_isDirectory);
+		TEST(util_directoryExists);
 
 		// Other.
 		TEST(util_hash);

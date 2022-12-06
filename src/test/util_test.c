@@ -968,6 +968,36 @@ TEST_TEST_FUNCTION(util_deleteFile){
 	return TEST_SUCCESS;
 }
 
+TEST_TEST_FUNCTION(util_directoryExists){
+	#define TMP_DIRECTORY_NAME "/tmp/herder_util_test_util_directoryExists_0_XXXXXX"
+
+	char* tmpPath = alloca(sizeof(*tmpPath) * (strlen(TMP_DIRECTORY_NAME) + 1));
+	strcpy(tmpPath, TMP_DIRECTORY_NAME);
+
+	#undef TMP_DIRECTORY_NAME
+
+	const char* dir = mkdtemp(tmpPath);
+
+	if(dir == NULL){
+		return TEST_FAILURE("Failed to create unique directory name. '%s'", strerror(errno));
+	}
+
+	if(!util_directoryExists(dir)){
+		return TEST_FAILURE("Failed to check for existens of directory: '%s'.", dir);
+	}
+
+	ERROR_CODE error;
+	if((error = util_deleteDirectory(dir, false, false)) != ERROR_NO_ERROR){
+		return TEST_FAILURE("Failed to delete directory '%s' [%s].", dir, util_toErrorString(error));
+	}
+
+	if(util_directoryExists(dir)){
+		return TEST_FAILURE("Test for directory: '%s' existens returned false posetive.", dir);
+	}
+
+	return TEST_SUCCESS;
+}
+
 TEST_TEST_FUNCTION(util_deleteDirectory){
 	// Test_0.
 	{
