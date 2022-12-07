@@ -239,6 +239,15 @@ ERROR_CODE server_init(Server* server, char* propertyFileLocation, const int_fas
 		server_daemonize();
 	}
 
+	// WorkDirectory.
+	PROPERTIES_GET(&server->properties, server->workDirectory, WORK_DIRECTORY);
+
+	// HTTP_RootDirectory.
+	PROPERTIES_GET(&server->properties, server->httpRootDirectory, HTTP_ROOT_DIRECTORY);
+
+	// CustomErrorPageDirectory.
+	PROPERTIES_GET(&server->properties, server->customErrorPageDirectory, CUSTOM_ERROR_PAGES_DIRECTORY);
+
 	// Syslog_ID.
 	Property* syslogID_Property;
 	PROPERTIES_GET(&server->properties, syslogID_Property, SYSLOG_ID);
