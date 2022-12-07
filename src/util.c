@@ -132,6 +132,7 @@ local const char* UTIL_ERROR_CODE_MESSAGE_MAPPING_ARRAY[] = {
 	"ERROR_FAILED_TO_INITIALISE_EPOLL",
 	"ERROR_INVALID_SIGNAL",
 	"ERROR_FILE_NOT_FOUND",
+	"ERROR_NOT_A_NUMBER",
 };
 
 inline const char* util_toErrorString(const ERROR_CODE errorCode){
@@ -635,7 +636,7 @@ inline ERROR_CODE util_stringToInt(const char* s, int64_t* value){
 	*value = strtol(s, &endPtr, 10/*Decimal*/);
 
 	if((*value == 0 && endPtr == s) || *value == LONG_MIN || *value == LONG_MAX){
-		return ERROR_(ERROR_INVALID_STRING, "'%s' is not a valid number.", s);
+		return ERROR_(ERROR_NOT_A_NUMBER, "'%s' is not a valid number.", s);
 	}
 
 	return ERROR(ERROR_NO_ERROR);

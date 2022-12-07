@@ -2,11 +2,6 @@
 #define UTIL_TEST_C
 
 #include "../test.c"
-#include <math.h>
-#include <stdint.h>
-#include <stdio.h>
-#include <string.h>
-#include <sys/syslog.h>
 
 TEST_TEST_FUNCTION(util_findFirst){
 	const char s[] = "abcdef012ghi~jklno~p345~qrs";
@@ -617,9 +612,9 @@ TEST_TEST_FUNCTION(util_stringToInt){
 		return TEST_FAILURE("Value '%" PRIdFAST64 "' != '%d'.", value, 27);
 	}
 
-	 __UTIL_SUPPRESS_NEXT_ERROR_OF_TYPE__(ERROR_INVALID_STRING);
-	if((error = util_stringToInt(b, &value)) != ERROR_INVALID_STRING){
-		return TEST_FAILURE("'util_stringToInt' did not fail as expected with: '%s'. '%s'.","ERROR_INVALID_STRING", util_toErrorString(error));
+	 __UTIL_SUPPRESS_NEXT_ERROR_OF_TYPE__(ERROR_NOT_A_NUMBER);
+	if((error = util_stringToInt(b, &value)) != ERROR_NOT_A_NUMBER){
+		return TEST_FAILURE("'util_stringToInt' did not fail as expected with: '%s'. '%s'.","ERROR_NOT_A_NUMBER", util_toErrorString(error));
 	}
 
 	if(value != 0){

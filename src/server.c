@@ -2,8 +2,6 @@
 #define SERVER_C
 
 // POSIX Version ¢2008
-#include "util.h"
-#include <sys/syslog.h>
 #define _XOPEN_SOURCE 700
 
 #define _GNU_SOURCE
@@ -152,65 +150,30 @@ ERROR_CODE server_showSettings(void){
 	return ERROR(ERROR_NO_ERROR);
 }
 
-inline ERROR_CODE server_checkDirectoryStatus(char* directory){
-	if(!util_directoryExists(directory)){
-		return ERROR(ERROR_MISSING_DIRECTORY);
-	}
-
-	return ERROR(ERROR_NO_ERROR);
-}
-
-inline ERROR_CODE server_checkWorkDirectoryStatus(Server* server){
-	ERROR_CODE error;
-
-	// WorkDirectory.
-	PROPERTIES_GET(&server->properties, server->workDirectory, WORK_DIRECTORY);
-
-	if((error = server_checkDirectoryStatus(server->workDirectory->value)) != ERROR_NO_ERROR){
-		UTIL_LOG_CONSOLE_(LOG_ERR, "Error: The working directory: '%s' does not exist.", server->workDirectory->value);
-
-		return ERROR(error);
-	}
-
-	// HTTP_RootDirectory.
-	PROPERTIES_GET(&server->properties, server->httpRootDirectory, HTTP_ROOT_DIRECTORY);
-
-	if((error = server_checkDirectoryStatus(server->httpRootDirectory->value)) != ERROR_NO_ERROR){
-		UTIL_LOG_CONSOLE_(LOG_ERR, "Error: The http root directory: '%s' does not exist.", server->workDirectory->value);
-
-		return ERROR(error);
-	}
-
-	// CustomErrorPageDirectory.
-	// This is a optional directory, no need to see if it exists at this point so we just populate the property in the server struct.
-	PROPERTIES_GET(&server->properties, server->customErrorPageDirectory, CUSTOM_ERROR_PAGES_DIRECTORY);
-	
-	return ERROR(ERROR_NO_ERROR);
-}
-
 ERROR_CODE server_writeTemplatePropertyFileToDisk(char* propertyFileLocation, const int_fast64_t propertyFileLocationLength){
 	UTIL_LOG_CONSOLE(LOG_DEBUG, "Writing template seetings file to disk...");
 
 	char propertyFileTemplate[] = "Version: 1.0.0\n \
 \n \
 # Server\n \
-port = 1869\n \
-daemonize = true\n \
+port = \n \
+daemonize = false\n \
 num_worker_threads = 1\n \
-http_root_directory = /home/ex05/herder/www\n \
-custom_error_pages_directoory = /home/ex05/herder/error_pages\n \
-logfile_directory = /home/ex05/herder/log\n \
+http_root_directory = \n \
+custom_error_pages_directoory = \n \
+logfile_directory = \n \
 epoll_event_buffer_size = 32\n \
+// Size in MB.\n \
 http_cache_size = 256\n \
 error_page_cache_size = 4\n \
 // Max architecture independant guaranteed size is 2pow(16) or 65_535 Bytes.\n \
 http_read_buffer_size = 8096\n \
 \n \
 # Security\n \
-ssl_privateKeyFile = ./res/testCertificate.pem\n \
-ssl_certificate = ./res/testCertificate.pem\n \
+ssl_privateKeyFile = \n \
+ssl_certificate = \n \
 \n \
-work_directory = /home/exo5/herder\n \
+work_directory = \n \
 system_log_id = herder_server";
 
 	ERROR_CODE error;
@@ -288,10 +251,6 @@ ERROR_CODE server_init(Server* server, char* propertyFileLocation, const int_fas
 
 	if(sem_init(&server->running, 0, 0) != 0){
 		return ERROR(ERROR_PTHREAD_SEMAPHOR_INITIALISATION_FAILED);
-	}
-
-	if((error = server_checkWorkDirectoryStatus(server)) != ERROR_NO_ERROR){
-		return ERROR(error);
 	}
 
 	// NumWorkerThreads.
@@ -761,26 +720,25 @@ ERROR_CODE server_loadProperties(Server* server, char* propertyFileLocation, con
 		goto label_return;
 	}
 
-	// TODO: Check that values are valid, like port range, directory strings are properly terminated/formated. (jan - 2022.09.29)
 	// #Server.
-	PROPERTY_EXISTS(PORT);
-	PROPERTY_EXISTS(DAEMONIZE);
-	PROPERTY_EXISTS(NUM_WORKER_THREADS);
-	PROPERTY_EXISTS(HTTP_ROOT_DIRECTORY);
-	PROPERTY_EXISTS(CUSTOM_ERROR_PAGES_DIRECTORY);
-	PROPERTY_EXISTS(LOGFILE_DIRECTORY);
-	PROPERTY_EXISTS(EPOLL_EVENT_BUFFER_SIZE);
-	PROPERTY_EXISTS(HTTP_CACHE_SIZE);
-	PROPERTY_EXISTS(ERROR_PAGE_CACHE_SIZE);
+	INTEGER_PROPERTY_OF_RANGE_EXISTS(server, PORT, 1, 65535);
+	BOOLEAN_PROPERTY_EXISTS(server, DAEMONIZE);
+	INTEGER_PROPERTY_EXISTS(server, NUM_WORKER_THREADS);
+	DIRECTORY_PROPERTY_EXISTS(server, HTTP_ROOT_DIRECTORY);
+	PROPERTY_EXISTS(server, CUSTOM_ERROR_PAGES_DIRECTORY);
+	PROPERTY_EXISTS(server, LOGFILE_DIRECTORY);
+	INTEGER_PROPERTY_EXISTS(server, EPOLL_EVENT_BUFFER_SIZE);
+	INTEGER_PROPERTY_EXISTS(server, HTTP_CACHE_SIZE);
+	INTEGER_PROPERTY_EXISTS(server, ERROR_PAGE_CACHE_SIZE);
 
-	PROPERTY_EXISTS(HTTP_READ_BUFFER_SIZE);
+	INTEGER_PROPERTY_EXISTS(server, HTTP_READ_BUFFER_SIZE);
 	
 	// #Security
-	PROPERTY_EXISTS(SSL_CERTIFICATE_LOCATION);
-	PROPERTY_EXISTS(SSL_PRIVATE_KEY_FILE);
+	FILE_PROPERTY_EXISTS(server, SSL_CERTIFICATE_LOCATION);
+	FILE_PROPERTY_EXISTS(server, SSL_PRIVATE_KEY_FILE);
 
-	PROPERTY_EXISTS(SYSLOG_ID);
-	PROPERTY_EXISTS(WORK_DIRECTORY);
+	PROPERTY_EXISTS(server, SYSLOG_ID);
+	DIRECTORY_PROPERTY_EXISTS(server, WORK_DIRECTORY);
 
 label_return:
 	return ERROR(error);

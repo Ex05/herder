@@ -147,6 +147,7 @@ typedef enum{
 	ERROR_FAILED_TO_INITIALISE_EPOLL,
 	ERROR_INVALID_SIGNAL,
 	ERROR_FILE_NOT_FOUND,
+	ERROR_NOT_A_NUMBER
 }ERROR_CODE;
 
 ERROR_CODE util_formatNumber(char*, uint_fast64_t*, const int_fast64_t);
