@@ -14,6 +14,8 @@
 
 #define DOUBLY_LINKED_LIST_EMPTY(list) (list->tail == NULL)
 
+#define DOUBLY_LINKED_LIST_NODE_GET_PTR(node, type) (*(type**) (&((node)->nextNode)) + 1)
+
 typedef struct doublyLinkedList_node{
 	struct doublyLinkedList_node* previousNode;
 	struct doublyLinkedList_node* nextNode;

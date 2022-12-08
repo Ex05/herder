@@ -131,18 +131,18 @@ ERROR_CODE properties_updateProperty(PropertyFile*, const char*, const uint_fast
 
 ERROR_CODE properties_parse(PropertyFile*, char*, uint_fast64_t);
 
-ERROR_CODE properties_parseLine(PropertyFile*, PropertyFileEntry**, char*, uint_fast64_t);
+ERROR_CODE properties_parseLine(PropertyFile*, PropertyFileEntry**, DoublyLinkedList*, char*, uint_fast64_t);
 
 bool properties_propertyExists(PropertyFile*, const char*, const uint_fast64_t);
 
 void properties_free(PropertyFile*);
 
-local ERROR_CODE _properties_parseEmptyLine(PropertyFile*, char*, uint_fast64_t);
+local ERROR_CODE _properties_parseEmptyLine(PropertyFile*, DoublyLinkedList*, char*, uint_fast64_t);
 
-local ERROR_CODE _properties_parseComment(PropertyFile*, char*, uint_fast64_t);
+local ERROR_CODE _properties_parseComment(PropertyFile*, DoublyLinkedList*, char*, uint_fast64_t);
 
-local ERROR_CODE _properties_parseSection(PropertyFile*, char*, uint_fast64_t);
+local ERROR_CODE _properties_parseSection(PropertyFile*, DoublyLinkedList*, char*, uint_fast64_t);
 
-local ERROR_CODE _properties_parseProperty(PropertyFile*, char*, uint_fast64_t);
+local ERROR_CODE _properties_parseProperty(PropertyFile*, DoublyLinkedList*, char*, uint_fast64_t);
 
 #endif
