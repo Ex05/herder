@@ -1,5 +1,5 @@
 
-# Herder v0.1.4-indev
+# Herder v0.2.0-indev
 
 A feature rich media organization tool. Designed to store and archive digitised copies of your favourite medias.
 
