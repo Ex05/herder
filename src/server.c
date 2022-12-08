@@ -2,6 +2,9 @@
 #define SERVER_C
 
 // POSIX Version ¢2008
+#include "util.h"
+#include <stdint.h>
+#include <sys/syslog.h>
 #define _XOPEN_SOURCE 700
 
 #define _GNU_SOURCE
@@ -109,9 +112,10 @@ void _server_printSettings(DoublyLinkedList* list){
 			}
 		
 			case PROPERTY_FILE_ENTRY_TYPE_SECTION:{
-				UTIL_LOG_CONSOLE_(LOG_INFO, "# %s", property->name);
+				UTIL_LOG_CONSOLE_(LOG_INFO, "\x1b[32m# %s\x1b[0m", property->name);
 
 				_server_printSettings(&property->properties);
+
 				break;
 			}
 
@@ -122,7 +126,7 @@ void _server_printSettings(DoublyLinkedList* list){
 			}
 
 			case PROPERTY_FILE_ENTRY_TYPE_COMMENT:{
-				UTIL_LOG_CONSOLE_(LOG_INFO, "%s", property->name);
+				UTIL_LOG_CONSOLE_(LOG_INFO, "\x1b[37m%s\x1b[0m", property->name);
 
 				break;
 			}
@@ -142,7 +146,7 @@ ERROR_CODE server_showSettings(void){
 		return ERROR(error);
 	}
 
-	UTIL_LOG_CONSOLE_(LOG_INFO, "'%s':", RESOURCES_PROPERTY_FILE_LOCATION);
+	UTIL_LOG_CONSOLE_(LOG_INFO, "\x1b[33m'%s':\x1b[0m", RESOURCES_PROPERTY_FILE_LOCATION);
 	_server_printSettings(&server.properties.properties);
 
 	properties_free(&server.properties);

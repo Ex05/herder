@@ -90,9 +90,6 @@ DoublyLinkedList_Node** node;
 
 		// Compare data.
 		if(memcmp((&(currentNode->nextNode)) + 1, data, size) == 0){
-			// Advance to the next (the element bevor this one) in the list.
-			// *node = currentNode->previousNode;
-
 			// Handle special case for when we want to remove the list head.
 			if(currentNode != list->head){
 				currentNode->previousNode->nextNode = currentNode->nextNode;
@@ -101,7 +98,7 @@ DoublyLinkedList_Node** node;
 			}
 
 			// Handle special case for when we want to remove the list tail.
-			if(currentNode->previousNode != list->tail){
+			if(currentNode != list->tail){
 				currentNode->nextNode->previousNode = currentNode->previousNode;
 			}else{
 				list->tail = currentNode->previousNode;

@@ -125,7 +125,12 @@ ERROR_CODE properties_saveToDisk(PropertyFile* properties, const char* filePath)
 
 ERROR_CODE properties_addPropertyFileEntry(PropertyFile* properties, PropertyFileEntry* section, Property* property){
 	// Adds the property either to the current property file section, or the property file directly if no section is passed.
-	doublyLinkedList_add(&properties->properties, &property, sizeof(Property*));
+	
+	if(section == NULL)
+		doublyLinkedList_add(&properties->properties, &property, sizeof(Property*));
+	else{
+		doublyLinkedList_add(&section->properties, &property, sizeof(Property*));
+	}
 
 	return ERROR(ERROR_NO_ERROR);
 }
@@ -167,7 +172,7 @@ inline void properties_free(PropertyFile* properties){
 	_properties_free(&properties->properties);
 }
 
-inline ERROR_CODE _properties_parseEmptyLine(PropertyFile* properties, char* line, uint_fast64_t lineLength){
+inline ERROR_CODE _properties_parseEmptyLine(PropertyFile* properties, DoublyLinkedList* sections, char* line, uint_fast64_t lineLength){
 	ERROR_CODE error;
 	
 	Property* property;
@@ -175,14 +180,23 @@ inline ERROR_CODE _properties_parseEmptyLine(PropertyFile* properties, char* lin
 		return ERROR(error);
 	}
 
-	if((error = properties_addPropertyFileEntry(properties, NULL, property)) != ERROR_NO_ERROR){
-			return ERROR(error);
+	Property* ptr = NULL;
+	if(sections->length > 0){
+		ptr = *((Property**)((&(sections->tail)->nextNode) + 1));
+	}
+
+	if((error = properties_addPropertyFileEntry(properties, ptr, property)) != ERROR_NO_ERROR){
+		return ERROR(error);
+	}
+
+	if(sections->length > 0){
+		doublyLinkedList_remove(sections, &ptr, sizeof(Property*));
 	}
 
 	return ERROR(error);
 }
 
-inline ERROR_CODE _properties_parseComment(PropertyFile* properties, char* line, uint_fast64_t lineLength){
+inline ERROR_CODE _properties_parseComment(PropertyFile* properties, DoublyLinkedList* sections, char* line, uint_fast64_t lineLength){
 	ERROR_CODE error;
 	
 	Property* property;
@@ -190,14 +204,19 @@ inline ERROR_CODE _properties_parseComment(PropertyFile* properties, char* line,
 		return ERROR(error);
 	}
 
-	if((error = properties_addPropertyFileEntry(properties, NULL, property)) != ERROR_NO_ERROR){
+	Property* ptr = NULL;
+	if(sections->length > 0){
+		ptr = *((Property**)((&(sections->tail)->nextNode) + 1));
+	}
+
+	if((error = properties_addPropertyFileEntry(properties, ptr, property)) != ERROR_NO_ERROR){
 		return ERROR(error);
 	}
 
 	return ERROR(error);
 }
 
-inline ERROR_CODE _properties_parseSection(PropertyFile* properties, char* line, uint_fast64_t lineLength){
+inline ERROR_CODE _properties_parseSection(PropertyFile* properties, DoublyLinkedList* sections, char* line, uint_fast64_t lineLength){
 	ERROR_CODE error;
 	
 	Property* property;
@@ -205,14 +224,21 @@ inline ERROR_CODE _properties_parseSection(PropertyFile* properties, char* line,
 		return ERROR(error);
 	}
 
-	if((error = properties_addPropertyFileEntry(properties, NULL, property)) != ERROR_NO_ERROR){
+	Property* ptr = NULL;
+	if(sections->length > 0){
+		ptr = *((Property**)((&(sections->tail)->nextNode) + 1));
+	}
+
+	if((error = properties_addPropertyFileEntry(properties, ptr, property)) != ERROR_NO_ERROR){
 		return ERROR(error);
 	}
+
+	doublyLinkedList_add(sections, &property, sizeof(Property*));
 
 	return ERROR(error);
 }
 
-inline ERROR_CODE _properties_parseProperty(PropertyFile* properties, char* line, uint_fast64_t lineLength){
+inline ERROR_CODE _properties_parseProperty(PropertyFile* properties, DoublyLinkedList* sections, char* line, uint_fast64_t lineLength){
 	ERROR_CODE error = ERROR_NO_ERROR;
 
 	const int_fast64_t posSplitt = util_findFirst(line, lineLength, '=');
@@ -237,25 +263,30 @@ inline ERROR_CODE _properties_parseProperty(PropertyFile* properties, char* line
 		return ERROR(error);
 	}
 
-	if((error = properties_addPropertyFileEntry(properties, NULL, property)) != ERROR_NO_ERROR){
+	Property* ptr = NULL;
+	if(sections->length > 0){
+		ptr = *((Property**)((&(sections->tail)->nextNode) + 1));
+	}
+
+	if((error = properties_addPropertyFileEntry(properties, ptr, property)) != ERROR_NO_ERROR){
 		return ERROR(error);
 	}
 
 	return ERROR(error);
 }
 
-ERROR_CODE properties_parseLine(PropertyFile* properties, PropertyFileEntry** section, char* line, uint_fast64_t lineLength){	
+ERROR_CODE properties_parseLine(PropertyFile* properties, PropertyFileEntry** section, DoublyLinkedList* sections, char* line, uint_fast64_t lineLength){	
 	// Remove leading and trailing white space from entire line.
 	line = util_trim(line, &lineLength);
 
 	// Empty line.
 	if(lineLength == 0){		
-		return ERROR(_properties_parseEmptyLine(properties, line, lineLength));
+		return ERROR(_properties_parseEmptyLine(properties, sections, line, lineLength));
 	}
 
 	// Comment.
 	if(lineLength >= 2 && util_stringStartsWith_s(line, "//", 2)){
-		return ERROR(_properties_parseComment(properties, line, lineLength));
+		return ERROR(_properties_parseComment(properties, sections, line, lineLength));
 	}
 
 	// Section.
@@ -267,18 +298,18 @@ ERROR_CODE properties_parseLine(PropertyFile* properties, PropertyFileEntry** se
 		// Trim the line again, now that we have removed the leading pound symbol.
 		line = util_trim(line, &lineLength);
 
-		return ERROR(_properties_parseSection(properties, line, lineLength));		
+		return ERROR(_properties_parseSection(properties, sections, line, lineLength));		
 	}
 
 	// Version.
 	if(lineLength >= 8 && util_stringStartsWith_s(line, "Version", 7)){
 		// TODO: Handle version line.
 
-		return ERROR(_properties_parseComment(properties, line, lineLength));
+		return ERROR(_properties_parseComment(properties, sections, line, lineLength));
 	}
 
 	// Property.
-	return ERROR(_properties_parseProperty(properties, line, lineLength));
+	return ERROR(_properties_parseProperty(properties, sections, line, lineLength));
 }
 
 inline local ERROR_CODE _properties_get(DoublyLinkedList* list, Property** property, const char* name, const uint_fast64_t nameLength){
@@ -320,7 +351,7 @@ inline bool properties_propertyExists(PropertyFile* propertyFile, const char* na
 }
 
 ERROR_CODE properties_parse(PropertyFile* properties, char* buffer, uint_fast64_t bufferSize){
-	// PropertyFileEntry* currentPropertyFileSection = NULL;
+	DoublyLinkedList sections = {0};
 
 	uint_fast64_t readOffset;
 	uint_fast64_t lineNumber;
@@ -339,13 +370,15 @@ ERROR_CODE properties_parse(PropertyFile* properties, char* buffer, uint_fast64_
 		}		
 
 		ERROR_CODE error;
-		if((error = properties_parseLine(properties, NULL, line, lineLength) != ERROR_NO_ERROR)){
+		if((error = properties_parseLine(properties, NULL, &sections, line, lineLength) != ERROR_NO_ERROR)){
 			return ERROR(error);
 		}
 
 		// Advance read offset by line length plus the line feed character.
 		readOffset += lineLength + 1;
 	}
+
+	doublyLinkedList_free(&sections);
 
 	return ERROR(ERROR_NO_ERROR);
 }

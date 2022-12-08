@@ -116,6 +116,9 @@ TEST_TEST_FUNCTION_(doublyLinkedList_remove, DoublyLinkedList, list){
 		return TEST_FAILURE("Doubly linked list length '%" PRIuFAST64 "' != '%d'.", list->length, 2);
 	}
 
+	doublyLinkedList_remove(list, &c, sizeof(a));
+	doublyLinkedList_remove(list, &d, sizeof(b));
+
 	return TEST_SUCCESS;
 }
 

@@ -158,6 +158,20 @@ void test_test(test_testFunction* func, const char* name){
 #else
 	int main(const int argc, const char* argv[]){
 #endif
+
+// Property property = {0};
+// Property* _p = &property;
+
+// DoublyLinkedList list = {0};
+
+// doublyLinkedList_add(&list, &_p, sizeof(Property*));
+
+// doublyLinkedList_remove(&list, &_p, sizeof(Property*));
+
+// doublyLinkedList_free(&list);
+
+// exit(0);
+
 TEST_BEGIN();
 	TEST_SUIT_BEGIN("arrayList");
 		TEST(arraylist_iteration);
