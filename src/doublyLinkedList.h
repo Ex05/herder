@@ -5,7 +5,7 @@
 
 #define DOUBLY_LINKED_LIST_ITERATOR_HAS_NEXT(it) doublyLinkedListIteratorHasNext(it)
 #define DOUBLY_LINKED_LIST_ITERATOR_NEXT_NODE(it) doublyLinkedListIteratorNextNode(it)
-// Note: '+2' offsets the next read to the data segment hidden at the end of the 'DoublyLinkedList_Node' struct. (Jan - 2022.01.20)
+// Note: 'nextNode +1' offsets us to the data segment hidden at the end of the 'DoublyLinkedList_Node' struct. (Jan - 2022.01.20)
 #define DOUBLY_LINKED_LIST_ITERATOR_NEXT(it) ((void*) ((&(doublyLinkedListIteratorNextNode(it)->nextNode)) + 1))
 #define DOUBLY_LINKED_LIST_ITERATOR_NEXT_PTR(it, type) (*(type**) DOUBLY_LINKED_LIST_ITERATOR_NEXT(it))
 
