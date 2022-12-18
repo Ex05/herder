@@ -268,6 +268,7 @@ inline ERROR_CODE util_error(const ERROR_CODE error, const char* file, const int
 #define UTIL_FILES_ONLY 1
 
 #include "linkedList.h"
+#include "stringBuilder.h"
 
 int_fast64_t util_findFirst(const char*, const uint_fast64_t, const char);
 

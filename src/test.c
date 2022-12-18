@@ -6,6 +6,7 @@
 #include "server.c"
 #include "argumentParser.c"
 #include "que.c"
+#include "stringBuilder.c"
 
 void test_testBegin(void){
 	openlog(TEST_SYSLOG_IDENTIFIER, LOG_CONS | LOG_NDELAY | LOG_PID, LOG_USER);
@@ -151,6 +152,7 @@ void test_test(test_testFunction* func, const char* name){
 #include "test/http_test.c"
 #include "test/cache_test.c"
 #include "test/server_test.c"
+#include "test/stringBuilder_test.c"
 
 // main
 #ifndef TEST_BUILD
@@ -158,6 +160,7 @@ void test_test(test_testFunction* func, const char* name){
 #else
 	int main(const int argc, const char* argv[]){
 #endif
+
 TEST_BEGIN();
 	TEST_SUIT_BEGIN("arrayList");
 		TEST(arraylist_iteration);
@@ -234,6 +237,10 @@ TEST_BEGIN();
 		TEST(util_hash);
 		TEST(util_blockAlloc);
 		TEST(util_formatNumber);
+	TEST_SUIT_END();
+
+	TEST_SUIT_BEGIN_(stringBuilder);
+		TEST(stringBuilder_append);
 	TEST_SUIT_END();
 
 	TEST_SUIT_BEGIN_(properties);
