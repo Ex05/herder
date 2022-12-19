@@ -110,8 +110,8 @@ void _server_printSettings(DoublyLinkedList* list, StringBuilder* b){
 			}
 		
 			case PROPERTY_FILE_ENTRY_TYPE_SECTION:{
-				STRING_BUILDER_INIT_TEXT_MODIFIER(GREEN);
-				stringBuilder_appendColor_f(b, GREEN, "# %s\n", property->name);
+				STRING_BUILDER_INIT_TEXT_MODIFIER(LIME_GREEN);
+				stringBuilder_appendColor_f(b, LIME_GREEN, "# %s\n", property->name);
 
 				_server_printSettings(&property->properties, b);
 
@@ -125,8 +125,8 @@ void _server_printSettings(DoublyLinkedList* list, StringBuilder* b){
 			}
 
 			case PROPERTY_FILE_ENTRY_TYPE_COMMENT:{
-				STRING_BUILDER_INIT_TEXT_MODIFIER(LIGHT_GRAY);
-				stringBuilder_appendColor_f(b, LIGHT_GRAY, "%s\n", property->name);
+				STRING_BUILDER_INIT_TEXT_MODIFIER(LAVENDER);
+				stringBuilder_appendColor_f(b, LAVENDER, "%s\n", property->name);
 
 				break;
 			}
@@ -148,8 +148,8 @@ ERROR_CODE server_showSettings(void){
 
 	StringBuilder b = {0};
 
-	STRING_BUILDER_INIT_TEXT_MODIFIER(ORANGE_RED);
-	stringBuilder_appendColor_f(&b, ORANGE_RED, "'%s':\n", RESOURCES_PROPERTY_FILE_LOCATION);
+	STRING_BUILDER_INIT_TEXT_MODIFIER(CHOCOLATE);
+	stringBuilder_appendColor_f(&b, CHOCOLATE, "'%s':\n", RESOURCES_PROPERTY_FILE_LOCATION);
 
 	_server_printSettings(&server.properties.properties, &b);
 

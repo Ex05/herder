@@ -214,14 +214,16 @@ ERROR_CODE stringBuilder_append_f(StringBuilder*, char*, ...);
 
 ERROR_CODE stringBuilder_append_s(StringBuilder*, char*, const uint_fast64_t);
 
-ERROR_CODE stringBuilder_appendColor(StringBuilder*, char*, StringBuilder_TextModifier*);
+ERROR_CODE stringBuilder_appendColor(StringBuilder*, StringBuilder_TextModifier*, char*);
 
-ERROR_CODE stringBuilder_appendColor_s(StringBuilder*, char*, uint_fast64_t, StringBuilder_TextModifier*);
+ERROR_CODE stringBuilder_appendColor_s(StringBuilder*, StringBuilder_TextModifier*, char*, uint_fast64_t);
 
 ERROR_CODE stringBuilder_appendColor_f(StringBuilder*, StringBuilder_TextModifier*, char* , ...);
 
 char* stringBuilder_toString(StringBuilder*);
 
 void stringBuilder_free(StringBuilder*);
+
+void stringBuilder_printColorChart(void);
 
 #endif

@@ -84,7 +84,7 @@ int32_t test_testEnd(void){
 
 	StringBuilder b = {0};
 	if(successfulTests == totalTests){
-		STRING_BUILDER_INIT_TEXT_MODIFIER_(purpleBoldText, DARK_MAGENTA, 1, SELECT_GRAPHIC_RENDITION_PARAMETER_BOLD);
+		STRING_BUILDER_INIT_TEXT_MODIFIER_(purpleBoldText, BLUE_VIOLET, 1, SELECT_GRAPHIC_RENDITION_PARAMETER_BOLD);
 
 		stringBuilder_appendColor_f(&b, purpleBoldText, "Total %" PRIuFAST64 "/%" PRIuFAST64 ".", successfulTests, totalTests);
 		
