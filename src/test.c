@@ -6,6 +6,8 @@
 #include "server.c"
 #include "argumentParser.c"
 #include "que.c"
+#include "stringBuilder.c"
+#include "stringBuilder.h"
 
 void test_testBegin(void){
 	openlog(TEST_SYSLOG_IDENTIFIER, LOG_CONS | LOG_NDELAY | LOG_PID, LOG_USER);
@@ -45,20 +47,36 @@ int32_t test_testEnd(void){
 
 		arrayList_initIterator(&testIterator, &testSuit->testedFunctions);
 
+		StringBuilder b = {0};
+		STRING_BUILDER_INIT_SINGLE_COLOR_TEXT_MODIFIER(RED);
+		STRING_BUILDER_INIT_SINGLE_COLOR_TEXT_MODIFIER(ORANGE);
+		STRING_BUILDER_INIT_SINGLE_COLOR_TEXT_MODIFIER(LIGHT_STEEL_BLUE);
+		STRING_BUILDER_INIT_SINGLE_COLOR_TEXT_MODIFIER(LIGHT_GRAY);
+
 		if(failedTestSuitTests != 0){
-			printf("\n\x1b[33mTestSuit:\x1b[0m \x1b[37m%s\x1b[0 m", testSuit->name);
-			printf(" \x1b[31m[%" PRIdFAST64 "/%" PRIdFAST64"]\x1b[0m\n", testSuitTests - failedTestSuitTests, testSuitTests);
+			stringBuilder_appendColor_f(&b, RED, "\nTestSuit");
+			stringBuilder_appendColor_f(&b, NULL, ": ");
+			stringBuilder_appendColor_f(&b, ORANGE, "%s", testSuit->name);
+			stringBuilder_appendColor_f(&b, LIGHT_STEEL_BLUE, " [%" PRIdFAST64 "/%" PRIdFAST64"]\n", testSuitTests - failedTestSuitTests, testSuitTests);
 		}
 
 		while(ARRAY_LIST_ITERATOR_HAS_NEXT(&testIterator)){
 			Test* test = ARRAY_LIST_ITERATOR_NEXT(&testIterator, Test);
 
 			if(test->failed){
-				printf("\t \x1b[37m%s\x1b[0m: \x1b[31mfailed\x1b[0m\n", test->name);
+				stringBuilder_appendColor_f(&b, LIGHT_GRAY, "\t %s", test->name);
+				stringBuilder_appendColor_f(&b, NULL, ":");
+				stringBuilder_appendColor_f(&b, RED, " %s\n", "failed");
+
+				printf("%s", stringBuilder_toString(&b));
+
+				stringBuilder_free(&b);
 			}
 
 			free(test->name);
 		}
+
+		stringBuilder_free(&b);
 
 		arrayList_free(&testSuit->testedFunctions);
 
@@ -67,11 +85,20 @@ int32_t test_testEnd(void){
 
 	arrayList_free(&testSuits);
 
+	STRING_BUILDER_INIT_TEXT_MODIFIER(purpleBoldText, BLUE_VIOLET, 1, SELECT_GRAPHIC_RENDITION_PARAMETER_BOLD);
+
+	StringBuilder b = {0};	
 	if(successfulTests == totalTests){
-		printf("\n\x1b[35mTotal %" PRIuFAST64 "/%" PRIuFAST64 ".\x1b[0m\n", successfulTests, totalTests);
+		stringBuilder_appendColor_f(&b, purpleBoldText, "Total %" PRIuFAST64 "/%" PRIuFAST64 ".", successfulTests, totalTests);
+		
+		printf("%s\n", stringBuilder_toString(&b));
 	}else{
-		printf("\n\x1b[31mTotal %" PRIuFAST64 "/%" PRIuFAST64 ".\x1b[0m\n", successfulTests, totalTests);
+		stringBuilder_appendColor_f(&b, purpleBoldText, "\nTotal %" PRIuFAST64 "/%" PRIuFAST64 ".", successfulTests, totalTests);
+		
+		printf("%s\n", stringBuilder_toString(&b));
 	}
+
+	stringBuilder_free(&b);
 
 	closelog();
 
@@ -151,6 +178,7 @@ void test_test(test_testFunction* func, const char* name){
 #include "test/http_test.c"
 #include "test/cache_test.c"
 #include "test/server_test.c"
+#include "test/stringBuilder_test.c"
 
 // main
 #ifndef TEST_BUILD
@@ -158,6 +186,7 @@ void test_test(test_testFunction* func, const char* name){
 #else
 	int main(const int argc, const char* argv[]){
 #endif
+
 TEST_BEGIN();
 	TEST_SUIT_BEGIN("arrayList");
 		TEST(arraylist_iteration);
@@ -234,6 +263,10 @@ TEST_BEGIN();
 		TEST(util_hash);
 		TEST(util_blockAlloc);
 		TEST(util_formatNumber);
+	TEST_SUIT_END();
+
+	TEST_SUIT_BEGIN_(stringBuilder);
+		TEST(stringBuilder_append);
 	TEST_SUIT_END();
 
 	TEST_SUIT_BEGIN_(properties);

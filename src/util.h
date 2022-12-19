@@ -239,7 +239,57 @@ inline ERROR_CODE util_error(const ERROR_CODE error, const char* file, const int
 #define UTIL_LOG(level, formatString, ...) syslog(level, "%s:%d " formatString, __FILE__, __LINE__, __VA_ARGS__)
 #define UTIL_LOG_CONSOLE_(level, formatString, ...) do{ \
 	UTIL_LOG(level, formatString, __VA_ARGS__); \
-	printf(formatString "\n", __VA_ARGS__); \
+	StringBuilder b = {0}; \
+	switch(level){ \
+		case LOG_CRIT:{ \
+			STRING_BUILDER_INIT_TEXT_MODIFIER_(boldRedOnWhiteBlinkingText, RED, WHITE, 2, SELECT_GRAPHIC_RENDITION_PARAMETER_BOLD, SELECT_GRAPHIC_RENDITION_PARAMETER_SLOW_BLINK); \
+			stringBuilder_appendColor_f(&b, boldRedOnWhiteBlinkingText, "Critical: " formatString "\n", __VA_ARGS__); \
+			 \
+			break; \
+		} \
+		case LOG_DEBUG:{ \
+			STRING_BUILDER_INIT_SINGLE_COLOR_TEXT_MODIFIER(MEDIUM_SPRING_GREEN); \
+			stringBuilder_appendColor_f(&b, MEDIUM_SPRING_GREEN, "Debug: " formatString "\n", __VA_ARGS__); \
+			 \
+			break; \
+		} \
+		case LOG_INFO:{ \
+			STRING_BUILDER_INIT_SINGLE_COLOR_TEXT_MODIFIER(FUCHSIA); \
+			stringBuilder_appendColor_f(&b, FUCHSIA, "Info: " formatString "\n", __VA_ARGS__); \
+			 \
+			break; \
+		} \
+		case LOG_ERR:{ \
+			STRING_BUILDER_INIT_TEXT_MODIFIER_(redOnGreenBoldText, RED, LIME, 1, SELECT_GRAPHIC_RENDITION_PARAMETER_BOLD); \
+			stringBuilder_appendColor_f(&b, redOnGreenBoldText, "Error: " formatString "\n", __VA_ARGS__); \
+			 \
+			break; \
+		} \
+		case LOG_WARNING:{ \
+			STRING_BUILDER_INIT_SINGLE_COLOR_TEXT_MODIFIER(ORANGE_RED); \
+			stringBuilder_appendColor_f(&b, ORANGE_RED, "Warning: " formatString "\n", __VA_ARGS__); \
+			 \
+			break; \
+		} \
+		case LOG_ALERT:{ \
+			STRING_BUILDER_INIT_SINGLE_COLOR_TEXT_MODIFIER(YELLOW); \
+			stringBuilder_appendColor_f(&b, YELLOW, "Alert: " formatString "\n", __VA_ARGS__); \
+			 \
+			break; \
+		} \
+		case LOG_NOTICE:{ \
+			STRING_BUILDER_INIT_SINGLE_COLOR_TEXT_MODIFIER(BLANCHED_ALMOND); \
+			stringBuilder_appendColor_f(&b, BLANCHED_ALMOND, "Notice: " formatString "\n", __VA_ARGS__); \
+			 \
+			break; \
+		} \
+		default: { \
+			stringBuilder_append(&b, ""); \
+		} \
+	} \
+	printf("%s", stringBuilder_toString(&b)); \
+ \
+	stringBuilder_free(&b); \
 	} while(0)
 #define UTIL_LOG_CONSOLE(level, formatString) do{ \
 	UTIL_LOG(level, "%s", formatString); \
@@ -268,6 +318,7 @@ inline ERROR_CODE util_error(const ERROR_CODE error, const char* file, const int
 #define UTIL_FILES_ONLY 1
 
 #include "linkedList.h"
+#include "stringBuilder.h"
 
 int_fast64_t util_findFirst(const char*, const uint_fast64_t, const char);
 
