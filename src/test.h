@@ -3,7 +3,6 @@
 
 #include "util.h"
 #include "arrayList.h"
-#include <sys/types.h>
 
 #define TEST_NO_SETUP_FLAG 0x01
 

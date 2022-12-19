@@ -1,6 +1,7 @@
 #include "util.c"
 #include "linkedList.c"
 #include "arrayList.c"
+#include "stringBuilder.c"
 #include "util.h"
 
 #include <netdb.h>

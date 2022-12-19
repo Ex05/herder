@@ -48,15 +48,16 @@ int32_t test_testEnd(void){
 		arrayList_initIterator(&testIterator, &testSuit->testedFunctions);
 
 		StringBuilder b = {0};
-		STRING_BUILDER_INIT_TEXT_MODIFIER(RED);
-		STRING_BUILDER_INIT_TEXT_MODIFIER(ORANGE);
-		STRING_BUILDER_INIT_TEXT_MODIFIER(LIGHT_GRAY);
+		STRING_BUILDER_INIT_SINGLE_COLOR_TEXT_MODIFIER(RED);
+		STRING_BUILDER_INIT_SINGLE_COLOR_TEXT_MODIFIER(ORANGE);
+		STRING_BUILDER_INIT_SINGLE_COLOR_TEXT_MODIFIER(LIGHT_STEEL_BLUE);
+		STRING_BUILDER_INIT_SINGLE_COLOR_TEXT_MODIFIER(LIGHT_GRAY);
 
 		if(failedTestSuitTests != 0){
 			stringBuilder_appendColor_f(&b, RED, "\nTestSuit");
 			stringBuilder_appendColor_f(&b, NULL, ": ");
 			stringBuilder_appendColor_f(&b, ORANGE, "%s", testSuit->name);
-			stringBuilder_appendColor_f(&b, LIGHT_GRAY, " [%" PRIdFAST64 "/%" PRIdFAST64"]\n", testSuitTests - failedTestSuitTests, testSuitTests);
+			stringBuilder_appendColor_f(&b, LIGHT_STEEL_BLUE, " [%" PRIdFAST64 "/%" PRIdFAST64"]\n", testSuitTests - failedTestSuitTests, testSuitTests);
 		}
 
 		while(ARRAY_LIST_ITERATOR_HAS_NEXT(&testIterator)){
@@ -68,6 +69,8 @@ int32_t test_testEnd(void){
 				stringBuilder_appendColor_f(&b, RED, " %s\n", "failed");
 
 				printf("%s", stringBuilder_toString(&b));
+
+				stringBuilder_free(&b);
 			}
 
 			free(test->name);
@@ -82,18 +85,15 @@ int32_t test_testEnd(void){
 
 	arrayList_free(&testSuits);
 
-	StringBuilder b = {0};
-	if(successfulTests == totalTests){
-		STRING_BUILDER_INIT_TEXT_MODIFIER_(purpleBoldText, BLUE_VIOLET, 1, SELECT_GRAPHIC_RENDITION_PARAMETER_BOLD);
+	STRING_BUILDER_INIT_TEXT_MODIFIER(purpleBoldText, BLUE_VIOLET, 1, SELECT_GRAPHIC_RENDITION_PARAMETER_BOLD);
 
+	StringBuilder b = {0};	
+	if(successfulTests == totalTests){
 		stringBuilder_appendColor_f(&b, purpleBoldText, "Total %" PRIuFAST64 "/%" PRIuFAST64 ".", successfulTests, totalTests);
 		
 		printf("%s\n", stringBuilder_toString(&b));
 	}else{
-		STRING_BUILDER_INIT_TEXT_MODIFIER(RED);
-		stringBuilder_initTextModifier(RED, &COLOR_RED, NULL, 0);
-
-		stringBuilder_appendColor_f(&b, RED, "\nTotal %" PRIuFAST64 "/%" PRIuFAST64 ".", successfulTests, totalTests);
+		stringBuilder_appendColor_f(&b, purpleBoldText, "\nTotal %" PRIuFAST64 "/%" PRIuFAST64 ".", successfulTests, totalTests);
 		
 		printf("%s\n", stringBuilder_toString(&b));
 	}

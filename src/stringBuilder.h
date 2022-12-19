@@ -13,16 +13,22 @@
 
 #define STRING_BUILDER_CLEAR_PARAMETER STRING_BUILDER_ANSI_ESCAPE_CHARACTER "[0m"
 
-#define STRING_BUILDER_INIT_TEXT_MODIFIER(color) StringBuilder_TextModifier* color; do{ \
+#define STRING_BUILDER_INIT_SINGLE_COLOR_TEXT_MODIFIER(color) StringBuilder_TextModifier* color; do{ \
 	color = alloca(sizeof(*color)); \
  \
 	stringBuilder_initTextModifier(color, &COLOR_ ## color, NULL, 0); \
 }while(0)
 
-#define STRING_BUILDER_INIT_TEXT_MODIFIER_(name, color, numParameter, ...) StringBuilder_TextModifier* name; do{ \
+#define STRING_BUILDER_INIT_TEXT_MODIFIER(name, color, numParameter, ...) StringBuilder_TextModifier* name; do{ \
 	name = alloca(sizeof(*name)); \
  \
 	stringBuilder_initTextModifier(name, &COLOR_ ## color, NULL, numParameter, __VA_ARGS__); \
+}while(0)
+
+#define STRING_BUILDER_INIT_TEXT_MODIFIER_(name, foreGround, backGround, numParameter, ...) StringBuilder_TextModifier* name; do{ \
+	name = alloca(sizeof(*name)); \
+ \
+	stringBuilder_initTextModifier(name, &COLOR_ ## foreGround, &COLOR_ ## backGround, numParameter, __VA_ARGS__); \
 }while(0)
 
 typedef struct{
