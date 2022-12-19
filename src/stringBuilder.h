@@ -146,8 +146,7 @@ local StringBuilder_Color COLOR_BURLY_WOOD = {.r = 222, .g = 184, .b = 135};
 local StringBuilder_Color COLOR_TAN = {.r = 210, .g = 180, .b = 140};
 local StringBuilder_Color COLOR_ROSY_BROWN = {.r = 188, .g = 143, .b = 143};
 local StringBuilder_Color COLOR_MOCCASIN = {.r = 255, .g = 228, .b = 181};
-local StringBuilder_Color COLOR_NAVAJO_WHITE = {.r = 255, .g = 222, .b = 173#include "util.h"
-#include <sys/syslog.h>};
+local StringBuilder_Color COLOR_NAVAJO_WHITE = {.r = 255, .g = 222, .b = 173};
 local StringBuilder_Color COLOR_PEACH_PUFF = {.r = 255, .g = 218, .b = 185};
 local StringBuilder_Color COLOR_MISTY_ROSE = {.r = 255, .g = 228, .b = 225};
 local StringBuilder_Color COLOR_LAVENDER_BLUSH = {.r = 255, .g = 240, .b = 245};
