@@ -13,6 +13,18 @@
 
 #define STRING_BUILDER_CLEAR_PARAMETER STRING_BUILDER_ANSI_ESCAPE_CHARACTER "[0m"
 
+#define STRING_BUILDER_INIT_TEXT_MODIFIER(color) StringBuilder_TextModifier* color; do{ \
+	color = alloca(sizeof(*color)); \
+ \
+	stringBuilder_initTextModifier(color, &COLOR_ ## color, NULL, 0); \
+}while(0)
+
+#define STRING_BUILDER_INIT_TEXT_MODIFIER_(name, color, numParameter, ...) StringBuilder_TextModifier* name; do{ \
+	name = alloca(sizeof(*name)); \
+ \
+	stringBuilder_initTextModifier(name, &COLOR_ ## color, NULL, numParameter, __VA_ARGS__); \
+}while(0)
+
 typedef struct{
 	char* string;
 	uint_fast64_t stringLength;
@@ -151,7 +163,7 @@ local StringBuilder_Color COLOR_PEACH_PUFF = {.r = 255, .g = 218, .b = 185};
 local StringBuilder_Color COLOR_MISTY_ROSE = {.r = 255, .g = 228, .b = 225};
 local StringBuilder_Color COLOR_LAVENDER_BLUSH = {.r = 255, .g = 240, .b = 245};
 local StringBuilder_Color COLOR_LINEN = {.r = 250, .g = 240, .b = 230};
-local StringBuilder_Color COLOR_OLD_LACE = {.r = 253, .g = 245, .b = 230};
+local StringBuilder_Color COLOR_OLD_LACE = {.r = 253, .g = 245, .b		 = 230};
 local StringBuilder_Color COLOR_PAPAYA_WHIP = {.r = 255, .g = 239, .b = 213};
 local StringBuilder_Color COLOR_SEA_SHELL = {.r = 255, .g = 245, .b = 238};
 local StringBuilder_Color COLOR_MINT_CREAM = {.r = 245, .g = 255, .b = 250};
@@ -194,13 +206,19 @@ typedef struct{
 	StringBuilder_SelectGraphicRenditionParamaeters SGR_Parameters[];
 }StringBuilder_TextModifier;
 
-ERROR_CODE stringBuilder_initTextModifier(StringBuilder_TextModifier**, StringBuilder_Color*, StringBuilder_Color*, const uint_fast64_t, ...);
+void stringBuilder_initTextModifier(StringBuilder_TextModifier*, StringBuilder_Color*, StringBuilder_Color*, const uint_fast64_t, ...);
 
 ERROR_CODE stringBuilder_append(StringBuilder*, char*);
+
+ERROR_CODE stringBuilder_append_f(StringBuilder*, char*, ...);
 
 ERROR_CODE stringBuilder_append_s(StringBuilder*, char*, const uint_fast64_t);
 
 ERROR_CODE stringBuilder_appendColor(StringBuilder*, char*, StringBuilder_TextModifier*);
+
+ERROR_CODE stringBuilder_appendColor_s(StringBuilder*, char*, uint_fast64_t, StringBuilder_TextModifier*);
+
+ERROR_CODE stringBuilder_appendColor_f(StringBuilder*, StringBuilder_TextModifier*, char* , ...);
 
 char* stringBuilder_toString(StringBuilder*);
 

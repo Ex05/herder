@@ -2,9 +2,6 @@
 #define SERVER_C
 
 // POSIX Version ¢2008
-#include "util.h"
-#include <stdint.h>
-#include <sys/syslog.h>
 #define _XOPEN_SOURCE 700
 
 #define _GNU_SOURCE
@@ -22,6 +19,7 @@
 #include "http.c"
 #include "cache.c"
 #include "argumentParser.c"
+#include "stringBuilder.c"
 
 THREAD_POOL_RUNNABLE_(epoll_run, Server, server);
 
@@ -35,22 +33,22 @@ local Server* server;
 #endif
 	ERROR_CODE error;
 
-		ArgumentParser parser;
-		if((error = argumentParser_init(&parser)) != ERROR_NO_ERROR){
+	ArgumentParser parser;
+	if((error = argumentParser_init(&parser)) != ERROR_NO_ERROR){
+		goto label_return;
+	}
+
+	ARGUMENT_PARSER_ADD_ARGUMENT(Help, 3, "-?", "-h", "--help");
+	ARGUMENT_PARSER_ADD_ARGUMENT(ShowSettings, 1, "--showSettings");
+
+	__UTIL_SUPPRESS_NEXT_ERROR_OF_TYPE__(ERROR_NO_VALID_ARGUMENT);
+	if((error = argumentParser_parse(&parser, argc, argv)) != ERROR_NO_ERROR){
+		if(error == ERROR_DUPLICATE_ENTRY){
+			UTIL_LOG_CONSOLE(LOG_ERR, "Duplicate argument.");
+
 			goto label_return;
 		}
-	
-		ARGUMENT_PARSER_ADD_ARGUMENT(Help, 3, "-?", "-h", "--help");
-		ARGUMENT_PARSER_ADD_ARGUMENT(ShowSettings, 1, "--showSettings");
-
-		__UTIL_SUPPRESS_NEXT_ERROR_OF_TYPE__(ERROR_NO_VALID_ARGUMENT);
-		if((error = argumentParser_parse(&parser, argc, argv)) != ERROR_NO_ERROR){
-			if(error == ERROR_DUPLICATE_ENTRY){
-				UTIL_LOG_CONSOLE(LOG_ERR, "Duplicate argument.");
-
-				goto label_return;
-			}
-		}
+	}
 
 	// --help
 	if(argumentParser_contains(&parser, &argumentHelp)){
@@ -96,7 +94,7 @@ void server_printHelp(void){
 	UTIL_LOG_CONSOLE_(LOG_INFO, "\t%s\t\t%s", CONSTANTS_SERVER_USAGE_ARGUMENT_HELP_NAME, CONSTANTS_SERVER_USAGE_ARGUMENT_HELP_DESCRIPTION);
 }
 
-void _server_printSettings(DoublyLinkedList* list){
+void _server_printSettings(DoublyLinkedList* list, StringBuilder* b){
 	DoublyLinkedListIterator it;
 	doublyLinkedList_initIterator(&it, list);
 
@@ -106,27 +104,29 @@ void _server_printSettings(DoublyLinkedList* list){
 
 		switch (property->type){
 			case PROPERTY_FILE_ENTRY_TYPE_PROPERTY:{
-				UTIL_LOG_CONSOLE_(LOG_INFO, "%s = %s", property->name, property->value);
+				stringBuilder_append_f(b, "%s = %s\n", property->name, property->value);
 
 				break;
 			}
 		
 			case PROPERTY_FILE_ENTRY_TYPE_SECTION:{
-				UTIL_LOG_CONSOLE_(LOG_INFO, "\x1b[32m# %s\x1b[0m", property->name);
+				STRING_BUILDER_INIT_TEXT_MODIFIER(GREEN);
+				stringBuilder_appendColor_f(b, GREEN, "# %s\n", property->name);
 
-				_server_printSettings(&property->properties);
+				_server_printSettings(&property->properties, b);
 
 				break;
 			}
 
 			case PROPERTY_FILE_ENTRY_TYPE_EMPTY_LINE:{
-				UTIL_LOG_CONSOLE(LOG_INFO, "");
+				stringBuilder_append(b, "\n");
 
 				break;
 			}
 
 			case PROPERTY_FILE_ENTRY_TYPE_COMMENT:{
-				UTIL_LOG_CONSOLE_(LOG_INFO, "\x1b[37m%s\x1b[0m", property->name);
+				STRING_BUILDER_INIT_TEXT_MODIFIER(LIGHT_GRAY);
+				stringBuilder_appendColor_f(b, LIGHT_GRAY, "%s\n", property->name);
 
 				break;
 			}
@@ -146,8 +146,16 @@ ERROR_CODE server_showSettings(void){
 		return ERROR(error);
 	}
 
-	UTIL_LOG_CONSOLE_(LOG_INFO, "\x1b[33m'%s':\x1b[0m", RESOURCES_PROPERTY_FILE_LOCATION);
-	_server_printSettings(&server.properties.properties);
+	StringBuilder b = {0};
+
+	STRING_BUILDER_INIT_TEXT_MODIFIER(ORANGE_RED);
+	stringBuilder_appendColor_f(&b, ORANGE_RED, "'%s':\n", RESOURCES_PROPERTY_FILE_LOCATION);
+
+	_server_printSettings(&server.properties.properties, &b);
+
+	printf("%s", stringBuilder_toString(&b));
+
+	stringBuilder_free(&b);
 
 	properties_free(&server.properties);
 

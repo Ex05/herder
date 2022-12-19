@@ -7,6 +7,7 @@
 #include "argumentParser.c"
 #include "que.c"
 #include "stringBuilder.c"
+#include "stringBuilder.h"
 
 void test_testBegin(void){
 	openlog(TEST_SYSLOG_IDENTIFIER, LOG_CONS | LOG_NDELAY | LOG_PID, LOG_USER);
@@ -46,20 +47,33 @@ int32_t test_testEnd(void){
 
 		arrayList_initIterator(&testIterator, &testSuit->testedFunctions);
 
+		StringBuilder b = {0};
+		STRING_BUILDER_INIT_TEXT_MODIFIER(RED);
+		STRING_BUILDER_INIT_TEXT_MODIFIER(ORANGE);
+		STRING_BUILDER_INIT_TEXT_MODIFIER(LIGHT_GRAY);
+
 		if(failedTestSuitTests != 0){
-			printf("\n\x1b[33mTestSuit:\x1b[0m \x1b[37m%s\x1b[0 m", testSuit->name);
-			printf(" \x1b[31m[%" PRIdFAST64 "/%" PRIdFAST64"]\x1b[0m\n", testSuitTests - failedTestSuitTests, testSuitTests);
+			stringBuilder_appendColor_f(&b, RED, "\nTestSuit");
+			stringBuilder_appendColor_f(&b, NULL, ": ");
+			stringBuilder_appendColor_f(&b, ORANGE, "%s", testSuit->name);
+			stringBuilder_appendColor_f(&b, LIGHT_GRAY, " [%" PRIdFAST64 "/%" PRIdFAST64"]\n", testSuitTests - failedTestSuitTests, testSuitTests);
 		}
 
 		while(ARRAY_LIST_ITERATOR_HAS_NEXT(&testIterator)){
 			Test* test = ARRAY_LIST_ITERATOR_NEXT(&testIterator, Test);
 
 			if(test->failed){
-				printf("\t \x1b[37m%s\x1b[0m: \x1b[31mfailed\x1b[0m\n", test->name);
+				stringBuilder_appendColor_f(&b, LIGHT_GRAY, "\t %s", test->name);
+				stringBuilder_appendColor_f(&b, NULL, ":");
+				stringBuilder_appendColor_f(&b, RED, " %s\n", "failed");
+
+				printf("%s", stringBuilder_toString(&b));
 			}
 
 			free(test->name);
 		}
+
+		stringBuilder_free(&b);
 
 		arrayList_free(&testSuit->testedFunctions);
 
@@ -68,11 +82,23 @@ int32_t test_testEnd(void){
 
 	arrayList_free(&testSuits);
 
+	StringBuilder b = {0};
 	if(successfulTests == totalTests){
-		printf("\n\x1b[35mTotal %" PRIuFAST64 "/%" PRIuFAST64 ".\x1b[0m\n", successfulTests, totalTests);
+		STRING_BUILDER_INIT_TEXT_MODIFIER_(purpleBoldText, DARK_MAGENTA, 1, SELECT_GRAPHIC_RENDITION_PARAMETER_BOLD);
+
+		stringBuilder_appendColor_f(&b, purpleBoldText, "Total %" PRIuFAST64 "/%" PRIuFAST64 ".", successfulTests, totalTests);
+		
+		printf("%s\n", stringBuilder_toString(&b));
 	}else{
-		printf("\n\x1b[31mTotal %" PRIuFAST64 "/%" PRIuFAST64 ".\x1b[0m\n", successfulTests, totalTests);
+		STRING_BUILDER_INIT_TEXT_MODIFIER(RED);
+		stringBuilder_initTextModifier(RED, &COLOR_RED, NULL, 0);
+
+		stringBuilder_appendColor_f(&b, RED, "\nTotal %" PRIuFAST64 "/%" PRIuFAST64 ".", successfulTests, totalTests);
+		
+		printf("%s\n", stringBuilder_toString(&b));
 	}
+
+	stringBuilder_free(&b);
 
 	closelog();
 
