@@ -65,6 +65,14 @@ linkFlags="-pthread -L/usr/local/lib"
 
 libraries="-lpthread -lcrypto -lssl -lm"
 
+# Check terminal for for true color support;
+if [[ -n $COLORTERM ]]; then
+	if [[ "$COLORTERM" == "truecolor" ]]; then
+		additionalDebugFlags="$additionalDebugFlags -D TRUE_COLOR"
+		additionalReleaseFlags ="$additionalReleaseFlags -D TRUE_COLOR"
+	fi
+fi
+
 # Build functions.
 # prepareBuildDirectory(dir:buildDirectory)
 prepareBuildDirectory(){
