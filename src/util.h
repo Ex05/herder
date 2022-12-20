@@ -291,10 +291,8 @@ inline ERROR_CODE util_error(const ERROR_CODE error, const char* file, const int
  \
 	stringBuilder_free(&b); \
 	} while(0)
-#define UTIL_LOG_CONSOLE(level, formatString) do{ \
-	UTIL_LOG(level, "%s", formatString); \
-	printf("%s\n", formatString); \
-	} while(0)
+#define UTIL_LOG_CONSOLE(level, s) UTIL_LOG_CONSOLE_(level, "%s", s)
+
 #define UTIL_LOG_NOTICE_(formatString, ...) UTIL_LOG(LOG_NOTICE, formatString, __VA_ARGS__)
 #define UTIL_LOG_NOTICE(formatString) UTIL_LOG(LOG_NOTICE, "%s", formatString)
 #define UTIL_LOG_INFO_(formatString, ...) UTIL_LOG(LOG_INFO, formatString, __VA_ARGS__)
