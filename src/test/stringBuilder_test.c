@@ -3,8 +3,8 @@
 
 #include "../test.c"
 
-TEST_TEST_SUIT_CONSTRUCT_FUNCTION(stringBuilder, b){
-	*b = calloc(1, sizeof(StringBuilder));
+TEST_TEST_SUIT_CONSTRUCT_FUNCTION(stringBuilder, StringBuilder, b){
+	*b = calloc(1, sizeof(**b));
 		
 	if(*b == NULL){
 		return ERROR(ERROR_OUT_OF_MEMORY);

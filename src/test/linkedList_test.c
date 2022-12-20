@@ -3,8 +3,8 @@
 
 #include "../test.c"
 
-TEST_TEST_SUIT_CONSTRUCT_FUNCTION(linkedList, list){
-	*list = calloc(1, sizeof(LinkedList));
+TEST_TEST_SUIT_CONSTRUCT_FUNCTION(linkedList, LinkedList, list){
+	*list = calloc(1, sizeof(**list));
 		
 	if(*list == NULL){
 		return ERROR(ERROR_OUT_OF_MEMORY);
