@@ -2,8 +2,6 @@
 #define DOUBLY_LINKED_LIST_C
 
 #include "doublyLinkedList.h"
-#include "util.h"
-#include <sys/syslog.h>
 
 ERROR_CODE doublyLinkedList_add(DoublyLinkedList* list, void* data, uint_fast64_t size){
 	DoublyLinkedList_Node* newNode = malloc(sizeof(*newNode) + size);

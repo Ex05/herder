@@ -2,10 +2,6 @@
 #define UTIL_C
 
 #include "util.h"
-#include <ctype.h>
-#include <stdint.h>
-#include <string.h>
-#include <sys/syslog.h>
 
 /**
  * Converts a given number <b>value</b> into a easy readable formated number string.

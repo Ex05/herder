@@ -2,12 +2,8 @@
 #define PROPERTIES_C
 
 #include "properties.h"
-#include "doublyLinkedList.h"
-#include "util.h"
 
 #include "doublyLinkedList.c"
-#include <stdbool.h>
-#include <sys/syslog.h>
 
 ERROR_CODE properties_loadFromDisk(PropertyFile* properties, const char* filePath){
 	ERROR_CODE error;

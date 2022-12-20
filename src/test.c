@@ -7,7 +7,6 @@
 #include "argumentParser.c"
 #include "que.c"
 #include "stringBuilder.c"
-#include "stringBuilder.h"
 
 void test_testBegin(void){
 	openlog(TEST_SYSLOG_IDENTIFIER, LOG_CONS | LOG_NDELAY | LOG_PID, LOG_USER);

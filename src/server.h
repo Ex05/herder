@@ -12,7 +12,6 @@
 #include <netdb.h>
 #include <openssl/crypto.h>
 #include <openssl/ossl_typ.h>
-#include <stdint.h>
 #include <sys/epoll.h>
 #include <sys/socket.h>
 #include <arpa/inet.h>
@@ -20,7 +19,6 @@
 #include <openssl/ssl.h>
 #include <openssl/err.h>
 #include <openssl/tls1.h>
-#include <signal.h>
 
 #define SERVER_SSL_ERROR_STRING_BUFFER_LENGTH 2048
 

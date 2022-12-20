@@ -2,8 +2,6 @@
 #define HTTP_TEST_C
 
 #include "../test.c"
-#include <string.h>
-#include <sys/syslog.h>
 
 TEST_TEST_FUNCTION(http_initheaderField){
 	char headerFieldName[] = "Host";

@@ -1,11 +1,10 @@
 #ifndef THREAD_POOL_H
 #define THREAD_POOL_H
 
+#include "util.h"
+
 #include <pthread.h>
 #include <semaphore.h>
-#include <stdint.h>
-
-#include "util.h"
 
 #include "que.h"
 

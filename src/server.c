@@ -2,11 +2,6 @@
 #define SERVER_C
 
 // POSIX Version ¢2008
-#include "properties.h"
-#include "util.h"
-#include <stdint.h>
-#include <stdio.h>
-#include <sys/syslog.h>
 #define _XOPEN_SOURCE 700
 
 #define _GNU_SOURCE
@@ -25,6 +20,7 @@
 #include "cache.c"
 #include "argumentParser.c"
 #include "stringBuilder.c"
+
 
 THREAD_POOL_RUNNABLE_(epoll_run, Server, server);
 

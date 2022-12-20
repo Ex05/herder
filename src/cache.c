@@ -3,9 +3,6 @@
 
 #include "cache.h"
 
-#include "linkedList.h"
-#include "util.h"
-
 local ERROR_CODE cache_initCacheObject(CacheObject*, uint8_t*, const uint_fast64_t, char*, const uint_fast64_t, char*, const uint_fast64_t);
 
 local void cache_freeCacheObject(CacheObject*);

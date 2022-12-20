@@ -1,8 +1,4 @@
 #include "http.h"
-#include "linkedList.h"
-#include "properties.h"
-#include "util.h"
-#include <stdint.h>
 
 inline void http_initheaderField(HTTP_HeaderField* headerField, char* name, const uint_fast64_t nameLength, char* value, const uint_fast64_t valueLength){
 	headerField->name = name;

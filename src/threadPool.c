@@ -4,7 +4,6 @@
 #include "threadPool.h"
 
 #include "que.c"
-#include "util.h"
 
 local void* threadPool_threadFunc(void*);
 
