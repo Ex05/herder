@@ -187,6 +187,7 @@ ssl_privateKeyFile = \n \
 ssl_certificate = \n \
 \n \
 work_directory = \n \
+// Note: Messages that got logged bevor this property was read from disk will be logged using the ID defined by 'CONSTANTS_TMP_SYSTEM_LOG_ID' in 'constants.h'.\
 system_log_id = herder_server";
 
 	ERROR_CODE error;
@@ -208,6 +209,8 @@ ERROR_CODE server_init(Server* server, char* propertyFileLocation, const int_fas
 	ERROR_CODE error;
 
 	memset(server, 0, sizeof(Server));
+
+	openlog(CONSTANTS_TMP_SYSTEM_LOG_ID, LOG_PID, LOG_USER);
 
 	UTIL_LOG_CONSOLE(LOG_INFO, "Initialising server...");
 
@@ -251,6 +254,7 @@ ERROR_CODE server_init(Server* server, char* propertyFileLocation, const int_fas
 	Property* syslogID_Property;
 	PROPERTIES_GET(&server->properties, syslogID_Property, SYSLOG_ID);
 
+	closelog();
 	openlog(syslogID_Property->value, LOG_PID, LOG_USER);
 
 	// Daemonize.

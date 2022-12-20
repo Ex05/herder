@@ -49,4 +49,6 @@
 
 #define CONSTANTS_LOCK_FILE_FILE_EXTENSION ".lock"
 
+#define CONSTANTS_TMP_SYSTEM_LOG_ID "herder_server"
+
 #endif

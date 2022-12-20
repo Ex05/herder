@@ -254,8 +254,8 @@ inline ERROR_CODE util_error(const ERROR_CODE error, const char* file, const int
 			break; \
 		} \
 		case LOG_INFO:{ \
-			STRING_BUILDER_INIT_SINGLE_COLOR_TEXT_MODIFIER(FUCHSIA); \
-			stringBuilder_appendColor_f(&b, FUCHSIA, "Info: " formatString "\n", __VA_ARGS__); \
+			STRING_BUILDER_INIT_SINGLE_COLOR_TEXT_MODIFIER(LEMON_CHIFFON); \
+			stringBuilder_appendColor_f(&b, LEMON_CHIFFON, "Info: " formatString "\n", __VA_ARGS__); \
 			 \
 			break; \
 		} \
@@ -278,8 +278,8 @@ inline ERROR_CODE util_error(const ERROR_CODE error, const char* file, const int
 			break; \
 		} \
 		case LOG_NOTICE:{ \
-			STRING_BUILDER_INIT_SINGLE_COLOR_TEXT_MODIFIER(BLANCHED_ALMOND); \
-			stringBuilder_appendColor_f(&b, BLANCHED_ALMOND, "Notice: " formatString "\n", __VA_ARGS__); \
+			STRING_BUILDER_INIT_SINGLE_COLOR_TEXT_MODIFIER(DODGER_BLUE); \
+			stringBuilder_appendColor_f(&b, DODGER_BLUE, "Notice: " formatString "\n", __VA_ARGS__); \
 			 \
 			break; \
 		} \
