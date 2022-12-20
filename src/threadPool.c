@@ -5,8 +5,6 @@
 
 #include "que.c"
 #include "util.h"
-#include <stdint.h>
-#include <sys/syslog.h>
 
 local void* threadPool_threadFunc(void*);
 

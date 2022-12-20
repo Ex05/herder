@@ -47,4 +47,6 @@
 
 #define CONSTANTS_CHARACTER_LINE_FEED 0x0a
 
+#define CONSTANTS_LOCK_FILE_FILE_EXTENSION ".lock"
+
 #endif

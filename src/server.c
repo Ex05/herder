@@ -2,6 +2,11 @@
 #define SERVER_C
 
 // POSIX Version ¢2008
+#include "properties.h"
+#include "util.h"
+#include <stdint.h>
+#include <stdio.h>
+#include <sys/syslog.h>
 #define _XOPEN_SOURCE 700
 
 #define _GNU_SOURCE
@@ -77,7 +82,7 @@ local Server* server;
 	server_start(server);
 
 label_free:
-	UTIL_LOG_CONSOLE(LOG_DEBUG, "Server: Shutting down...");
+	UTIL_LOG_CONSOLE(LOG_INFO, "Shutting down...");
 
 	server_free(server);
 
@@ -163,7 +168,7 @@ ERROR_CODE server_showSettings(void){
 }
 
 ERROR_CODE server_writeTemplatePropertyFileToDisk(char* propertyFileLocation, const int_fast64_t propertyFileLocationLength){
-	UTIL_LOG_CONSOLE(LOG_DEBUG, "Writing template seetings file to disk...");
+	UTIL_LOG_CONSOLE(LOG_INFO, "Writing template seetings file to disk...");
 
 	char propertyFileTemplate[] = "Version: 1.0.0\n \
 \n \
@@ -208,18 +213,16 @@ ERROR_CODE server_init(Server* server, char* propertyFileLocation, const int_fas
 
 	memset(server, 0, sizeof(Server));
 
-	UTIL_LOG_CONSOLE(LOG_DEBUG, "Server: Initialising server...");
+	UTIL_LOG_CONSOLE(LOG_INFO, "Initialising server...");
 
 	// Check if settings file exists.
 	if(!util_fileExists(propertyFileLocation)){
 		if((error = server_createPropertyFile(propertyFileLocation, propertyFileLocationLength)) != ERROR_NO_ERROR){
 			return ERROR(error);
 		}
-	}else{
-		if((error = server_loadProperties(server, propertyFileLocation, propertyFileLocationLength))){
+	}else if((error = server_loadProperties(server, propertyFileLocation, propertyFileLocationLength))){
 			return ERROR(error);
 		}
-	}
 
 	// Block default signal handler.
 	sigset_t signalMask;
@@ -239,18 +242,6 @@ ERROR_CODE server_init(Server* server, char* propertyFileLocation, const int_fas
 	sigaction(SIGINT, &signalhandler, NULL);
 	sigaction(SIGPIPE, &signalhandler, NULL);
 
-	// Daemonize.
-	Property* daemonizeProperty;
-	PROPERTIES_GET(&server->properties, daemonizeProperty, DAEMONIZE);
-	
-	char* daemonize = alloca(sizeof(*daemonize) * (daemonizeProperty->dataLength + 1));
-	memcpy(daemonize, daemonizeProperty->value, daemonizeProperty->dataLength);
-	daemonize[daemonizeProperty->dataLength] = '\0';
-
-	if(strncmp(daemonize, "true", daemonizeProperty->dataLength + 1) == 0){
-		server_daemonize();
-	}
-
 	// WorkDirectory.
 	PROPERTIES_GET(&server->properties, server->workDirectory, WORK_DIRECTORY);
 
@@ -264,14 +255,18 @@ ERROR_CODE server_init(Server* server, char* propertyFileLocation, const int_fas
 	Property* syslogID_Property;
 	PROPERTIES_GET(&server->properties, syslogID_Property, SYSLOG_ID);
 
-	char* syslogID = alloca(sizeof(*syslogID) * (syslogID_Property->dataLength + 1));
-	// memcpy(syslogID, PROPERTIES_PROPERTY_DATA(syslogID_Property), syslogID_Property->dataLength);
-	syslogID[syslogID_Property->dataLength] = '\0';
+	openlog(syslogID_Property->value, LOG_PID, LOG_USER);
 
-	openlog(syslogID, LOG_PID, LOG_USER);
+	// Daemonize.
+	Property* daemonizeProperty;
+	PROPERTIES_GET(&server->properties, daemonizeProperty, DAEMONIZE);
+	
+	if(strncmp(daemonizeProperty->value, "true", 5) == 0){
+		server_daemonize();
+	}
 
-	if(sem_init(&server->running, 0, 0) != 0){
-		return ERROR(ERROR_PTHREAD_SEMAPHOR_INITIALISATION_FAILED);
+	if((error = server_lockProcess(server)) != ERROR_NO_ERROR){
+		return ERROR(error);
 	}
 
 	// NumWorkerThreads.
@@ -287,7 +282,12 @@ ERROR_CODE server_init(Server* server, char* propertyFileLocation, const int_fas
 		return ERROR(error);
 	}
 
-	UTIL_LOG_CONSOLE(LOG_DEBUG, "Server: \tInitialising worker thread poll...");
+	// Set server state to 'running'.
+	if(sem_init(&server->running, 0, 0) != 0){
+		return ERROR(ERROR_PTHREAD_SEMAPHOR_INITIALISATION_FAILED);
+	}
+
+	UTIL_LOG_CONSOLE(LOG_INFO, "Initialising worker thread poll...");
 	if((error = threadPool_init(&server->epollWorkerThreads, numWorkerThreads)) != ERROR_NO_ERROR){
 		return ERROR(error);
 	}
@@ -296,7 +296,7 @@ ERROR_CODE server_init(Server* server, char* propertyFileLocation, const int_fas
 		return ERROR(error);
 	}
 
-	UTIL_LOG_CONSOLE(LOG_DEBUG, "Server: \tCreating server socket...");
+	UTIL_LOG_CONSOLE(LOG_INFO, "Creating server socket...");
 	
 	// Create server socket.
 	struct sockaddr_in6 serverSocketAddress = {0};
@@ -369,7 +369,7 @@ THREAD_POOL_RUNNABLE_(epoll_run, Server, server){
 	struct epoll_event* epollEventBuffer;
 	epollEventBuffer = malloc(sizeof(struct epoll_event) * epollReadBufferSize);
 
-	UTIL_LOG_CONSOLE(LOG_DEBUG, "Worker: Epoll worker entering event loop...");
+	UTIL_LOG_CONSOLE(LOG_INFO, "Worker: Epoll worker entering event loop...");
 
 	for(;;){
 		sigset_t signalMask;
@@ -467,7 +467,7 @@ THREAD_POOL_RUNNABLE_(epoll_run, Server, server){
 			if(bytesRead > 0){
 				HTTP_Request request = {0};
 				if((error = http_parseHTTP_Request(&request, readBuffer, bytesRead)) != ERROR_NO_ERROR){
-					UTIL_LOG_CONSOLE_(LOG_DEBUG, "Failed to parse HTTP request. [%s]", util_toErrorString(error));
+					UTIL_LOG_CONSOLE_(LOG_WARNING, "Failed to parse HTTP request. [%s]", util_toErrorString(error));
 				} 
 
 				UTIL_LOG_CONSOLE_(LOG_DEBUG, "Worker: \tRequest URL:'%s'.", request.requestURL);
@@ -734,7 +734,7 @@ SERVER_CONTEXT_HANDLER(server_defaultContextHandler){
 }
 
 ERROR_CODE server_loadProperties(Server* server, char* propertyFileLocation, const int_fast64_t propertyFileLocationLength){
-	UTIL_LOG_CONSOLE(LOG_DEBUG, "Server: \tLoading settings from disk...");
+	UTIL_LOG_CONSOLE(LOG_INFO, "Loading settings from disk...");
 
 	ERROR_CODE error;
 	if((error = properties_loadFromDisk(&server->properties, propertyFileLocation)) != ERROR_NO_ERROR){
@@ -766,7 +766,7 @@ label_return:
 }
 
 ERROR_CODE server_createPropertyFile(char* propertyFileLocation, const uint_fast64_t propertyFileLocationLength){
-	UTIL_LOG_CONSOLE(LOG_DEBUG, "Server: Creating property file...");
+	UTIL_LOG_CONSOLE(LOG_INFO, "Creating property file...");
 
 	ERROR_CODE error;
 
@@ -802,7 +802,7 @@ label_return:
 }
 
 ERROR_CODE server_initSSL_Context(Server* server){
-	UTIL_LOG_CONSOLE(LOG_DEBUG, "Server: \tInitialising SSL...");
+	UTIL_LOG_CONSOLE(LOG_INFO, "Initialising SSL...");
 
 	// Note: All properties are guaranteed to be available at this point in time, but their validity is not guaranteed. (jan - 2022.06.11)
 	Property* sslCertificateLocationProperty;
@@ -871,7 +871,7 @@ ERROR_CODE server_initSSL_Context(Server* server){
 }
 
 ERROR_CODE server_initEpoll(Server* server){
-	UTIL_LOG_CONSOLE(LOG_DEBUG, "Server: \tInitialising epoll...");
+	UTIL_LOG_CONSOLE(LOG_INFO, "Initialising epoll...");
 
 	server->epollAcceptFileDescriptor = epoll_create1(0x0000);
 	if(server->epollAcceptFileDescriptor == -1){
@@ -917,7 +917,7 @@ inline void server_free(Server* server){
 }
 
 inline void server_start(Server* server){
-	UTIL_LOG_CONSOLE(LOG_DEBUG, "Server: Starting server...");
+	UTIL_LOG_CONSOLE(LOG_INFO, "Starting server...");
 	server_run(server);
 }
 
@@ -963,7 +963,7 @@ inline ERROR_CODE server_stop(Server* server){
 void server_run(Server* server){
 	ERROR_CODE error;
 
-	UTIL_LOG_CONSOLE(LOG_DEBUG, "Server: \tStarting worker threads...");
+	UTIL_LOG_CONSOLE(LOG_INFO, "Starting worker threads...");
 
 	uint_fast16_t i;
 	for(i = 0; i < server->epollWorkerThreads.numWorkers; i++){
@@ -988,7 +988,7 @@ void server_run(Server* server){
 	sigset_t signalMask;
 	sigemptyset(&signalMask);
 
-	UTIL_LOG_CONSOLE(LOG_DEBUG, "Server: \tEntering server epoll event loop...");
+	UTIL_LOG_CONSOLE(LOG_INFO, "Entering server epoll event loop...");
 
 	int running;
 	do{
@@ -1025,7 +1025,7 @@ void server_run(Server* server){
 
 				char clientIP_Address[INET6_ADDRSTRLEN];
 				inet_ntop(AF_INET6, &clientSocketAddress, clientIP_Address, INET6_ADDRSTRLEN);
-				UTIL_LOG_CONSOLE_(LOG_DEBUG, "Worker: \tClient connected, '%s' [FD:%d].", clientIP_Address, clientSocketFD);
+				UTIL_LOG_CONSOLE_(LOG_INFO, "Worker: \tClient connected, '%s' [FD:%d].", clientIP_Address, clientSocketFD);
 			}
 		}
 	}while(running == 0);
@@ -1092,7 +1092,7 @@ inline void server_freeContext(Context* context){
 }
 
 inline void server_daemonize(void){
-	UTIL_LOG_CONSOLE(LOG_DEBUG, "\t Server: Deamonizing server...");
+	UTIL_LOG_CONSOLE(LOG_INFO, "\t Deamonizing server...");
 
 	if(daemon(!0, 0) == -1){
 		UTIL_LOG_CONSOLE_(LOG_ERR, "Failed to create daemon process. '%s'.", strerror(errno));
@@ -1142,6 +1142,46 @@ inline void server_daemonize(void){
 	signal(SIGTTOU, SIG_IGN);
 	signal(SIGTTIN, SIG_IGN);
 	*/
+}
+
+ERROR_CODE server_lockProcess(Server* server){
+	Property* systemLogID_Property;
+	PROPERTIES_GET(&server->properties, systemLogID_Property, SYSLOG_ID);
+
+	uint_fast64_t lockFilePathLength = snprintf(NULL, 0, "%s%c%s%s", server->workDirectory->value, CONSTANTS_FILE_PATH_DIRECTORY_DELIMITER, systemLogID_Property->value, CONSTANTS_LOCK_FILE_FILE_EXTENSION);
+
+	char* lockFilePath = alloca(sizeof(*lockFilePath) * (lockFilePathLength + 1));
+	snprintf(lockFilePath, lockFilePathLength + 1, "%s%c%s%s", server->workDirectory->value, CONSTANTS_FILE_PATH_DIRECTORY_DELIMITER, systemLogID_Property->value, CONSTANTS_LOCK_FILE_FILE_EXTENSION);
+
+	server->lockFile = open(lockFilePath, O_RDWR | O_CREAT, 0640);
+
+	if(server->lockFile == -1){
+		return ERROR(ERROR_FAILED_TO_LOCK_FILE);
+	}
+
+	if(lockf(server->lockFile, F_TLOCK, 0) == -1){
+		UTIL_LOG_CONSOLE(LOG_NOTICE, "Server already running.");
+
+		return ERROR(ERROR_ALREADY_EXIST);
+	}
+
+	return ERROR(ERROR_NO_ERROR);
+}
+
+ERROR_CODE server_unLockProcess(Server* server){
+	Property* systemLogID_Property;
+	PROPERTIES_GET(&server->properties, systemLogID_Property, SYSLOG_ID);
+
+	uint_fast64_t lockFilePathLength = snprintf(NULL, 0, "%s%c%s%s", server->workDirectory->value, CONSTANTS_FILE_PATH_DIRECTORY_DELIMITER, systemLogID_Property->value, CONSTANTS_LOCK_FILE_FILE_EXTENSION);
+
+	char* lockFilePath = alloca(sizeof(*lockFilePath) * (lockFilePathLength + 1));
+	snprintf(lockFilePath, lockFilePathLength + 1, "%s%c%s%s", server->workDirectory->value, CONSTANTS_FILE_PATH_DIRECTORY_DELIMITER, systemLogID_Property->value, CONSTANTS_LOCK_FILE_FILE_EXTENSION);
+
+	if(lockf(server->lockFile, F_ULOCK, 0)  == -1){
+		UTIL_LOG_ERROR_("Failed to unlock lock file [%d] (%s)", errno, strerror(errno));
+	}
+
+	return ERROR(ERROR_NO_ERROR);
 }
 
 #endif

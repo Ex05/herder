@@ -34,6 +34,7 @@ typedef struct {
 	int socketFileDescriptor;
 	int epollAcceptFileDescriptor;
 	int epollClientHandlingFileDescriptor;
+	int lockFile;
 	ThreadPool epollWorkerThreads;
 	sem_t running;
 	Cache errorPageCache;
@@ -113,6 +114,10 @@ void server_daemonize(void);
 void server_printHelp(void);
 
 ERROR_CODE server_showSettings(void);
+
+ERROR_CODE server_lockProcess(Server*);
+
+ERROR_CODE server_unLockProcess(Server*);
 
 #endif
 
