@@ -828,9 +828,6 @@ ERROR_CODE server_initSSL_Context(Server* server){
 	}
 
 	SSL_CTX_set_min_proto_version(server->sslContext, TLS1_3_VERSION);
-	
-	// Generate certificate.
-	// openssl req -x509 -nodes -days 365 -newkey rsa:2048 -keyout testCertificate.pem -out testCertificate.pem
 
 	if(!util_fileExists(sslCertificateLocation)){
 		UTIL_LOG_CONSOLE_(LOG_INFO, "The SSL certificate file at '%s' does not exist.", sslCertificateLocation);
