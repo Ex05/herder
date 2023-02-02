@@ -3,6 +3,7 @@
 
 #include "util.h"
 #include <stdint.h>
+#include <string.h>
 #include <sys/syslog.h>
 
 /**
@@ -679,17 +680,26 @@ inline ERROR_CODE util_getFileDirectory(char* dir, char* filePath, const uint_fa
 	return ERROR(ERROR_NO_ERROR);
 }
 
-ERROR_CODE _util_walkDirectory(LinkedList* list, bool stepIntoChildDir, const char* directory, WalkDirectoryFilter filter){
+ERROR_CODE _util_walkDirectory(LinkedList* list, bool stepIntoChildDir, const char* directory, const uint_fast64_t directoryLength, WalkDirectoryFilter filter){
 	ERROR_CODE error = ERROR_NO_ERROR;
 
-	DIR* currentDirectory = opendir(directory);
+	char* dir;
+	if(!util_stringEndsWith(directory, directoryLength, CONSTANTS_FILE_PATH_DIRECTORY_DELIMITER)){
+		dir = alloca(directoryLength + 1/*'/'*/ + 1);
+		strncpy(dir, directory, directoryLength + 1);
+		dir[directoryLength] = '/';
+		dir[directoryLength + 1] = '\0';
+	}else{
+		dir = alloca(directoryLength + 1);
+		strncpy(dir, directory, directoryLength + 1);
+	}
+
+	DIR* currentDirectory = opendir(dir);
 	if(currentDirectory == NULL){
 		error = ERROR_FAILED_TO_OPEN_DIRECTORY;
 
 		goto label_closeDir;
 	}
-
-	const uint_fast64_t directoryLength = strlen(directory);
 
 	struct dirent* directoryEntry;
 	while((directoryEntry = readdir(currentDirectory)) != NULL){
@@ -706,9 +716,9 @@ ERROR_CODE _util_walkDirectory(LinkedList* list, bool stepIntoChildDir, const ch
 
 			char* directoryPath;
 			directoryPath = (filter == WALK_DIRECTORY_FILTER_DIRECTORIES_ONLY) ? malloc(sizeof(*directoryPath) * (directoryPathLength + 1)) : alloca(sizeof(*directoryPath) * (directoryPathLength + 1));
-			strncpy(directoryPath, directory, directoryLength + 1);
+			strncpy(directoryPath, dir, directoryLength + 1);
 
-			UTIL_LOG_CONSOLE_(LOG_DEBUG, "Dir: '%s'.", directory);
+			UTIL_LOG_CONSOLE_(LOG_DEBUG, "Dir: '%s'.", dir);
 
 			util_append(directoryPath + directoryLength, directoryPathLength - 1 - directoryLength, directoryEntry->d_name, currentEntryLength);
 			directoryPath[directoryPathLength - 1] = '/';
@@ -721,7 +731,7 @@ ERROR_CODE _util_walkDirectory(LinkedList* list, bool stepIntoChildDir, const ch
 			}
 
 			if(stepIntoChildDir){
-				if((error = util_walkDirectory(list, directoryPath, filter)) != ERROR_NO_ERROR){
+				if((error = util_walkDirectory(list, directoryPath, directoryPathLength, filter)) != ERROR_NO_ERROR){
 					goto label_closeDir;
 				}
 			}
@@ -731,7 +741,7 @@ ERROR_CODE _util_walkDirectory(LinkedList* list, bool stepIntoChildDir, const ch
 
 				char* path;
 				path = malloc(sizeof(*path) * (pathLength + 1));
-				strncpy(path, directory, directoryLength + 1);
+				strncpy(path, dir, directoryLength + 1);
 
 				util_append(path + directoryLength, pathLength - directoryLength, directoryEntry->d_name, currentEntryLength);
 				path[pathLength] = '\0';
@@ -749,12 +759,12 @@ label_closeDir:
 	return ERROR(error);
 }
 
-ERROR_CODE util_listDirectoryContent(LinkedList* list, const char* directory, WalkDirectoryFilter filter){
-	return ERROR(_util_walkDirectory(list, false, directory, filter));
+ERROR_CODE util_listDirectoryContent(LinkedList* list, const char* directory, const uint_fast64_t directoryLength, WalkDirectoryFilter filter){
+	return ERROR(_util_walkDirectory(list, false, directory, directoryLength, filter));
 }
 
-ERROR_CODE util_walkDirectory(LinkedList* list, const char* directory, WalkDirectoryFilter filter){
-	return ERROR(_util_walkDirectory(list, true, directory, filter));
+ERROR_CODE util_walkDirectory(LinkedList* list, const char* directory, const uint_fast64_t directoryLength, WalkDirectoryFilter filter){
+	return ERROR(_util_walkDirectory(list, true, directory, directoryLength, filter));
 }
 
 inline ERROR_CODE util_renameFile(char* file, char* newName){

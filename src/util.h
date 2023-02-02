@@ -399,9 +399,9 @@ ERROR_CODE util_renameFileRelative(char*, char*, char*);
 
 ERROR_CODE util_getFileDirectory(char*, char*, const uint_fast64_t);
 
-ERROR_CODE util_listDirectoryContent(LinkedList*, const char*, WalkDirectoryFilter);
+ERROR_CODE util_listDirectoryContent(LinkedList*, const char*, const uint_fast64_t, WalkDirectoryFilter);
 
-ERROR_CODE util_walkDirectory(LinkedList*, const char*, WalkDirectoryFilter);
+ERROR_CODE util_walkDirectory(LinkedList*, const char*, const uint_fast64_t, WalkDirectoryFilter);
 
 char* util_getHomeDirectory(void);
 

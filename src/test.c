@@ -243,7 +243,7 @@ TEST_BEGIN();
 		TEST(util_stringEndsWith);
 		TEST(util_intToString);
 
-		// File syste.
+		// File system.
 		TEST(util_getBaseDirectory);
 		TEST(util_getFileName);
 		TEST(util_renameFile);

@@ -13,7 +13,7 @@ ERROR_CODE mediaLibrary_init(MediaLibrary* library, PropertyFile* properties){
 
 	// TODO: Load all libraries in lib directory.
 	LinkedList libraries = {0};
-	if((error = util_listDirectoryContent(&libraries, library->location->value, WALK_DIRECTORY_FILTER_DIRECTORIES_ONLY)) != ERROR_NO_ERROR){
+	if((error = util_listDirectoryContent(&libraries, library->location->value, library->location->valueLength, WALK_DIRECTORY_FILTER_DIRECTORIES_ONLY)) != ERROR_NO_ERROR){
 		return ERROR(error);
 	}
 
