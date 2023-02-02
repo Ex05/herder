@@ -2,6 +2,8 @@
 #define UTIL_C
 
 #include "util.h"
+#include <stdint.h>
+#include <sys/syslog.h>
 
 /**
  * Converts a given number <b>value</b> into a easy readable formated number string.
@@ -677,7 +679,7 @@ inline ERROR_CODE util_getFileDirectory(char* dir, char* filePath, const uint_fa
 	return ERROR(ERROR_NO_ERROR);
 }
 
-ERROR_CODE util_walkDirectory(LinkedList* list, const char* directory, bool listItemType){
+ERROR_CODE _util_walkDirectory(LinkedList* list, bool stepIntoChildDir, const char* directory, WalkDirectoryFilter filter){
 	ERROR_CODE error = ERROR_NO_ERROR;
 
 	DIR* currentDirectory = opendir(directory);
@@ -691,9 +693,9 @@ ERROR_CODE util_walkDirectory(LinkedList* list, const char* directory, bool list
 
 	struct dirent* directoryEntry;
 	while((directoryEntry = readdir(currentDirectory)) != NULL){
-		// Avoid reentering current and parent directory.
 		const uint_fast64_t currentEntryLength = strlen(directoryEntry->d_name);
 
+		// Avoid reentering current and parent directory.
 		const bool selfOrParent = directoryEntry->d_name[0] == '.';
 		if(selfOrParent || (selfOrParent && directoryEntry->d_name[1] == '.')){
 			continue;
@@ -703,24 +705,28 @@ ERROR_CODE util_walkDirectory(LinkedList* list, const char* directory, bool list
 			const uint_fast64_t directoryPathLength = directoryLength + currentEntryLength + 1;
 
 			char* directoryPath;
-			directoryPath = (listItemType == UTIL_DIRECTORIES_ONLY) ? malloc(sizeof(*directoryPath) * (directoryPathLength + 1)) : alloca(sizeof(*directoryPath) * (directoryPathLength + 1));
+			directoryPath = (filter == WALK_DIRECTORY_FILTER_DIRECTORIES_ONLY) ? malloc(sizeof(*directoryPath) * (directoryPathLength + 1)) : alloca(sizeof(*directoryPath) * (directoryPathLength + 1));
 			strncpy(directoryPath, directory, directoryLength + 1);
+
+			UTIL_LOG_CONSOLE_(LOG_DEBUG, "Dir: '%s'.", directory);
 
 			util_append(directoryPath + directoryLength, directoryPathLength - 1 - directoryLength, directoryEntry->d_name, currentEntryLength);
 			directoryPath[directoryPathLength - 1] = '/';
 			directoryPath[directoryPathLength] = '\0';
 
-			if(listItemType == UTIL_DIRECTORIES_ONLY){
+			if(filter == WALK_DIRECTORY_FILTER_DIRECTORIES_ONLY){
 				if((error = linkedList_add(list, &directoryPath, sizeof(char*))) !=ERROR_NO_ERROR){
 					goto label_closeDir;
 				}
 			}
 
-			if((error = util_walkDirectory(list, directoryPath, listItemType)) != ERROR_NO_ERROR){
-				goto label_closeDir;
+			if(stepIntoChildDir){
+				if((error = util_walkDirectory(list, directoryPath, filter)) != ERROR_NO_ERROR){
+					goto label_closeDir;
+				}
 			}
 		}else{
-			if(listItemType == UTIL_FILES_ONLY){
+			if(filter == WALK_DIRECTORY_FILTER_FILES_ONLY){
 				const uint_fast64_t pathLength = directoryLength + currentEntryLength;
 
 				char* path;
@@ -741,6 +747,14 @@ label_closeDir:
 	closedir(currentDirectory);
 
 	return ERROR(error);
+}
+
+ERROR_CODE util_listDirectoryContent(LinkedList* list, const char* directory, WalkDirectoryFilter filter){
+	return ERROR(_util_walkDirectory(list, false, directory, filter));
+}
+
+ERROR_CODE util_walkDirectory(LinkedList* list, const char* directory, WalkDirectoryFilter filter){
+	return ERROR(_util_walkDirectory(list, true, directory, filter));
 }
 
 inline ERROR_CODE util_renameFile(char* file, char* newName){

@@ -67,6 +67,12 @@
 }while(0)
 
 typedef enum{
+	WALK_DIRECTORY_FILTER_NONE = 0,
+	WALK_DIRECTORY_FILTER_DIRECTORIES_ONLY,
+	WALK_DIRECTORY_FILTER_FILES_ONLY,
+}WalkDirectoryFilter;
+
+typedef enum{
 	ERROR_NO_ERROR = 0,
 	ERROR_ERROR,
 	ERROR_OUT_OF_MEMORY,
@@ -312,9 +318,6 @@ inline ERROR_CODE util_error(const ERROR_CODE error, const char* file, const int
 
 #undef UTIL_MAX_ERROR_MSG_LENGTH
 
-#define UTIL_DIRECTORIES_ONLY 0
-#define UTIL_FILES_ONLY 1
-
 #include "linkedList.h"
 #include "stringBuilder.h"
 
@@ -396,7 +399,9 @@ ERROR_CODE util_renameFileRelative(char*, char*, char*);
 
 ERROR_CODE util_getFileDirectory(char*, char*, const uint_fast64_t);
 
-ERROR_CODE util_walkDirectory(LinkedList*, const char*, bool);
+ERROR_CODE util_listDirectoryContent(LinkedList*, const char*, WalkDirectoryFilter);
+
+ERROR_CODE util_walkDirectory(LinkedList*, const char*, WalkDirectoryFilter);
 
 char* util_getHomeDirectory(void);
 

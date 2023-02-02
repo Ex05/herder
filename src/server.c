@@ -2,6 +2,7 @@
 #define SERVER_C
 
 // POSIX Version ¢2008
+#include "mediaLibrary.h"
 #define _XOPEN_SOURCE 700
 
 #define _GNU_SOURCE
@@ -20,6 +21,7 @@
 #include "cache.c"
 #include "argumentParser.c"
 #include "stringBuilder.c"
+#include "mediaLibrary.c"
 
 
 THREAD_POOL_RUNNABLE_(epoll_run, Server, server);
@@ -181,6 +183,7 @@ http_cache_size = 256\n \
 error_page_cache_size = 4\n \
 // Max architecture independant guaranteed size is 2pow(16) or 65_535 Bytes.\n \
 http_read_buffer_size = 8096\n \
+mediaLibrary_location = \n \
 \n \
 # Security\n \
 ssl_privateKeyFile = \n \
@@ -336,6 +339,11 @@ ERROR_CODE server_init(Server* server, char* propertyFileLocation, const int_fas
 	server_addContext(server, "/img", server_defaultContextHandler);
 	server_addContext(server, "/css", server_defaultContextHandler);
 	
+	MediaLibrary library = {0};
+	mediaLibrary_init(&library, &server->properties);
+
+	mediaLibrary_free(&library);
+
 	return ERROR(ERROR_NO_ERROR);
 }
 
@@ -751,8 +759,8 @@ ERROR_CODE server_loadProperties(Server* server, char* propertyFileLocation, con
 	INTEGER_PROPERTY_EXISTS(server, EPOLL_EVENT_BUFFER_SIZE);
 	INTEGER_PROPERTY_EXISTS(server, HTTP_CACHE_SIZE);
 	INTEGER_PROPERTY_EXISTS(server, ERROR_PAGE_CACHE_SIZE);
-
 	INTEGER_PROPERTY_EXISTS(server, HTTP_READ_BUFFER_SIZE);
+	DIRECTORY_PROPERTY_EXISTS(server, MEDIA_LIBRARY_LOCATION);
 	
 	// #Security
 	FILE_PROPERTY_EXISTS(server, SSL_CERTIFICATE_LOCATION);
