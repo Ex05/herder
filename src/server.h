@@ -3,6 +3,7 @@
 
 #include "http.h"
 #include "linkedList.h"
+#include "mediaLibrary.h"
 #include "threadPool.h"
 #include "util.h"
 #include "properties.h"
@@ -40,6 +41,7 @@ typedef struct {
 	Property* workDirectory;
 	Property* httpRootDirectory;
 	Property* customErrorPageDirectory;
+	MediaLibrary mediaLibrary;
 }Server;
 
 #define SERVER_CONTEXT_HANDLER(functionName) ERROR_CODE functionName(Server* server, HTTP_Request* request, HTTP_Response* response)

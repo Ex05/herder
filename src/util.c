@@ -717,9 +717,7 @@ ERROR_CODE _util_walkDirectory(LinkedList* list, bool stepIntoChildDir, const ch
 			char* directoryPath;
 			directoryPath = (filter == WALK_DIRECTORY_FILTER_DIRECTORIES_ONLY) ? malloc(sizeof(*directoryPath) * (directoryPathLength + 1)) : alloca(sizeof(*directoryPath) * (directoryPathLength + 1));
 			strncpy(directoryPath, dir, directoryLength + 1);
-
-			UTIL_LOG_CONSOLE_(LOG_DEBUG, "Dir: '%s'.", dir);
-
+			
 			util_append(directoryPath + directoryLength, directoryPathLength - 1 - directoryLength, directoryEntry->d_name, currentEntryLength);
 			directoryPath[directoryPathLength - 1] = '/';
 			directoryPath[directoryPathLength] = '\0';

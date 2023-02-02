@@ -3,6 +3,7 @@
 
 // POSIX Version ¢2008
 #include "mediaLibrary.h"
+#include "util.h"
 #define _XOPEN_SOURCE 700
 
 #define _GNU_SOURCE
@@ -339,10 +340,9 @@ ERROR_CODE server_init(Server* server, char* propertyFileLocation, const int_fas
 	server_addContext(server, "/img", server_defaultContextHandler);
 	server_addContext(server, "/css", server_defaultContextHandler);
 	
-	MediaLibrary library = {0};
-	mediaLibrary_init(&library, &server->properties);
-
-	mediaLibrary_free(&library);
+	if((error = mediaLibrary_init(&server->mediaLibrary, &server->properties)) != ERROR_NO_ERROR){
+		return ERROR(error);
+	}
 
 	return ERROR(ERROR_NO_ERROR);
 }
@@ -917,6 +917,8 @@ inline void server_free(Server* server){
 	SSL_CTX_free(server->sslContext);
 
 	sem_destroy(&server->running);
+
+	mediaLibrary_free(&server->mediaLibrary);
 
 	closelog();
 }

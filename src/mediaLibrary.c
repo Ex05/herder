@@ -11,7 +11,6 @@ ERROR_CODE mediaLibrary_init(MediaLibrary* library, PropertyFile* properties){
 	// LibraryLocation.
 	PROPERTIES_GET(properties, library->location, MEDIA_LIBRARY_LOCATION);
 
-	// TODO: Load all libraries in lib directory.
 	LinkedList libraries = {0};
 	if((error = util_listDirectoryContent(&libraries, library->location->value, library->location->valueLength, WALK_DIRECTORY_FILTER_DIRECTORIES_ONLY)) != ERROR_NO_ERROR){
 		return ERROR(error);
@@ -29,7 +28,6 @@ ERROR_CODE mediaLibrary_init(MediaLibrary* library, PropertyFile* properties){
 }
 
 MEDIALIBRARY_FREE_FUNCTION(mediaLibrary_freeShowLibrary){
-	// TODO: Free library content.
 	DoublyLinkedListIterator it;
 	doublyLinkedList_initIterator(&it, &library->data);
 
