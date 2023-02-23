@@ -21,6 +21,7 @@ ERROR_CODE mediaLibrary_init(MediaLibrary* library, PropertyFile* properties){
 	while(LINKED_LIST_ITERATOR_HAS_NEXT(&it)){
 		char* directory = LINKED_LIST_ITERATOR_NEXT_PTR(&it, char);
 
+	// TODO: Check for 'type' file.
 		UTIL_LOG_CONSOLE_(LOG_DEBUG, "Directory: '%s'.", directory);
 	}
 

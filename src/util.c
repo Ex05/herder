@@ -680,7 +680,7 @@ inline ERROR_CODE util_getFileDirectory(char* dir, char* filePath, const uint_fa
 	return ERROR(ERROR_NO_ERROR);
 }
 
-ERROR_CODE _util_walkDirectory(LinkedList* list, bool stepIntoChildDir, const char* directory, const uint_fast64_t directoryLength, WalkDirectoryFilter filter){
+ERROR_CODE _util_walkDirectory(LinkedList* list, bool stepIntoChildDir, const char* directory, uint_fast64_t directoryLength, WalkDirectoryFilter filter){
 	ERROR_CODE error = ERROR_NO_ERROR;
 
 	char* dir;
@@ -689,6 +689,8 @@ ERROR_CODE _util_walkDirectory(LinkedList* list, bool stepIntoChildDir, const ch
 		strncpy(dir, directory, directoryLength + 1);
 		dir[directoryLength] = '/';
 		dir[directoryLength + 1] = '\0';
+
+		directoryLength += 1;
 	}else{
 		dir = alloca(directoryLength + 1);
 		strncpy(dir, directory, directoryLength + 1);
@@ -717,7 +719,7 @@ ERROR_CODE _util_walkDirectory(LinkedList* list, bool stepIntoChildDir, const ch
 			char* directoryPath;
 			directoryPath = (filter == WALK_DIRECTORY_FILTER_DIRECTORIES_ONLY) ? malloc(sizeof(*directoryPath) * (directoryPathLength + 1)) : alloca(sizeof(*directoryPath) * (directoryPathLength + 1));
 			strncpy(directoryPath, dir, directoryLength + 1);
-			
+
 			util_append(directoryPath + directoryLength, directoryPathLength - 1 - directoryLength, directoryEntry->d_name, currentEntryLength);
 			directoryPath[directoryPathLength - 1] = '/';
 			directoryPath[directoryPathLength] = '\0';
@@ -757,11 +759,11 @@ label_closeDir:
 	return ERROR(error);
 }
 
-ERROR_CODE util_listDirectoryContent(LinkedList* list, const char* directory, const uint_fast64_t directoryLength, WalkDirectoryFilter filter){
+ERROR_CODE util_listDirectoryContent(LinkedList* list, const char* directory, uint_fast64_t directoryLength, WalkDirectoryFilter filter){
 	return ERROR(_util_walkDirectory(list, false, directory, directoryLength, filter));
 }
 
-ERROR_CODE util_walkDirectory(LinkedList* list, const char* directory, const uint_fast64_t directoryLength, WalkDirectoryFilter filter){
+ERROR_CODE util_walkDirectory(LinkedList* list, const char* directory, uint_fast64_t directoryLength, WalkDirectoryFilter filter){
 	return ERROR(_util_walkDirectory(list, true, directory, directoryLength, filter));
 }
 
