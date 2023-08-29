@@ -176,7 +176,6 @@ inline int_fast64_t util_findLast(const char* s, const uint_fast64_t length, con
 	return -1;
 }
 
-
 inline uint_fast32_t util_getFileSystemBlockSize(const char* path){
 	struct statvfs stat;
 	if(statvfs(path, &stat) == 0){
