@@ -116,6 +116,108 @@ TEST_TEST_FUNCTION(util_stringStartsWith_s){
 	return TEST_SUCCESS;
 }
 
+TEST_TEST_FUNCTION(util_getTailDirectory){
+	ERROR_CODE error;
+
+	// Test_1.
+	{
+		char path[] = "/home/user/log/";
+
+		char* tailDirectory;
+		uint_fast64_t tailDirectoryLength;
+		if((error = util_getTailDirectory(&tailDirectory, &tailDirectoryLength, path, strlen(path))) != ERROR_NO_ERROR){
+			return TEST_FAILURE("Failed to retrieve last/tail directory of path: '%s'. '%s'.", path, util_toErrorString(error));
+		}
+
+		if(tailDirectoryLength != 3){
+			return TEST_FAILURE("Base directory length '%" PRIdFAST64 "' != '%d'", tailDirectoryLength, 1);
+		}
+
+		if(strncmp("log", tailDirectory, tailDirectoryLength) != 0){
+			return TEST_FAILURE("'util_getTailDirectory' '%s' != '%s'.", path, tailDirectory);
+		}
+	}
+
+	// Test_2.
+	{
+		char path[] = "/home/user/lib";
+
+		char* tailDirectory;
+		uint_fast64_t tailDirectoryLength;
+		if((error = util_getTailDirectory(&tailDirectory, &tailDirectoryLength, path, strlen(path))) != ERROR_NO_ERROR){
+			return TEST_FAILURE("Failed to retrieve last/tail directory of path: '%s'. '%s'.", path, util_toErrorString(error));
+		}
+
+		if(tailDirectoryLength != 3){
+			return TEST_FAILURE("Base directory length '%" PRIdFAST64 "' != '%d'", tailDirectoryLength, 1);
+		}
+
+		if(strncmp("lib", tailDirectory, tailDirectoryLength) != 0){
+			return TEST_FAILURE("'util_getTailDirectory' '%s' != '%s'.", path, tailDirectory);
+		}
+	}
+
+	// Test_3.
+	{
+		char path[] = "/";
+
+		char* tailDirectory;
+		uint_fast64_t tailDirectoryLength;
+		if((error = util_getTailDirectory(&tailDirectory, &tailDirectoryLength, path, strlen(path))) != ERROR_NO_ERROR){
+			return TEST_FAILURE("Failed to retrieve last/tail directory of path: '%s'. '%s'.", path, util_toErrorString(error));
+		}
+
+		if(tailDirectoryLength != 1){
+			return TEST_FAILURE("Base directory length '%" PRIdFAST64 "' != '%d'", tailDirectoryLength, 1);
+		}
+
+		if(strncmp("/", tailDirectory, tailDirectoryLength) != 0){
+			return TEST_FAILURE("'util_getTailDirectory' '%s' != '%s'.", path, tailDirectory);
+		}
+	}
+
+	// Test_4.
+	{
+		char path[] = "home";
+
+		char* tailDirectory;
+		uint_fast64_t tailDirectoryLength;
+		__UTIL_SUPPRESS_NEXT_ERROR_OF_TYPE__(ERROR_INVALID_STRING);
+		if((error = util_getTailDirectory(&tailDirectory, &tailDirectoryLength, path, strlen(path))) != ERROR_INVALID_STRING){
+			return TEST_FAILURE("Failed to retrieve last/tail directory of path: '%s'. '%s'.", path, util_toErrorString(error));
+		}
+
+		if(tailDirectoryLength != 4){
+			return TEST_FAILURE("Base directory length '%" PRIdFAST64 "' != '%d'", tailDirectoryLength, 1);
+		}
+
+		if(strncmp("home", tailDirectory, tailDirectoryLength) != 0){
+			return TEST_FAILURE("'util_getTailDirectory' '%s' != '%s'.", path, tailDirectory);
+		}
+	}
+
+	// Test_5.
+	{
+		char path[] = "/mnt";
+
+		char* tailDirectory;
+		uint_fast64_t tailDirectoryLength;
+		if((error = util_getTailDirectory(&tailDirectory, &tailDirectoryLength, path, strlen(path))) != ERROR_NO_ERROR){
+			return TEST_FAILURE("Failed to retrieve last/tail directory of path: '%s'. '%s'.", path, util_toErrorString(error));
+		}
+
+		if(tailDirectoryLength != 3){
+			return TEST_FAILURE("Base directory length '%" PRIdFAST64 "' != '%d'", tailDirectoryLength, 1);
+		}
+
+		if(strncmp("mnt", tailDirectory, tailDirectoryLength) != 0){
+			return TEST_FAILURE("'util_getTailDirectory' '%s' != '%s'.", path, tailDirectory);
+		}
+	}
+
+	return TEST_SUCCESS;
+}
+
 TEST_TEST_FUNCTION(util_getBaseDirectory){
 	ERROR_CODE error;
 

@@ -1,3 +1,4 @@
+
 #ifndef TEST_C
 #define TEST_C
 
@@ -178,6 +179,7 @@ void test_test(test_testFunction* func, const char* name){
 #include "test/cache_test.c"
 #include "test/server_test.c"
 #include "test/stringBuilder_test.c"
+#include "test/mediaLibrary_test.c"
 
 // main
 #ifndef TEST_BUILD
@@ -245,6 +247,7 @@ TEST_BEGIN();
 
 		// File system.
 		TEST(util_getBaseDirectory);
+		TEST(util_getTailDirectory);
 		TEST(util_getFileName);
 		TEST(util_renameFile);
 		TEST(util_renameFileRelative);
@@ -296,6 +299,10 @@ TEST_BEGIN();
 		TEST(server_getContextHandler);
 		TEST(server_translateSymbolicFileLocation);
 		TEST(server_translateSymbolicFileLocationErrorPage);
+	TEST_SUIT_END();
+
+	TEST_SUIT_BEGIN("mediaLibrary");
+		TEST(mediaLibrary_getLibraryFreeFunction);
 	TEST_SUIT_END();
 
 	TEST_END();
