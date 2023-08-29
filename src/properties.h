@@ -55,7 +55,7 @@
 
 #define DIRECTORY_PROPERTY_EXISTS(server, name) PROPERTY_EXISTS(server, name); do{ \
 	if(!util_directoryExists(property ## name->value)){ \
-		UTIL_LOG_CONSOLE_(LOG_WARNING, "The directory reffered to by the property '%s' '%s' does not exist.", CONSTANTS_ ## name ## _PROPERTY_NAME, property ## name->value); \
+		UTIL_LOG_CONSOLE_(LOG_WARNING, "The directory referred to by the property '%s' '%s' does not exist.", CONSTANTS_ ## name ## _PROPERTY_NAME, property ## name->value); \
 		UTIL_LOG_CONSOLE(LOG_NOTICE, "You can use '--showSettings' to list all settings entries."); \
  \
 		return ERROR(ERROR_INVALID_VALUE); \
@@ -64,7 +64,7 @@
 
 #define FILE_PROPERTY_EXISTS(server, name) PROPERTY_EXISTS(server, name); do{ \
 	if(!util_fileExists(property ## name->value)){ \
-		UTIL_LOG_CONSOLE_(LOG_WARNING, "The file reffered to by the property '%s' '%s' does not exist.", CONSTANTS_ ## name ## _PROPERTY_NAME, property ## name->value); \
+		UTIL_LOG_CONSOLE_(LOG_WARNING, "The file referred to by the property '%s' '%s' does not exist.", CONSTANTS_ ## name ## _PROPERTY_NAME, property ## name->value); \
 		UTIL_LOG_CONSOLE(LOG_NOTICE, "You can use '--showSettings' to list all settings entries."); \
  \
 		return ERROR(ERROR_INVALID_VALUE); \

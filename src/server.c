@@ -2,8 +2,6 @@
 #define SERVER_C
 
 // POSIX Version ¢2008
-#include "mediaLibrary.h"
-#include "util.h"
 #define _XOPEN_SOURCE 700
 
 #define _GNU_SOURCE
@@ -23,7 +21,6 @@
 #include "argumentParser.c"
 #include "stringBuilder.c"
 #include "mediaLibrary.c"
-
 
 THREAD_POOL_RUNNABLE_(epoll_run, Server, server);
 

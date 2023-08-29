@@ -1,7 +1,9 @@
-# ifndef MEDIA_LIBRARY_C
+#ifndef MEDIA_LIBRARY_C
 #define MEDIA_LIBRARY_C
 
 #include "mediaLibrary.h"
+#include "util.h"
+#include <stdint.h>
 
 ERROR_CODE mediaLibrary_init(MediaLibrary* library, PropertyFile* properties){
 	ERROR_CODE error;
@@ -19,96 +21,103 @@ ERROR_CODE mediaLibrary_init(MediaLibrary* library, PropertyFile* properties){
 	LinkedListIterator it;
 	linkedList_initIterator(&it, &libraries);
 	while(LINKED_LIST_ITERATOR_HAS_NEXT(&it)){
-		char* directory = LINKED_LIST_ITERATOR_NEXT_PTR(&it, char);
+		char* path = LINKED_LIST_ITERATOR_NEXT_PTR(&it, char);
 
 	// TODO: Check for 'type' file.
+	char* directory;
+	uint_fast64_t directoryLength;
+	if((error = util_getTailDirectory(&directory, &directoryLength, path, strlen(path))) != ERROR_NO_ERROR){
+		UTIL_LOG_INFO_("Failed to retrieve tail directory name from path: '%s'. Skipping directory.", path);
+
+		continue;
+	}
+
 		UTIL_LOG_CONSOLE_(LOG_DEBUG, "Directory: '%s'.", directory);
 	}
 
 	return ERROR(error);
 }
 
-MEDIALIBRARY_FREE_FUNCTION(mediaLibrary_freeShowLibrary){
-	DoublyLinkedListIterator it;
-	doublyLinkedList_initIterator(&it, &library->data);
-
-	while(DOUBLY_LINKED_LIST_ITERATOR_HAS_NEXT(&it)){
-		Show* show = DOUBLY_LINKED_LIST_ITERATOR_NEXT_PTR(&it, Show);
-
-		mediaLibrary_freeShow(show);
-
-		free(show);
-	}
-
-	doublyLinkedList_free(&library->data);
-
-	free(library->name);
+void mediaLibrary_freeShowLibrary(ShowLibrary* library){
+	free(library->shows);
+	free(library->seasons);
+	free(library->episodes);
+	free(library->showNames);
+	free(library->episodeNames);
 }
 
 MediaLibrary_freeFunction* mediaLibrary_getLibraryFreeFunction(Library* library){
 	switch (library->mediaType){
-			case MEDIA_TYPE_SHOW:{
-				return mediaLibrary_freeShowLibrary;
-			}
-			case MEDIA_TYPE_MOVIE:{
-				break;
-			}
-			case MEDIA_TYPE_AUDIO_ONLY_SHOW:{
-				break;
-			}
-			case MEDIA_TYPE_PODCAST:{
-				break;
-			}
-			case MEDIA_TYPE_AUDIO_BOOK:{
-				break;
-			}
-			case MEDIA_TYPE_BOOK:{
-				break;
-			}
-			case MEDIA_TYPE_PICTURE:{
-				break;
-			}
-			case MEDIA_TYPE_VIDEO:{
-				break;
-			}
-			case MEDIA_TYPE_DOCUMENT:{
-				break;
-			}
+		case MEDIA_TYPE_SHOW:{
+			return (MediaLibrary_freeFunction*) mediaLibrary_freeShowLibrary;
 		}
-
-		return NULL;
-}
-
-inline void mediaLibrary_freeShow(Show* show){
-	DoublyLinkedListIterator it;
-	doublyLinkedList_initIterator(&it, &show->seasons);
-
-	while(DOUBLY_LINKED_LIST_ITERATOR_HAS_NEXT(&it)){
-		Season* season = DOUBLY_LINKED_LIST_ITERATOR_NEXT_PTR(&it, Season);
-
-		mediaLibrary_freeSeason(season);
-
-		free(season);
+		case MEDIA_TYPE_MOVIE:{
+			break;
+		}
+		case MEDIA_TYPE_AUDIO_ONLY_SHOW:{
+			break;
+		}
+		case MEDIA_TYPE_PODCAST:{
+			break;
+		}
+		case MEDIA_TYPE_AUDIO_BOOK:{
+			break;
+		}
+		case MEDIA_TYPE_BOOK:{
+			break;
+		}
+		case MEDIA_TYPE_PICTURE:{
+			break;
+		}
+		case MEDIA_TYPE_VIDEO:{
+			break;
+		}
+		case MEDIA_TYPE_DOCUMENT:{
+			break;
+		}
+		default:{
+			break;
+		}
 	}
 
-	free(show->name);
+	return NULL;
 }
 
-inline void mediaLibrary_freeSeason(Season* season){
-	DoublyLinkedListIterator it;
-	doublyLinkedList_initIterator(&it, &season->episodes);
-
-	while(DOUBLY_LINKED_LIST_ITERATOR_HAS_NEXT(&it)){
-		Episode* episode = DOUBLY_LINKED_LIST_ITERATOR_NEXT_PTR(&it, Episode);
-
-		mediaLibrary_freeEpisode(episode);
-
-		free(episode);
+ssize_t mediaLibrary_sizeofLibrary(Library* library){
+	switch (library->mediaType){
+		case MEDIA_TYPE_SHOW:{
+			return sizeof(ShowLibrary);
+		}
+		case MEDIA_TYPE_MOVIE:{
+			break;
+		}
+		case MEDIA_TYPE_AUDIO_ONLY_SHOW:{
+			break;
+		}
+		case MEDIA_TYPE_PODCAST:{
+			break;
+		}
+		case MEDIA_TYPE_AUDIO_BOOK:{
+			break;
+		}
+		case MEDIA_TYPE_BOOK:{
+			break;
+		}
+		case MEDIA_TYPE_PICTURE:{
+			break;
+		}
+		case MEDIA_TYPE_VIDEO:{
+			break;
+		}
+		case MEDIA_TYPE_DOCUMENT:{
+			break;
+		}
+		default:{
+			break;
+		}
 	}
-}
 
-inline void mediaLibrary_freeEpisode(Episode* episode){
-	free(episode->name);
+	return sizeof(Library);
 }
 
 inline void mediaLibrary_freeEpisodeInfo(EpisodeInfo* episodeInfo){
@@ -118,20 +127,15 @@ inline void mediaLibrary_freeEpisodeInfo(EpisodeInfo* episodeInfo){
 }
 
 inline void mediaLibrary_free(MediaLibrary* library){
-	DoublyLinkedListIterator it;
-	doublyLinkedList_initIterator(&it, &library->libraries);
+	register int_fast8_t i;
+	register intptr_t readOffsert = 0;
+	for(i = 0; i < library->numLibraries; i++){
+		Library* _library = *(library->libraries + readOffsert);
 
-	while(DOUBLY_LINKED_LIST_ITERATOR_HAS_NEXT(&it)){
-		Library* library = DOUBLY_LINKED_LIST_ITERATOR_NEXT(&it);
+		MediaLibrary_freeFunction* libraryFreeFunction = mediaLibrary_getLibraryFreeFunction(_library);
 
-		// Retrieve the correct function to free this type of library.
-		MediaLibrary_freeFunction* mediaLibraryFreeFunction = mediaLibrary_getLibraryFreeFunction(library);
-
-		// Free the library content.
-		mediaLibraryFreeFunction(library);
+		libraryFreeFunction(_library);
 	}
-
-	doublyLinkedList_free(&library->libraries);	
 }
 
 #endif
