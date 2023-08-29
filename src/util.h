@@ -361,11 +361,15 @@ char* util_trim(char*, uint_fast64_t*);
 
 void util_printBuffer(void*, uint_fast64_t);
 
+void util_printBufferEnumerated(void*, uint_fast64_t);
+
 void util_replace(char*, const uint_fast64_t, uint_fast64_t*, const char*, const uint_fast64_t, const char*, const uint_fast64_t);
 
 int_fast32_t util_getNumAvailableProcessorCores(void);
 
 ERROR_CODE util_getBaseDirectory(char**, uint_fast64_t*, char*, uint_fast64_t);
+
+ERROR_CODE util_getTailDirectory(char**, uint_fast64_t*, char*, uint_fast64_t);
 
 ERROR_CODE util_concatenate(char*, const char*, const uint_fast64_t, const char*, const uint_fast64_t);
 

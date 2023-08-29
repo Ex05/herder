@@ -467,6 +467,36 @@ inline int_fast32_t util_getNumAvailableProcessorCores(void){
 	return sysconf(_SC_NPROCESSORS_ONLN);
 }
 
+inline ERROR_CODE util_getTailDirectory(char** tailDirectory, uint_fast64_t* tailDirectoryLength, char* path, uint_fast64_t pathLength){
+	const bool isPathSeperatorTerminated = (path[pathLength - 1] == CONSTANTS_FILE_PATH_DIRECTORY_DELIMITER);
+	// If path is '/' terminated, we can skip the last two character in the the string. e.g: '/' and '\0'.
+	const int searchOffsetModifier = (isPathSeperatorTerminated ? 2 : 1);
+
+	// Handle '/'.
+	if(pathLength == 1 && isPathSeperatorTerminated){
+		*tailDirectory = path;
+		*tailDirectoryLength = pathLength;
+
+		return ERROR(ERROR_NO_ERROR);
+	}
+
+	const int_fast64_t splitIndex = util_findLast(path, pathLength - searchOffsetModifier, CONSTANTS_FILE_PATH_DIRECTORY_DELIMITER);
+
+	// No directory seperator present/invalid directory path.
+	if(splitIndex == -1){
+		*tailDirectory = path;
+		*tailDirectoryLength = pathLength;
+
+		return ERROR(ERROR_INVALID_STRING);
+	}
+
+	*tailDirectoryLength = (pathLength - searchOffsetModifier) - splitIndex;
+	// To only return the directory name, we skip the leading directory seperator char.
+	*tailDirectory = path + splitIndex + 1;
+
+	return ERROR(ERROR_NO_ERROR);
+}
+
 inline ERROR_CODE util_getBaseDirectory(char** baseDirectory, uint_fast64_t* baseDirectoryLength, char* url, uint_fast64_t urlLength){
 	const int_fast64_t firstSeperator = util_findFirst(url, urlLength, '/');
 
@@ -611,6 +641,13 @@ inline void util_printBuffer(void* buffer, uint_fast64_t length){
 uint_fast64_t i;
 	for(i = 0; i < length; i++){
 		printf("%c", ((char*) buffer)[i]);
+	}
+}
+
+inline void util_printBufferEnumerated(void* buffer, uint_fast64_t length){
+uint_fast64_t i;
+	for(i = 0; i < length; i++){
+		printf("[%lu] %c\n", i, ((char*) buffer)[i]);
 	}
 }
 
