@@ -2,8 +2,6 @@
 #define MEDIA_LIBRARY_C
 
 #include "mediaLibrary.h"
-#include "util.h"
-#include <stdint.h>
 
 ERROR_CODE mediaLibrary_init(MediaLibrary* library, PropertyFile* properties){
 	ERROR_CODE error;
