@@ -800,7 +800,7 @@ TEST_TEST_FUNCTION(util_fileExists){
 TEST_TEST_FUNCTION(util_blockAlloc){
 	ERROR_CODE error;
 
-	void* buffer;
+	MemoryBucket buffer;
 	if((error = util_blockAlloc(&buffer, 2048)) != ERROR_NO_ERROR){
 		return TEST_FAILURE("Failed to allocate buffer. '%s'.", util_toErrorString(error));
 	}

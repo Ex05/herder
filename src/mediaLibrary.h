@@ -1,23 +1,26 @@
 #ifndef MEDIA_LIBRARY_H
 #define MEDIA_LIBRARY_H
 
+#include "linkedList.h"
 #include "util.h"
 #include "doublyLinkedList.h"
 #include "properties.h"
 #include <stdint.h>
 
 typedef enum{
-	MEDIA_TYPE_SHOW = 0,
-	MEDIA_TYPE_MOVIE,
-	MEDIA_TYPE_AUDIO_ONLY_SHOW,
-	MEDIA_TYPE_PODCAST,
-	MEDIA_TYPE_AUDIO_BOOK,
-	MEDIA_TYPE_BOOK,
-	MEDIA_TYPE_PICTURE,
-	MEDIA_TYPE_VIDEO,
-	MEDIA_TYPE_DOCUMENT,
-	MEDIA_TYPE_NUM_ELEMENTS
-}MediaType;
+	LIBRARY_TYPE_SHOW = 0,
+	LIBRARY_TYPE_MOVIE,
+	LIBRARY_TYPE_AUDIO_ONLY_SHOW,
+	LIBRARY_TYPE_PODCAST,
+	LIBRARY_TYPE_AUDIO_BOOK,
+	LIBRARY_TYPE_BOOK,
+	LIBRARY_TYPE_PICTURE,
+	LIBRARY_TYPE_VIDEO,
+	LIBRARY_TYPE_DOCUMENT,
+
+	// Ignore, used for enumerating over elements.
+	LIBRARY_TYPE_NUM_ELEMENTS
+}LibraryType;
 
 typedef enum{
 	MKV,
@@ -57,11 +60,13 @@ typedef struct{
 }EpisodeInfo;
 
 typedef struct{
-	MediaType mediaType;
+	LibraryType mediaType;
+	int_fast64_t nameLength;
+	char* libraryName;
 }Library;
 
 typedef struct{
-	MediaType mediaType;
+	LibraryType mediaType;
 	int_fast64_t nameLength;
 	char* libraryName;
 	VideoFormat VideoFormat;
@@ -74,6 +79,7 @@ typedef struct{
 
 typedef struct{
 	Property* location;
+	Property* libraryFilePath;
 	int8_t numLibraries;
 	Library** libraries;
 }MediaLibrary;
@@ -86,30 +92,34 @@ typedef struct{
 	Library:
 	All counting variables are signed at this point
 
-	library_directory: (settings file){
-		library_name:{
-			library_type: 1 byte;
+	library_directory: ('.library' file){
+		library:{
+			library_type: 		1 byte;
+			library_nameLength: 1 byte;	// As defined ny FILE_NAME_MAX = 255.
+			library_name:		~ bytes; 	// (incl. 0 termination);
+		}
+	}
 
-			case: TYPE_SHOW:{
-				show:{
-					show_nameLength: 2 bytes;
-					show_name: (incl. 0 termination);
-					num_seasons: 1 byte;
+TYPE_SHOW:{
+	show:{
+		show_nameLength: 1 bytes;
+		show_name: (incl. 0 termination);
+		num_seasons: 1 byte;
 
-					seasson:{
-						season_number: 1 byte;
-						num_episodes: 2 bytes;
+		seasson:{
+			season_number: 1 byte;
+			num_episodes: 2 bytes;
+			icon_pathLength: 2 bytes; // As defined by PATH_MAX = 4096.
+			icon_path: 	~ bytes;
 
-						episode:{
-							episode_number: 2 bytes;
-							episode_nameLength: 2 bytes;
-							episode_name: (incl. 0 termination);
-						}
-					}
-				}
+			episode:{
+				episode_number: 2 bytes;
+				episode_nameLength: 2 bytes;
+				episode_name: (incl. 0 termination);
 			}
 		}
 	}
+}
 */
 
 #define MEDIALIBRARY_FREE_FUNCTION(functionName) void functionName(Library* _library)
@@ -122,5 +132,7 @@ ERROR_CODE mediaLibrary_createLibrary(MediaLibrary*, char*, const int_fast64_t);
 void mediaLibrary_free(MediaLibrary*);
 
 void mediaLibrary_freeEpisodeInfo(EpisodeInfo*);
+
+ERROR_CODE mediaLibrary_parseLibraryFile(MediaLibrary*, MemoryBucket*, uint_fast64_t, LinkedList*);
 
 #endif

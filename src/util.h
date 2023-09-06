@@ -72,6 +72,8 @@ typedef enum{
 	WALK_DIRECTORY_FILTER_FILES_ONLY,
 }WalkDirectoryFilter;
 
+typedef void* MemoryBucket;
+
 typedef enum{
 	ERROR_NO_ERROR = 0,
 	ERROR_ERROR,
@@ -420,5 +422,7 @@ ERROR_CODE util_createAllDirectories(const char*, const uint_fast64_t);
 ERROR_CODE util_fileCopy(const char*, const char*);
 
 ERROR_CODE util_getFileSize(const char*, uint_fast64_t*);
+
+ERROR_CODE util_loadFile(const char*, const uint_fast64_t, uint8_t**);
 
 #endif

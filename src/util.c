@@ -956,4 +956,21 @@ inline ERROR_CODE util_getFileSize(const char* filePath, uint_fast64_t* fileSize
 	return ERROR(ERROR_NO_ERROR);
 }
 
+inline ERROR_CODE util_loadFile(const char* path, const uint_fast64_t fileSize, uint8_t** buffer){
+	FILE* file;
+	if((file = fopen(path, "r")) == NULL){
+		return ERROR(ERROR_FAILED_TO_LOAD_FILE);
+	}	
+
+	if(fread(*buffer, sizeof(uint8_t), fileSize, file) != fileSize){
+		return ERROR(ERROR_FAILED_TO_LOAD_FILE);
+	}
+
+	if(fclose(file) != 0){
+		return ERROR(ERROR_FAILED_TO_CLOSE_FILE);
+	}
+
+	return ERROR(ERROR_NO_ERROR);
+}
+
 #endif

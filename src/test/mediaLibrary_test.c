@@ -19,7 +19,7 @@ TEST_TEST_FUNCTION(mediaLibrary_getLibraryFreeFunction){
 	ShowLibrary showLibrary = {0};
 
 	int_fast8_t i;
-	for(i = 0; i < MEDIA_TYPE_NUM_ELEMENTS; i++){
+	for(i = 0; i < LIBRARY_TYPE_NUM_ELEMENTS; i++){
 		showLibrary.mediaType = i;
 
 		MediaLibrary_freeFunction* libraryFreeFunction = mediaLibrary_getLibraryFreeFunction((Library*) &showLibrary);

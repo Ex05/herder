@@ -8,32 +8,74 @@ ERROR_CODE mediaLibrary_init(MediaLibrary* library, PropertyFile* properties){
 
 	memset(library, 0, sizeof(*library));
 
-	// LibraryLocation.
+	// Library_location.
 	PROPERTIES_GET(properties, library->location, MEDIA_LIBRARY_LOCATION);
+	// Library_file_path.
+	PROPERTIES_GET(properties, library->libraryFilePath, MEDIA_LIBRARY_LIBRARY_FILE_PATH);
 
-	LinkedList libraries = {0};
-	if((error = util_listDirectoryContent(&libraries, library->location->value, library->location->valueLength, WALK_DIRECTORY_FILTER_DIRECTORIES_ONLY)) != ERROR_NO_ERROR){
+	// Allocate memory bucket for parsing operation of library file.
+	uint_fast64_t libraryFileSize;
+	if((error = util_getFileSize(library->libraryFilePath->value, &libraryFileSize)) != ERROR_NO_ERROR){
 		return ERROR(error);
 	}
 
-	LinkedListIterator it;
-	linkedList_initIterator(&it, &libraries);
-	while(LINKED_LIST_ITERATOR_HAS_NEXT(&it)){
-		char* path = LINKED_LIST_ITERATOR_NEXT_PTR(&it, char);
-
-	// TODO: Check for 'type' file.
-	char* directory;
-	uint_fast64_t directoryLength;
-	if((error = util_getTailDirectory(&directory, &directoryLength, path, strlen(path))) != ERROR_NO_ERROR){
-		UTIL_LOG_INFO_("Failed to retrieve tail directory name from path: '%s'. Skipping directory.", path);
-
-		continue;
+	MemoryBucket bucket;
+	if((error = util_blockAlloc(&bucket, libraryFileSize)) != ERROR_NO_ERROR){
+		return ERROR(error);
 	}
 
-		UTIL_LOG_CONSOLE_(LOG_DEBUG, "Directory: '%s'.", directory);
+	LinkedList libraries = {0};	
+	if((error = mediaLibrary_parseLibraryFile(library, &bucket, libraryFileSize, &libraries)) != ERROR_NO_ERROR){
+		return ERROR(error);
+	}
+
+	// Load libraries;
+	LinkedListIterator it;
+	linkedList_initIterator(&it, &libraries);
+
+	while(LINKED_LIST_ITERATOR_HAS_NEXT(&it)){
+		Library* library = LINKED_LIST_ITERATOR_NEXT(&it);
+
+		UTIL_LOG_CONSOLE_(LOG_DEBUG, "Library: Type:[%d] Name:'%s'", library->mediaType, library->libraryName);
+
+		
+	}
+
+	if((error = util_unMap(bucket, libraryFileSize)) != ERROR_NO_ERROR){
+		return ERROR(error);
 	}
 
 	return ERROR(error);
+}
+
+ERROR_CODE mediaLibrary_parseLibraryFile(MediaLibrary* library, MemoryBucket* bucket, uint_fast64_t libraryFileSize, LinkedList* libraries){
+	ERROR_CODE error;
+
+	uint8_t* buffer = *bucket;
+
+	if((error = util_loadFile(library->libraryFilePath->value, libraryFileSize, &buffer)) != ERROR_NO_ERROR){
+		return ERROR(error);
+	}
+
+	// Iterate over library file entries.
+	for(uint_fast64_t readOffset = 0; readOffset < libraryFileSize; library->numLibraries++){
+		Library* library = malloc(sizeof(*library));
+		library->mediaType = buffer[readOffset];
+		readOffset += 1;
+
+		library->nameLength = buffer[readOffset];
+		// Note: We store the string length including trailing '\0' on disk, so we have to subtract it here again. (jan - 2023.08.30) 
+		library->nameLength -= 1;
+		readOffset += 1;
+	
+		library->libraryName = (char*) buffer + readOffset;
+
+		readOffset += (library->nameLength + 1);
+
+		LINKED_LIST_ADD_PTR(libraries, library);
+	}
+
+	return ERROR(ERROR_NO_ERROR);
 }
 
 void mediaLibrary_freeShowLibrary(ShowLibrary* library){
@@ -46,31 +88,31 @@ void mediaLibrary_freeShowLibrary(ShowLibrary* library){
 
 MediaLibrary_freeFunction* mediaLibrary_getLibraryFreeFunction(Library* library){
 	switch (library->mediaType){
-		case MEDIA_TYPE_SHOW:{
+		case LIBRARY_TYPE_SHOW:{
 			return (MediaLibrary_freeFunction*) mediaLibrary_freeShowLibrary;
 		}
-		case MEDIA_TYPE_MOVIE:{
+		case LIBRARY_TYPE_MOVIE:{
 			break;
 		}
-		case MEDIA_TYPE_AUDIO_ONLY_SHOW:{
+		case LIBRARY_TYPE_AUDIO_ONLY_SHOW:{
 			break;
 		}
-		case MEDIA_TYPE_PODCAST:{
+		case LIBRARY_TYPE_PODCAST:{
 			break;
 		}
-		case MEDIA_TYPE_AUDIO_BOOK:{
+		case LIBRARY_TYPE_AUDIO_BOOK:{
 			break;
 		}
-		case MEDIA_TYPE_BOOK:{
+		case LIBRARY_TYPE_BOOK:{
 			break;
 		}
-		case MEDIA_TYPE_PICTURE:{
+		case LIBRARY_TYPE_PICTURE:{
 			break;
 		}
-		case MEDIA_TYPE_VIDEO:{
+		case LIBRARY_TYPE_VIDEO:{
 			break;
 		}
-		case MEDIA_TYPE_DOCUMENT:{
+		case LIBRARY_TYPE_DOCUMENT:{
 			break;
 		}
 		default:{
@@ -83,31 +125,31 @@ MediaLibrary_freeFunction* mediaLibrary_getLibraryFreeFunction(Library* library)
 
 ssize_t mediaLibrary_sizeofLibrary(Library* library){
 	switch (library->mediaType){
-		case MEDIA_TYPE_SHOW:{
+		case LIBRARY_TYPE_SHOW:{
 			return sizeof(ShowLibrary);
 		}
-		case MEDIA_TYPE_MOVIE:{
+		case LIBRARY_TYPE_MOVIE:{
 			break;
 		}
-		case MEDIA_TYPE_AUDIO_ONLY_SHOW:{
+		case LIBRARY_TYPE_AUDIO_ONLY_SHOW:{
 			break;
 		}
-		case MEDIA_TYPE_PODCAST:{
+		case LIBRARY_TYPE_PODCAST:{
 			break;
 		}
-		case MEDIA_TYPE_AUDIO_BOOK:{
+		case LIBRARY_TYPE_AUDIO_BOOK:{
 			break;
 		}
-		case MEDIA_TYPE_BOOK:{
+		case LIBRARY_TYPE_BOOK:{
 			break;
 		}
-		case MEDIA_TYPE_PICTURE:{
+		case LIBRARY_TYPE_PICTURE:{
 			break;
 		}
-		case MEDIA_TYPE_VIDEO:{
+		case LIBRARY_TYPE_VIDEO:{
 			break;
 		}
-		case MEDIA_TYPE_DOCUMENT:{
+		case LIBRARY_TYPE_DOCUMENT:{
 			break;
 		}
 		default:{
@@ -133,6 +175,8 @@ inline void mediaLibrary_free(MediaLibrary* library){
 		MediaLibrary_freeFunction* libraryFreeFunction = mediaLibrary_getLibraryFreeFunction(_library);
 
 		libraryFreeFunction(_library);
+
+		readOffsert += mediaLibrary_sizeofLibrary(_library);
 	}
 }
 

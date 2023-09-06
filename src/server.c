@@ -2,6 +2,7 @@
 #define SERVER_C
 
 // POSIX Version ¢2008
+#include "properties.h"
 #define _XOPEN_SOURCE 700
 
 #define _GNU_SOURCE
@@ -181,7 +182,8 @@ http_cache_size = 256\n \
 error_page_cache_size = 4\n \
 // Max architecture independant guaranteed size is 2pow(16) or 65_535 Bytes.\n \
 http_read_buffer_size = 8096\n \
-mediaLibrary_location = \n \
+library_location = \n \
+library_file_name = \n \
 \n \
 # Security\n \
 ssl_privateKeyFile = \n \
@@ -758,6 +760,7 @@ ERROR_CODE server_loadProperties(Server* server, char* propertyFileLocation, con
 	INTEGER_PROPERTY_EXISTS(server, ERROR_PAGE_CACHE_SIZE);
 	INTEGER_PROPERTY_EXISTS(server, HTTP_READ_BUFFER_SIZE);
 	DIRECTORY_PROPERTY_EXISTS(server, MEDIA_LIBRARY_LOCATION);
+	FILE_PROPERTY_EXISTS(server, MEDIA_LIBRARY_LIBRARY_FILE_PATH);
 	
 	// #Security
 	FILE_PROPERTY_EXISTS(server, SSL_CERTIFICATE_LOCATION);
