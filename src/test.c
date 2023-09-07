@@ -199,6 +199,7 @@ TEST_BEGIN();
 		TEST(linkedList_iteration);
 		TEST(linkedList_remove);
 		TEST(linkedList_contains);
+		TEST(linkedList_addPointer);
 	TEST_SUIT_END();
 
 	TEST_SUIT_BEGIN_(doublyLinkedList);
@@ -303,6 +304,7 @@ TEST_BEGIN();
 
 	TEST_SUIT_BEGIN("mediaLibrary");
 		TEST(mediaLibrary_getLibraryFreeFunction);
+		TEST(mediaLibrary_parseLibraryFileContent_);
 	TEST_SUIT_END();
 
 	TEST_END();

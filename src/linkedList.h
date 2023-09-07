@@ -10,7 +10,7 @@
 #define LINKED_LIST_ITERATOR_NEXT_PTR(it, type) (*(type**) LINKED_LIST_ITERATOR_NEXT(it))
 
 #define LINKED_LIST_ADD(list, value) linkedList_add(list, &value, sizeof(value))
-#define LINKED_LIST_ADD_PTR(list, value) linkedList_add(list, value, sizeof(*(value)))
+#define LINKED_LIST_ADD_PTR(list, value) linkedList_add(list, value, sizeof(*((value))))
 
 #define LINKED_LIST_EMPTY(list) (list->tail == NULL)
 

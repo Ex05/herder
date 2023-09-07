@@ -57,6 +57,8 @@
 
 #define UTIL_FLAG(name, size) uint8_t name:size
 
+#define __INTERNAL_USE__
+
 #define UTIL_INT_TO_STRING_HEAP_ALLOCATED(name, value) char* name; \
 	uint_fast64_t name ## Length; \
 	do{ \

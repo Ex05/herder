@@ -60,9 +60,9 @@ typedef struct{
 }EpisodeInfo;
 
 typedef struct{
-	LibraryType mediaType;
+	LibraryType type;
 	int_fast64_t nameLength;
-	char* libraryName;
+	char* name;
 }Library;
 
 typedef struct{
@@ -134,5 +134,7 @@ void mediaLibrary_free(MediaLibrary*);
 void mediaLibrary_freeEpisodeInfo(EpisodeInfo*);
 
 ERROR_CODE mediaLibrary_parseLibraryFile(MediaLibrary*, MemoryBucket*, uint_fast64_t, LinkedList*);
+
+ERROR_CODE mediaLibrary_parseLibraryFileContent_(LinkedList*, uint8_t*, uint_fast64_t);
 
 #endif

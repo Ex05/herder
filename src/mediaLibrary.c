@@ -34,11 +34,11 @@ ERROR_CODE mediaLibrary_init(MediaLibrary* library, PropertyFile* properties){
 	linkedList_initIterator(&it, &libraries);
 
 	while(LINKED_LIST_ITERATOR_HAS_NEXT(&it)){
-		Library* library = LINKED_LIST_ITERATOR_NEXT(&it);
+		Library* library = LINKED_LIST_ITERATOR_NEXT_PTR(&it, Library);
 
-		UTIL_LOG_CONSOLE_(LOG_DEBUG, "Library: Type:[%d] Name:'%s'", library->mediaType, library->libraryName);
+		UTIL_LOG_CONSOLE_(LOG_DEBUG, "Library: Type:[%d] Name:'%s'", library->type, library->name);
 
-		
+		// TODO: Load each libraries media/library file.
 	}
 
 	if((error = util_unMap(bucket, libraryFileSize)) != ERROR_NO_ERROR){
@@ -48,7 +48,7 @@ ERROR_CODE mediaLibrary_init(MediaLibrary* library, PropertyFile* properties){
 	return ERROR(error);
 }
 
-ERROR_CODE mediaLibrary_parseLibraryFile(MediaLibrary* library, MemoryBucket* bucket, uint_fast64_t libraryFileSize, LinkedList* libraries){
+inline ERROR_CODE mediaLibrary_parseLibraryFile(MediaLibrary* library, MemoryBucket* bucket, uint_fast64_t libraryFileSize, LinkedList* libraries){
 	ERROR_CODE error;
 
 	uint8_t* buffer = *bucket;
@@ -57,10 +57,15 @@ ERROR_CODE mediaLibrary_parseLibraryFile(MediaLibrary* library, MemoryBucket* bu
 		return ERROR(error);
 	}
 
+	return mediaLibrary_parseLibraryFileContent_(libraries, buffer, libraryFileSize);
+}
+
+inline ERROR_CODE __INTERNAL_USE__ mediaLibrary_parseLibraryFileContent_(LinkedList* libraries, uint8_t* buffer, uint_fast64_t bufferSize){
 	// Iterate over library file entries.
-	for(uint_fast64_t readOffset = 0; readOffset < libraryFileSize; library->numLibraries++){
+	for(uint_fast64_t readOffset = 0; readOffset < bufferSize;){
 		Library* library = malloc(sizeof(*library));
-		library->mediaType = buffer[readOffset];
+
+		library->type = buffer[readOffset];
 		readOffset += 1;
 
 		library->nameLength = buffer[readOffset];
@@ -68,11 +73,11 @@ ERROR_CODE mediaLibrary_parseLibraryFile(MediaLibrary* library, MemoryBucket* bu
 		library->nameLength -= 1;
 		readOffset += 1;
 	
-		library->libraryName = (char*) buffer + readOffset;
+		library->name = (char*) buffer + readOffset;
 
 		readOffset += (library->nameLength + 1);
 
-		LINKED_LIST_ADD_PTR(libraries, library);
+		LINKED_LIST_ADD_PTR(libraries, (&library));
 	}
 
 	return ERROR(ERROR_NO_ERROR);
@@ -87,7 +92,7 @@ void mediaLibrary_freeShowLibrary(ShowLibrary* library){
 }
 
 MediaLibrary_freeFunction* mediaLibrary_getLibraryFreeFunction(Library* library){
-	switch (library->mediaType){
+	switch (library->type){
 		case LIBRARY_TYPE_SHOW:{
 			return (MediaLibrary_freeFunction*) mediaLibrary_freeShowLibrary;
 		}
@@ -124,7 +129,7 @@ MediaLibrary_freeFunction* mediaLibrary_getLibraryFreeFunction(Library* library)
 }
 
 ssize_t mediaLibrary_sizeofLibrary(Library* library){
-	switch (library->mediaType){
+	switch (library->type){
 		case LIBRARY_TYPE_SHOW:{
 			return sizeof(ShowLibrary);
 		}
