@@ -563,6 +563,38 @@ inline void util_replace(char* buffer, const uint_fast64_t bufferLength, uint_fa
 	}
 }
 
+// Note: 'util_replaceAll' uses the same algorithem as 'util_replace' to replace strings, but instead of moving the searchOffset every time a string gets replaced, we restart our search. This means the longer the provided search string the worse the performance. On the other hand this aproach does allow for the detection of strings that get created during repalcement. And thusly can be used to colapse repeated characters. (jan - 2023.09.09)
+inline void util_replaceAll(char* buffer, const uint_fast64_t bufferLength, uint_fast64_t* srcStringLength, const char* a, const uint_fast64_t stringLengthA, const char* b, const uint_fast64_t stringLengthB){
+	const bool shrink = stringLengthB <= stringLengthA;
+
+	int_fast64_t writeOffset = 0;
+	while((writeOffset = util_findFirst_s(buffer, *srcStringLength, a, stringLengthA)) != -1){
+		if(shrink){
+			// Replace string 'a' with 'b'.
+			memcpy(buffer + writeOffset, b, stringLengthB);
+			// Move everything that came behind 'a' to the end of 'b'.
+			memcpy(buffer + writeOffset + stringLengthB, buffer + writeOffset + stringLengthA, *srcStringLength + 1 - writeOffset - stringLengthA);
+
+			// Adjust src string length.
+			*srcStringLength -= stringLengthA - stringLengthB;
+		}else{			
+			const uint_fast64_t copyLength = *srcStringLength + 1 - writeOffset - stringLengthA;
+
+			uint_fast64_t i;
+			for(i = 0; i <= copyLength; i++){
+				const uint_fast64_t srcIndex = writeOffset + (stringLengthB - stringLengthA) + copyLength - i;
+				const uint_fast64_t dstIndex = writeOffset + stringLengthB + copyLength - i;
+
+				buffer[dstIndex] = buffer[srcIndex];
+			}
+
+			memcpy(buffer + writeOffset, b, stringLengthB);
+
+			*srcStringLength += stringLengthB - stringLengthA;
+		}
+	}
+}
+
 char* util_trimTrailingWhiteSpace(char* s, uint_fast64_t* length, const bool isStringNullTerminated){
 	uint_fast64_t searchOffset = *length - (isStringNullTerminated ? 1 : 0);
 
