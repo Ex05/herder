@@ -24,6 +24,7 @@ typedef enum{
 
 typedef enum{
 	MKV,
+	AV1
 }VideoFormat;
 
 typedef struct{
@@ -79,9 +80,10 @@ typedef struct{
 
 typedef struct{
 	Property* location;
-	Property* libraryFilePath;
+	Property* libraryFileName;
 	int8_t numLibraries;
-	Library** libraries;
+	int_fast64_t libraryStructsize;
+	void** libraries;
 }MediaLibrary;
 
 /*
@@ -95,7 +97,7 @@ typedef struct{
 	library_directory: ('.library' file){
 		library:{
 			library_type: 		1 byte;
-			library_nameLength: 1 byte;	// As defined ny FILE_NAME_MAX = 255.
+			library_nameLength: 1 byte;	// As defined by FILE_NAME_MAX = 255.
 			library_name:		~ bytes; 	// (incl. 0 termination);
 		}
 	}
@@ -122,8 +124,8 @@ TYPE_SHOW:{
 }
 */
 
-#define MEDIALIBRARY_FREE_FUNCTION(functionName) void functionName(Library* _library)
-typedef MEDIALIBRARY_FREE_FUNCTION(MediaLibrary_freeFunction);
+#define MEDIA_LIBRARY_FREE_FUNCTION(functionName) void functionName(Library* _library)
+typedef MEDIA_LIBRARY_FREE_FUNCTION(MediaLibrary_freeFunction);
 
 ERROR_CODE mediaLibrary_init(MediaLibrary*, PropertyFile*);
 
@@ -133,8 +135,21 @@ void mediaLibrary_free(MediaLibrary*);
 
 void mediaLibrary_freeEpisodeInfo(EpisodeInfo*);
 
-ERROR_CODE mediaLibrary_parseLibraryFile(MediaLibrary*, MemoryBucket*, uint_fast64_t, LinkedList*);
+ERROR_CODE mediaLibrary_parseLibraryFile(MediaLibrary*, const char*, MemoryBucket*, uint_fast64_t, LinkedList*);
 
 ERROR_CODE mediaLibrary_parseLibraryFileContent_(LinkedList*, uint8_t*, uint_fast64_t);
 
+ssize_t mediaLibrary_getLibrarySize(LibraryType);
+
+void __INTERNAL_USE__ _mediaLibrary_initLibrary(Library**, const LibraryType, const char*, const uint_fast64_t);
+
+void mediaLibrary_sanitizeLibraryString(const char*, char**, uint_fast64_t*);
+
+void mediaLibrary_reverseSanitize(char*, const uint_fast64_t);
+
+ERROR_CODE mediaLibrary_addLibrary(MediaLibrary*, const LibraryType, const char*, const uint_fast64_t);
+
+ERROR_CODE __INTERNAL_USE__ _mediaLibrary_createLibraryDirectory(MediaLibrary*, const char*, const uint_fast64_t);
+
+ERROR_CODE __INTERNAL_USE__ _mediaLibrary_updateLibraryFile(MediaLibrary*, const char*, const uint_fast64_t);
 #endif

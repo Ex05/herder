@@ -2,6 +2,8 @@
 #define UTIL_TEST_C
 
 #include "../test.c"
+#include <stdint.h>
+#include <sys/syslog.h>
 
 TEST_TEST_FUNCTION(util_findFirst){
 	const char s[] = "abcdef012ghi~jklno~p345~qrs";
@@ -545,6 +547,20 @@ TEST_TEST_FUNCTION(util_replace){
 			return TEST_FAILURE("Return value '%s' != 'acdc'.", s);
 		}
 	}
+
+	// Test inplace replacement.
+	{
+		char* s = alloca(11);
+		memcpy(s, "0123456789", 11);
+		
+		uint_fast64_t stringLength = 10;
+		util_replace(s, 11, &stringLength , "01234", 5, "43210", 5);
+
+		if(strcmp(s, "4321056789") != 0){
+			return TEST_FAILURE("Return value '%s' != '4321056789'.", s);
+		}
+	}
+	
 	
 	return TEST_SUCCESS;
 }

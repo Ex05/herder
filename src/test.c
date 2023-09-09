@@ -306,6 +306,7 @@ TEST_BEGIN();
 	TEST_SUIT_BEGIN("mediaLibrary");
 		TEST(mediaLibrary_getLibraryFreeFunction);
 		TEST(mediaLibrary_parseLibraryFileContent_);
+		TEST(mediaLibrary_sanitizeLibraryString);
 	TEST_SUIT_END();
 
 	TEST_END();

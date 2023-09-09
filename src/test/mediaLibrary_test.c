@@ -2,6 +2,7 @@
 #define MEDIA_LIBRARY_TEST_C
 
 #include "../test.c"
+#include <string.h>
 
 TEST_TEST_FUNCTION(mediaLibrary_getLibraryFreeFunction){
 	MediaLibrary_freeFunction* mediaLibraryFreeFunctions[] = {
@@ -92,6 +93,21 @@ TEST_TEST_FUNCTION(mediaLibrary_parseLibraryFileContent_){
 	}
 
 	linkedList_free(&libraries);
+
+	return TEST_SUCCESS;
+}
+
+TEST_TEST_FUNCTION(mediaLibrary_sanitizeLibraryString){
+	char s[] = "Moovies   HD";
+
+	uint_fast64_t sanitizedStringLength = strlen(s);
+	char* sanitizedString = alloca(sizeof(*sanitizedString) * (sanitizedStringLength+ 1));
+
+	mediaLibrary_sanitizeLibraryString(s, &sanitizedString, &sanitizedStringLength);
+
+	if(strncmp(sanitizedString, "Moovies_HD", sanitizedStringLength + 1) != 0){
+		return TEST_FAILURE("Sanitized string '%s' != '%s'", sanitizedString, "Moovies_HD");
+	}
 
 	return TEST_SUCCESS;
 }
