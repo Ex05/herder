@@ -233,6 +233,7 @@ TEST_BEGIN();
 		TEST(util_findFirst_s);
 		TEST(util_findLast);
 		TEST(util_replace);
+		TEST(util_replaceAll);
 		TEST(util_trim);
 		TEST(util_toLowerChase);
 		TEST(util_replaceAllChars);

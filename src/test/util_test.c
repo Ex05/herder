@@ -549,6 +549,21 @@ TEST_TEST_FUNCTION(util_replace){
 	return TEST_SUCCESS;
 }
 
+TEST_TEST_FUNCTION(util_replaceAll){
+	char* s = alloca(13);
+	memcpy(s, "Test    1234", 13);
+	
+	uint_fast64_t stringLength = 12;
+	
+	util_replaceAll(s, stringLength, &stringLength, "  ", 2, " ", 1);
+
+	if(strcmp(s, "Test 1234") != 0){
+		return TEST_FAILURE("Return value '%s' != 'Test 1234'.", s);
+	}
+	
+	return TEST_SUCCESS;
+}
+
 TEST_TEST_FUNCTION(util_trim){
 	char* testStrings[] = {
 		"      ",
