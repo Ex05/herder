@@ -2,6 +2,7 @@
 #define MEDIA_LIBRARY_C
 
 #include "mediaLibrary.h"
+#include "util.h"
 
 ERROR_CODE mediaLibrary_init(MediaLibrary* library, PropertyFile* properties){
 	ERROR_CODE error;
@@ -13,19 +14,7 @@ ERROR_CODE mediaLibrary_init(MediaLibrary* library, PropertyFile* properties){
 	// Library_file_name.
 	PROPERTIES_GET(properties, library->libraryFileName, MEDIA_LIBRARY_LIBRARY_FILE_NAME);
 
-	const bool isLibraryFilePathPathDeleimiterTerminated = library->location->value[library->location->valueLength - 1] == CONSTANTS_FILE_PATH_DIRECTORY_DELIMITER;
-
-	const uint_fast64_t libraryFilePathLength = library->location->valueLength + library->libraryFileName->valueLength + (isLibraryFilePathPathDeleimiterTerminated ? 0 : 1);
-
-	char* libraryFilePath = alloca(sizeof(*libraryFilePath) * (libraryFilePathLength + 1));
-	memcpy(libraryFilePath, library->location->value, library->location->valueLength);
-
-	if(!isLibraryFilePathPathDeleimiterTerminated){
-		libraryFilePath[library->location->valueLength] = CONSTANTS_FILE_PATH_DIRECTORY_DELIMITER;
-	}
-
-	memcpy(libraryFilePath + library->location->valueLength + (isLibraryFilePathPathDeleimiterTerminated ? 0 : 1), library->libraryFileName->value, library->libraryFileName->valueLength);
-	libraryFilePath[libraryFilePathLength] = '\0';
+	MEDIA_LIBRARY_MEDIA_LIBRARY_FILE_PATH(library, libraryFilePath);
 
 	// Allocate memory bucket for parsing operation of library file.
 	uint_fast64_t libraryFileSize;
@@ -145,10 +134,10 @@ ERROR_CODE mediaLibrary_addLibrary(MediaLibrary* library, const LibraryType type
 }
 
 inline ERROR_CODE __INTERNAL_USE__ _mediaLibrary_updateLibraryFile(MediaLibrary* library, const char* name, const uint_fast64_t nameLength){
-
+	return ERROR(ERROR_NO_ERROR);
 }
 
-inline ERROR_CODE __INTERNAL_USE__ mediaLibrary_createLibraryDirectory_(MediaLibrary* library, const char* name, const uint_fast64_t nameLength){
+inline ERROR_CODE __INTERNAL_USE__ _mediaLibrary_createLibraryDirectory(MediaLibrary* library, const char* name, const uint_fast64_t nameLength){
 	// Create directory.
 	const bool isLibraryFilePathPathDeleimiterTerminated = library->location->value[library->location->valueLength - 1] == CONSTANTS_FILE_PATH_DIRECTORY_DELIMITER;
 
@@ -172,7 +161,7 @@ inline ERROR_CODE __INTERNAL_USE__ mediaLibrary_createLibraryDirectory_(MediaLib
 	return ERROR(ERROR_NO_ERROR);
 }
 
-inline void __INTERNAL_USE__ mediaLibrary_initLibrary_(Library** library, const LibraryType type, const char* name, const uint_fast64_t nameLength){
+inline void __INTERNAL_USE__ _mediaLibrary_initLibrary(Library** library, const LibraryType type, const char* name, const uint_fast64_t nameLength){
 	*library = calloc(1, mediaLibrary_getLibrarySize(type));
 
 	(*library)->nameLength = nameLength;

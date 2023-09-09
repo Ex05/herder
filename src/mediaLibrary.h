@@ -127,6 +127,23 @@ TYPE_SHOW:{
 #define MEDIA_LIBRARY_FREE_FUNCTION(functionName) void functionName(Library* _library)
 typedef MEDIA_LIBRARY_FREE_FUNCTION(MediaLibrary_freeFunction);
 
+#define MEDIA_LIBRARY_MEDIA_LIBRARY_FILE_PATH(library, name) uint_fast64_t name ## Length; \
+char* name; \
+do{ \
+	const bool isLibraryFilePathPathDeleimiterTerminated = (library)->location->value[(library)->location->valueLength - 1] == CONSTANTS_FILE_PATH_DIRECTORY_DELIMITER; \
+	name ## Length = (library)->location->valueLength + (library)->libraryFileName->valueLength + (isLibraryFilePathPathDeleimiterTerminated ? 0 : 1); \
+	\
+	name = alloca(sizeof(*name) * (name ## Length + 1)); \
+	memcpy(name, (library)->location->value, (library)->location->valueLength); \
+	\
+	if(!isLibraryFilePathPathDeleimiterTerminated){ \
+		name[(library)->location->valueLength] = CONSTANTS_FILE_PATH_DIRECTORY_DELIMITER; \
+	} \
+	\
+	memcpy(name + (library)->location->valueLength + (isLibraryFilePathPathDeleimiterTerminated ? 0 : 1), (library)->libraryFileName->value, (library)->libraryFileName->valueLength); \
+	name[name ## Length] = '\0'; \
+}while(0);
+
 ERROR_CODE mediaLibrary_init(MediaLibrary*, PropertyFile*);
 
 ERROR_CODE mediaLibrary_createLibrary(MediaLibrary*, char*, const int_fast64_t);
