@@ -429,4 +429,8 @@ ERROR_CODE util_getFileSize(const char*, uint_fast64_t*);
 
 ERROR_CODE util_loadFile(const char*, const uint_fast64_t, uint8_t**);
 
+ERROR_CODE util_openFile(const char*, const char*, FILE**);
+
+ERROR_CODE util_closeFile(FILE*);
+
 #endif
