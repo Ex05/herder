@@ -1023,4 +1023,15 @@ inline ERROR_CODE util_closeFile(FILE* file){
 	return ERROR(ERROR_NO_ERROR);
 }
 
+inline ERROR_CODE util_createFile(const char* path){
+	ERROR_CODE error;
+
+	FILE* file;
+	if((error = util_openFile(path, "a", &file)) != ERROR_NO_ERROR){
+		return ERROR(error);
+	}
+
+	return util_closeFile(file);
+}
+
 #endif

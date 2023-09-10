@@ -433,4 +433,6 @@ ERROR_CODE util_openFile(const char*, const char*, FILE**);
 
 ERROR_CODE util_closeFile(FILE*);
 
+ERROR_CODE util_createFile(const char*);
+
 #endif
