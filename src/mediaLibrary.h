@@ -5,7 +5,6 @@
 #include "util.h"
 #include "doublyLinkedList.h"
 #include "properties.h"
-#include <stdint.h>
 
 typedef enum{
 	LIBRARY_TYPE_SHOW = 0,
@@ -81,9 +80,7 @@ typedef struct{
 typedef struct{
 	Property* location;
 	Property* libraryFileName;
-	int8_t numLibraries;
-	int_fast64_t libraryStructsize;
-	void** libraries;
+	LinkedList libraries;
 }MediaLibrary;
 
 /*
@@ -168,5 +165,5 @@ ERROR_CODE mediaLibrary_addLibrary(MediaLibrary*, const LibraryType, const char*
 
 ERROR_CODE __INTERNAL_USE__ _mediaLibrary_createLibraryDirectory(MediaLibrary*, const char*, const uint_fast64_t);
 
-ERROR_CODE __INTERNAL_USE__ _mediaLibrary_updateLibraryFile(MediaLibrary*, const char*, const uint_fast64_t);
+ERROR_CODE __INTERNAL_USE__ _mediaLibrary_updateLibraryFile(MediaLibrary*, const LibraryType, const char*, const uint_fast64_t);
 #endif

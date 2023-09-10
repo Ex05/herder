@@ -2,7 +2,6 @@
 #define MEDIA_LIBRARY_C
 
 #include "mediaLibrary.h"
-#include "util.h"
 
 ERROR_CODE mediaLibrary_init(MediaLibrary* library, PropertyFile* properties){
 	ERROR_CODE error;
@@ -16,9 +15,24 @@ ERROR_CODE mediaLibrary_init(MediaLibrary* library, PropertyFile* properties){
 
 	MEDIA_LIBRARY_MEDIA_LIBRARY_FILE_PATH(library, libraryFilePath);
 
+	// Create a new library file if it does not exist yet.
+	if(!util_fileExists(libraryFilePath)){
+		UTIL_LOG_CONSOLE_(LOG_INFO, "The library file:'%s' does not exit.", libraryFilePath);
+
+		UTIL_LOG_CONSOLE_(LOG_INFO, "Creating empty file:'%s'.", libraryFilePath);
+		if((error = util_createFile(libraryFilePath)) != ERROR_NO_ERROR){
+			return ERROR(error);
+		}
+	}
+
 	// Allocate memory bucket for parsing operation of library file.
 	uint_fast64_t libraryFileSize;
 	if((error = util_getFileSize(libraryFilePath, &libraryFileSize)) != ERROR_NO_ERROR){
+		return ERROR(error);
+	}
+
+	// Exit if library is empty.
+	if(libraryFileSize == 0){
 		return ERROR(error);
 	}
 
@@ -46,13 +60,6 @@ ERROR_CODE mediaLibrary_init(MediaLibrary* library, PropertyFile* properties){
 
 	if((error = util_unMap(bucket, libraryFileSize)) != ERROR_NO_ERROR){
 		return ERROR(error);
-	}
-
-	// Debug: ...
-	if((error = mediaLibrary_addLibrary(library, LIBRARY_TYPE_MOVIE, "Movies HD", strlen("Movies HD"))) != ERROR_NO_ERROR){
-		UTIL_LOG_CONSOLE_(LOG_ERR, "Adding library failed with error:'%s'.", util_toErrorString(error));
-
-		exit(1);
 	}
 
 	return ERROR(error);
@@ -89,29 +96,20 @@ inline ERROR_CODE __INTERNAL_USE__ mediaLibrary_parseLibraryFileContent_(LinkedL
 
 		readOffset += (library->nameLength + 1);
 
-		LINKED_LIST_ADD_PTR(libraries, (&library));
+		LINKED_LIST_ADD_PTR(libraries, &library);
 	}
 
 	return ERROR(ERROR_NO_ERROR);
 }
 
 ERROR_CODE mediaLibrary_addLibrary(MediaLibrary* library, const LibraryType type, const char* name, const uint_fast64_t nameLength){
+	UTIL_LOG_CONSOLE_(LOG_INFO, "Adding library:'%s' to media library.", name);
+
 	// Create Library struct.
 	Library* _library;
 	_mediaLibrary_initLibrary(&_library, type, name, nameLength);
 
-	const uint_fast64_t librarySize = mediaLibrary_getLibrarySize(type);
-
-	// Add Library struct to list of libraries.
-	void* libraries = realloc(library->libraries, library->libraryStructsize + librarySize);
-	// TODO:(jan) Check for 'ENOMEM' to see if the realloc call failed.
-	if(libraries == NULL){
-		return ERROR(ERROR_OUT_OF_MEMORY);
-	}else{
-		library->libraries = libraries;
-	}
-
-	library->libraryStructsize += librarySize;
+	LINKED_LIST_ADD_PTR(&library->libraries, &_library);
 
 	// Sanitize library name.
 	uint_fast64_t sanitizedLibraryNameLength = nameLength;
@@ -124,16 +122,44 @@ ERROR_CODE mediaLibrary_addLibrary(MediaLibrary* library, const LibraryType type
 		return ERROR(error);
 	}
 
-	if((error = _mediaLibrary_updateLibraryFile(library, sanitizedLibraryName, sanitizedLibraryNameLength)) != ERROR_NO_ERROR){
+	if((error = _mediaLibrary_updateLibraryFile(library, type, sanitizedLibraryName, sanitizedLibraryNameLength)) != ERROR_NO_ERROR){
 		return ERROR(error);
 	}
-
-	library->numLibraries += 1;
 
 	return ERROR(ERROR_NO_ERROR);
 }
 
-inline ERROR_CODE __INTERNAL_USE__ _mediaLibrary_updateLibraryFile(MediaLibrary* library, const char* name, const uint_fast64_t nameLength){
+inline ERROR_CODE __INTERNAL_USE__ _mediaLibrary_updateLibraryFile(MediaLibrary* library, const LibraryType type,  const char* name, const uint_fast64_t nameLength){
+	ERROR_CODE error;
+
+	MEDIA_LIBRARY_MEDIA_LIBRARY_FILE_PATH(library, path);
+
+	FILE* file;
+	if((error = util_openFile(path, "a+", &file)) != ERROR_NO_ERROR){
+		return ERROR(error);
+	}
+
+	// LibraryType.
+	uint8_t libraryType = type;
+	if(fwrite(&libraryType, 1, 1, file) != 1){
+		return ERROR_(ERROR_WRITE_ERROR, "%s", "Failed to write library type library file:'%s'.", path);
+	}
+
+	// NameLength.
+	uint8_t _nameLength = nameLength + 1;
+	if(fwrite(&_nameLength, 1, 1, file) != 1){
+		return ERROR_(ERROR_WRITE_ERROR, "%s", "Failed to write library '%s' name length to library file:'%s'.", name, path);
+	}
+
+	// Name.
+	if(fwrite(name, nameLength + 1, 1, file) != 1){
+		return ERROR_(ERROR_WRITE_ERROR, "%s", "Failed to write library '%s' name to library file:'%s'.", name, path);
+	}
+
+	if((error = util_closeFile(file)) != ERROR_NO_ERROR){
+		return ERROR(error);
+	}
+
 	return ERROR(ERROR_NO_ERROR);
 }
 
@@ -269,16 +295,15 @@ inline void mediaLibrary_freeEpisodeInfo(EpisodeInfo* episodeInfo){
 }
 
 inline void mediaLibrary_free(MediaLibrary* library){
-	register int_fast8_t i;
-	register intptr_t readOffsert = 0;
-	for(i = 0; i < library->numLibraries; i++){
-		Library* _library = *(library->libraries + readOffsert);
+	LinkedListIterator it;
+	linkedList_initIterator(&it, &library->libraries);
 
-		MediaLibrary_freeFunction* libraryFreeFunction = mediaLibrary_getLibraryFreeFunction(_library);
+	while(LINKED_LIST_ITERATOR_HAS_NEXT(&it)){
+		Library* library = LINKED_LIST_ITERATOR_NEXT_PTR(&it, Library);
 
-		libraryFreeFunction(_library);
+		MediaLibrary_freeFunction* libraryFreeFunction = mediaLibrary_getLibraryFreeFunction(library);
 
-		readOffsert += mediaLibrary_getLibrarySize(_library->type);
+		libraryFreeFunction(library);
 	}
 }
 

@@ -2,7 +2,6 @@
 #define SERVER_C
 
 // POSIX Version ¢2008
-#include "properties.h"
 #define _XOPEN_SOURCE 700
 
 #define _GNU_SOURCE
@@ -342,6 +341,23 @@ ERROR_CODE server_init(Server* server, char* propertyFileLocation, const int_fas
 	if((error = mediaLibrary_init(&server->mediaLibrary, &server->properties)) != ERROR_NO_ERROR){
 		return ERROR(error);
 	}
+
+	// // Debug: ...
+	// if((error = mediaLibrary_addLibrary(&server->mediaLibrary, LIBRARY_TYPE_MOVIE, "Movies HD", strlen("Movies HD"))) != ERROR_NO_ERROR){
+	// 	UTIL_LOG_CONSOLE_(LOG_ERR, "Adding library failed with error:'%s'.", util_toErrorString(error));
+	// }
+
+	// if((error = mediaLibrary_addLibrary(&server->mediaLibrary, LIBRARY_TYPE_MOVIE, "Movies 3D", strlen("Movies 3D"))) != ERROR_NO_ERROR){
+	// 	UTIL_LOG_CONSOLE_(LOG_ERR, "Adding library failed with error:'%s'.", util_toErrorString(error));
+	// }
+
+	// if((error = mediaLibrary_addLibrary(&server->mediaLibrary, LIBRARY_TYPE_SHOW, "shows", strlen("shows"))) != ERROR_NO_ERROR){
+	// 	UTIL_LOG_CONSOLE_(LOG_ERR, "Adding library failed with error:'%s'.", util_toErrorString(error));
+	// }
+
+	// if((error = mediaLibrary_addLibrary(&server->mediaLibrary, LIBRARY_TYPE_PICTURE, "Images 2020", strlen("Images 2020"))) != ERROR_NO_ERROR){
+	// 	UTIL_LOG_CONSOLE_(LOG_ERR, "Adding library failed with error:'%s'.", util_toErrorString(error));
+	// }
 
 	return ERROR(ERROR_NO_ERROR);
 }
