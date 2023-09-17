@@ -4,6 +4,7 @@
 #include "properties.h"
 
 #include "doublyLinkedList.c"
+#include "util.h"
 
 ERROR_CODE properties_loadFromDisk(PropertyFile* properties, const char* filePath){
 	ERROR_CODE error;
@@ -31,7 +32,13 @@ ERROR_CODE properties_loadFromDisk(PropertyFile* properties, const char* filePat
 	
 	fclose(filePtr);
 
-	return ERROR(properties_parse(properties, (char*) readBuffer, fileSize));
+	if((error = properties_parse(properties, (char*) readBuffer, fileSize)) != ERROR_NO_ERROR){
+		return ERROR(error);
+	}
+
+	free(readBuffer);
+
+	return ERROR(error);
 }
 
 ERROR_CODE _properties_writeToDisk(DoublyLinkedList* properties, FILE* filePtr){
@@ -131,7 +138,7 @@ ERROR_CODE properties_addPropertyFileEntry(PropertyFile* properties, PropertyFil
 	return ERROR(ERROR_NO_ERROR);
 }
 
-inline local void _properties_free(DoublyLinkedList* list){
+inline scope_local void _properties_free(DoublyLinkedList* list){
 	DoublyLinkedListIterator it;
 	doublyLinkedList_initIterator(&it, list);
 
@@ -308,7 +315,7 @@ ERROR_CODE properties_parseLine(PropertyFile* properties, PropertyFileEntry** se
 	return ERROR(_properties_parseProperty(properties, sections, line, lineLength));
 }
 
-inline local ERROR_CODE _properties_get(DoublyLinkedList* list, Property** property, const char* name, const uint_fast64_t nameLength){
+inline scope_local ERROR_CODE _properties_get(DoublyLinkedList* list, Property** property, const char* name, const uint_fast64_t nameLength){
 	DoublyLinkedListIterator it;
 	doublyLinkedList_initIterator(&it, list);
 

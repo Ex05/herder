@@ -2,14 +2,15 @@
 #define THREAD_POOL_TEST_C
 
 #include "../test.c"
+#include <sys/syslog.h>
 
-local uint_fast64_t counter = 0;
+ scope_local uint_fast64_t counter = 0;
 
-local pthread_mutex_t counterLock;
+ scope_local pthread_mutex_t counterLock;
 
-local sem_t threadSync;
+ scope_local sem_t threadSync;
 
-THREAD_POOL_RUNNABLE(test_threadPoolRunner){
+THREAD_POOL_RUNNABLE(test_threadPoolRun){
 	pthread_mutex_lock(&counterLock);
 
 	uint_fast64_t i;
@@ -37,10 +38,10 @@ TEST_TEST_FUNCTION(threadPool_run){
 		return TEST_FAILURE("Failed to initialise 'semaphore'. '%d'", error);
 	}
 
-	threadPool_run(&threadPool, test_threadPoolRunner, NULL);
-	threadPool_run(&threadPool, test_threadPoolRunner, NULL);
-	threadPool_run(&threadPool, test_threadPoolRunner, NULL);
-	threadPool_run(&threadPool, test_threadPoolRunner, NULL);
+	threadPool_run(&threadPool, test_threadPoolRun, NULL);
+	threadPool_run(&threadPool, test_threadPoolRun, NULL);
+	threadPool_run(&threadPool, test_threadPoolRun, NULL);
+	threadPool_run(&threadPool, test_threadPoolRun, NULL);
 
 	uint_fast64_t i;
 	for(i = 4; i > 0; i--){
@@ -55,9 +56,7 @@ TEST_TEST_FUNCTION(threadPool_run){
 
 	sem_destroy(&threadSync);
 
-	void** returnValues = threadPool_free(&threadPool);
-
-	free(returnValues);
+	threadPool_free(&threadPool);
 
 	return TEST_SUCCESS;
 }

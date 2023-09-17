@@ -3,13 +3,13 @@
 
 #include "stringBuilder.h"
 
-ERROR_CODE stringBuilder_append(StringBuilder* b, char* s){
+inline ERROR_CODE stringBuilder_append(StringBuilder* b, char* s){
 	const uint_fast64_t stringLength = strlen(s);
 
 	return stringBuilder_append_s(b, s, stringLength);
 }
 
-ERROR_CODE stringBuilder_append_s(StringBuilder* b, char* s, const uint_fast64_t length){
+inline ERROR_CODE stringBuilder_append_s(StringBuilder* b, char* s, const uint_fast64_t length){
 	if(b->string == NULL){
 		b->string = malloc(sizeof(*b->string) * (length + 1));
 		if(b->string == NULL){
@@ -33,11 +33,11 @@ ERROR_CODE stringBuilder_append_s(StringBuilder* b, char* s, const uint_fast64_t
 	return ERROR(ERROR_NO_ERROR);
 }
 
-ERROR_CODE stringBuilder_appendColor(StringBuilder* b, StringBuilder_TextModifier* modifier, char* s){
+inline ERROR_CODE stringBuilder_appendColor(StringBuilder* b, StringBuilder_TextModifier* modifier, char* s){
 	return stringBuilder_appendColor_s(b, modifier, s, strlen(s));
 }
 
-ERROR_CODE stringBuilder_appendColor_s(StringBuilder* b, StringBuilder_TextModifier* modifier, char* s, uint_fast64_t stringLength){
+inline ERROR_CODE stringBuilder_appendColor_s(StringBuilder* b, StringBuilder_TextModifier* modifier, char* s, uint_fast64_t stringLength){
 #ifdef TRUE_COLOR
 	// Example String: /x1b[38;2;255;0;0;48;2;0;255;1;0;5m
 
@@ -102,7 +102,7 @@ ERROR_CODE stringBuilder_appendColor_s(StringBuilder* b, StringBuilder_TextModif
 	return ERROR(ERROR_NO_ERROR);
 }
 
-ERROR_CODE stringBuilder_append_f(StringBuilder* b, char* format, ...){
+inline ERROR_CODE stringBuilder_append_f(StringBuilder* b, char* format, ...){
 	// Calculate needed buffer length.
 	va_list args;
 	va_start(args, format);
@@ -122,7 +122,7 @@ ERROR_CODE stringBuilder_append_f(StringBuilder* b, char* format, ...){
 	return stringBuilder_append(b, buffer);
 }
 
-ERROR_CODE stringBuilder_appendColor_f(StringBuilder* b, StringBuilder_TextModifier* modifier, char* format, ...){
+inline ERROR_CODE stringBuilder_appendColor_f(StringBuilder* b, StringBuilder_TextModifier* modifier, char* format, ...){
 	// Calculate needed buffer length.
 	va_list args;
 	va_start(args, format);
@@ -142,7 +142,7 @@ ERROR_CODE stringBuilder_appendColor_f(StringBuilder* b, StringBuilder_TextModif
 	return stringBuilder_appendColor(b, modifier, buffer);
 }
 
-void stringBuilder_free(StringBuilder* b){
+inline void stringBuilder_free(StringBuilder* b){
 	free(b->string);
 
 	b->string = NULL;
@@ -153,7 +153,7 @@ inline char* stringBuilder_toString(StringBuilder* b){
 	return b->string;
 }
 
-void stringBuilder_initTextModifier(StringBuilder_TextModifier* textModifier, StringBuilder_Color* foregroundColor, StringBuilder_Color* backgroundColor, const uint_fast64_t numParameters, ...){
+inline void stringBuilder_initTextModifier(StringBuilder_TextModifier* textModifier, StringBuilder_Color* foregroundColor, StringBuilder_Color* backgroundColor, const uint_fast64_t numParameters, ...){
 
 	textModifier->numParameters = numParameters;
 	
@@ -171,7 +171,7 @@ void stringBuilder_initTextModifier(StringBuilder_TextModifier* textModifier, St
 	va_end(args);
 }
 
-void stringBuilder_printColorChart(void){
+inline void stringBuilder_printColorChart(void){
 	StringBuilder b = {0};
 
 	STRING_BUILDER_INIT_SINGLE_COLOR_TEXT_MODIFIER(MAROON);

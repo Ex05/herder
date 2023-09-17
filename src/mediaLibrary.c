@@ -12,7 +12,7 @@ ERROR_CODE mediaLibrary_init(MediaLibrary* library, PropertyFile* properties){
 	PROPERTIES_GET(properties, library->location, MEDIA_LIBRARY_LOCATION);
 	// Library_file_name.
 	PROPERTIES_GET(properties, library->libraryFileName, MEDIA_LIBRARY_LIBRARY_FILE_NAME);
-
+	// Populate library file path based on library location and library file name.
 	MEDIA_LIBRARY_MEDIA_LIBRARY_FILE_PATH(library, libraryFilePath);
 
 	// Create a new library file if it does not exist yet.
@@ -51,16 +51,48 @@ ERROR_CODE mediaLibrary_init(MediaLibrary* library, PropertyFile* properties){
 	linkedList_initIterator(&it, &libraries);
 
 	while(LINKED_LIST_ITERATOR_HAS_NEXT(&it)){
-		Library* library = LINKED_LIST_ITERATOR_NEXT_PTR(&it, Library);
+		Library* libraryFileEntry = LINKED_LIST_ITERATOR_NEXT_PTR(&it, Library);
 
-		UTIL_LOG_CONSOLE_(LOG_DEBUG, "Library: Type:[%d] Name:'%s'", library->type, library->name);
+		UTIL_LOG_CONSOLE_(LOG_DEBUG, "Library: Type:[%d] Name:'%s'", libraryFileEntry->type, libraryFileEntry->name);
 
 		// TODO: Load each libraries media/library file.
+
+		switch (libraryFileEntry->type) {
+                case LIBRARY_TYPE_SHOW:{
+					MediaLibrary_Show* showLibrary = NULL;
+					mediaLibrary_parseShowLibrary(showLibrary);
+				}
+
+                case LIBRARY_TYPE_MOVIE:
+                case LIBRARY_TYPE_AUDIO_ONLY_SHOW:
+                case LIBRARY_TYPE_PODCAST:
+                case LIBRARY_TYPE_AUDIO_BOOK:
+                case LIBRARY_TYPE_BOOK:
+                case LIBRARY_TYPE_PICTURE:
+                case LIBRARY_TYPE_VIDEO:
+                case LIBRARY_TYPE_DOCUMENT:
+
+				default: {
+                    break;
+					}
+                }
+
+                free(libraryFileEntry);
 	}
+
+	linkedList_free(&libraries);
 
 	if((error = util_unMap(bucket, libraryFileSize)) != ERROR_NO_ERROR){
 		return ERROR(error);
 	}
+
+	return ERROR(error);
+}
+
+ERROR_CODE mediaLibrary_parseShowLibrary(MediaLibrary_Show* showLibrary){
+	ERROR_CODE error = ERROR_NO_ERROR;
+
+	// TODO: ...
 
 	return ERROR(error);
 }

@@ -50,7 +50,7 @@ inline ERROR_CODE util_formatNumber(char* s, uint_fast64_t* bufferSize, const in
 	return ERROR(ERROR_NO_ERROR);
 }
 
-local const char* UTIL_ERROR_CODE_MESSAGE_MAPPING_ARRAY[] = {
+ scope_local const char* UTIL_ERROR_CODE_MESSAGE_MAPPING_ARRAY[] = {
 	"ERROR_NO_ERROR",
 	"ERROR_ERROR",
 	"ERROR_OUT_OF_MEMORY",

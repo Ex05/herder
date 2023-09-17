@@ -3,9 +3,9 @@
 
 #include "que.h"
 
-local void que_initQueElement(QueElement*, void*);
+ scope_local void que_initQueElement(QueElement*, void*);
 
-local void que_freeQueElement(QueElement*);
+ scope_local void que_freeQueElement(QueElement*);
 
 inline ERROR_CODE que_enque(Que* que, void* value){
 	if(que->tail == NULL){

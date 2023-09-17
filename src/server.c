@@ -24,7 +24,7 @@
 
 THREAD_POOL_RUNNABLE_(epoll_run, Server, server);
 
-local Server* server;
+ scope_local Server* server;
 
 // main
 #ifdef TEST_BUILD
@@ -75,12 +75,14 @@ local Server* server;
 		goto label_free;
 	}
 	
-	server_start(server);
+	// server_start(server);
 
 label_free:
 	UTIL_LOG_CONSOLE(LOG_INFO, "Shutting down...");
 
 	server_free(server);
+
+	free(server);
 
 label_return:
 	argumentParser_free(&parser);
@@ -232,7 +234,7 @@ ERROR_CODE server_init(Server* server, char* propertyFileLocation, const int_fas
 	sigaddset(&signalMask, SIGUSR1);
 	sigprocmask(SIG_BLOCK, &signalMask, NULL);
 
-	// Register cusotm signal handler.
+	// Register custom signal handler.
 	struct sigaction signalhandler = {0};
 	signalhandler.sa_handler = &server_sigHandler;
 	sigemptyset(&signalhandler.sa_mask);
@@ -913,18 +915,7 @@ ERROR_CODE server_initEpoll(Server* server){
 }
 
 inline void server_free(Server* server){
-	ERROR_CODE** returnValues = (ERROR_CODE**) threadPool_free(&server->epollWorkerThreads);
-
-	if(*returnValues != NULL){
-		uint_fast64_t i;
-		for(i = 0; i < server->epollWorkerThreads.numWorkers; i++){
-			ERROR_CODE* errorCode = (ERROR_CODE*) returnValues[i];
-
-			if(*errorCode != ERROR_NO_ERROR){
-				UTIL_LOG_ERROR_("ERROR: Worker thread[%" PRIuFAST64 "] returned with error code %d (%s).", i, *errorCode, util_toErrorString(*errorCode));
-			}
-		}
-	}
+	threadPool_free(&server->epollWorkerThreads);
 
 	close(server->socketFileDescriptor);
 	close(server->epollAcceptFileDescriptor);
@@ -933,6 +924,20 @@ inline void server_free(Server* server){
 	SSL_CTX_free(server->sslContext);
 
 	sem_destroy(&server->running);
+
+	LinkedListIterator it;
+	linkedList_initIterator(&it, &server->contexts);
+	while(LINKED_LIST_ITERATOR_HAS_NEXT(&it)){
+		Context* context = LINKED_LIST_ITERATOR_NEXT_PTR(&it, Context);
+
+		server_freeContext(context);
+
+		free(context);
+	}
+
+	linkedList_free(&server->contexts);
+
+	properties_free(&server->properties);
 
 	mediaLibrary_free(&server->mediaLibrary);
 

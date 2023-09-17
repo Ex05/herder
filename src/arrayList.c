@@ -1,3 +1,6 @@
+#ifndef ARRAY_LIST_C
+#define ARRAY_LIST_C
+
 #include "arrayList.h"
 
 ARRAY_LIST_EXPAND_FUNCTION(arrayList_defaultExpandFunction){
@@ -7,8 +10,8 @@ ARRAY_LIST_EXPAND_FUNCTION(arrayList_defaultExpandFunction){
 
 uint_fast64_t arrayList_expand(const uint_fast16_t i);
 
-local ERROR_CODE arrayList_expandList(ArrayList*);
-local void arrayList_init_(ArrayList*, const uint_fast64_t, const uint_fast64_t, ArrayList_ExpandFunction);
+ scope_local ERROR_CODE arrayList_expandList(ArrayList*);
+ scope_local void arrayList_init_(ArrayList*, const uint_fast64_t, const uint_fast64_t, ArrayList_ExpandFunction);
 
 inline void arrayList_init_(ArrayList* list, const uint_fast64_t initialSize, const uint_fast64_t stride, ArrayList_ExpandFunction expandFunction){
 	list->length = 0;
@@ -72,3 +75,5 @@ inline int_fast32_t arrayList_iteratorHasNext(ArrayListIterator* it){
 inline void arrayList_free(ArrayList* list){
 	free(list->elements);
 }
+
+#endif

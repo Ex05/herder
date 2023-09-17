@@ -35,7 +35,6 @@
 #include <netdb.h>
 #include <sys/syslog.h>
 #include <math.h>
-#include "constants.h"
 
 #include "resources.h"
 #include "constants.h"
@@ -44,7 +43,7 @@
 	Require an array with atleast 10 elements.
 */
 #define __require static
-#define local static
+#define scope_local static
 #define localPersistent static
 
 #define UTIL_FORMATTED_NUMBER_LENGTH 33
@@ -221,7 +220,7 @@ static ERROR_Supressor global_errorSupressionStruct = {0};
 	static ErrorCallback* errorCallback_ = globbal_errorCallback;
 	#define GLOBAL_ERROR_CALLBACK errorCallback_
 
-local ERROR_CODE util_error(const ERROR_CODE, const char*, const int, char*, ...);
+ scope_local ERROR_CODE util_error(const ERROR_CODE, const char*, const int, char*, ...);
 
 inline ERROR_CODE util_error(const ERROR_CODE error, const char* file, const int line, char* format, ...){
 		char* msg = alloca(sizeof(*msg) * UTIL_MAX_ERROR_MSG_LENGTH);

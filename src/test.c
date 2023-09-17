@@ -1,10 +1,11 @@
-
 #ifndef TEST_C
 #define TEST_C
 
 #include "test.h"
 
 #include "server.c"
+#include "arrayList.c"
+#include "doublyLinkedList.c"
 #include "argumentParser.c"
 #include "que.c"
 #include "stringBuilder.c"

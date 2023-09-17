@@ -402,7 +402,7 @@ HTTP_RequestType http_parseRequestType(const char* const type, const uint_fast64
 	return ret;
 }
 
-local const char* const HTTP_STATUS_MESSAGE_MAPPING_ARRAY[] = {
+ scope_local const char* const HTTP_STATUS_MESSAGE_MAPPING_ARRAY[] = {
 	"Continue",
 	"Switching Protocols",
 	"Processing",
@@ -472,7 +472,7 @@ inline const char* http_getStatusMsg(HTTP_StatusCode statusCode){
 	return HTTP_STATUS_MESSAGE_MAPPING_ARRAY[statusCode];
 }
 
-local const char* HTTP_REQUEST_TYPE_MAPPING_ARRAY[] = {
+ scope_local const char* HTTP_REQUEST_TYPE_MAPPING_ARRAY[] = {
 	"UNKNOWN",
 	"GET",
 	"HEAD",
@@ -489,7 +489,7 @@ inline const char* http_requestTypeToString(HTTP_RequestType requestType){
 	return HTTP_REQUEST_TYPE_MAPPING_ARRAY[requestType];
 }
 
-local const int_fast16_t HTTP_STATUS_CODE_MAPPING_ARRAY[] = {
+ scope_local const int_fast16_t HTTP_STATUS_CODE_MAPPING_ARRAY[] = {
 	100,
 	101,
 	102,
@@ -559,7 +559,7 @@ inline int_fast16_t http_getNumericalStatusCode(HTTP_StatusCode statusCode){
 	return HTTP_STATUS_CODE_MAPPING_ARRAY[statusCode];
 }
 
-local const char* HTTP_VERSION_STRING_MAPPING_ARRAY[] = {
+ scope_local const char* HTTP_VERSION_STRING_MAPPING_ARRAY[] = {
 	"HTTP/1.0",
 	"HTTP/1.1",
 	"HTTP/2.0",
@@ -591,7 +591,7 @@ typedef struct{
 	const uint_fast64_t length;
 }ContentType;
 
-local const char* HTTP_CONTENT_TYPE_MAPPING_ARRAY[] = {
+ scope_local const char* HTTP_CONTENT_TYPE_MAPPING_ARRAY[] = {
 	"text/plain",
 	"image/gif",
 	"image/jpeg",

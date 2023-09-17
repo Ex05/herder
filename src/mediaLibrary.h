@@ -1,7 +1,6 @@
 #ifndef MEDIA_LIBRARY_H
 #define MEDIA_LIBRARY_H
 
-#include "linkedList.h"
 #include "util.h"
 #include "doublyLinkedList.h"
 #include "properties.h"
@@ -105,7 +104,7 @@ TYPE_SHOW:{
 		show_name: (incl. 0 termination);
 		num_seasons: 1 byte;
 
-		seasson:{
+		season:{
 			season_number: 1 byte;
 			num_episodes: 2 bytes;
 			icon_pathLength: 2 bytes; // As defined by PATH_MAX = 4096.
@@ -123,6 +122,21 @@ TYPE_SHOW:{
 
 #define MEDIA_LIBRARY_FREE_FUNCTION(functionName) void functionName(Library* _library)
 typedef MEDIA_LIBRARY_FREE_FUNCTION(MediaLibrary_freeFunction);
+
+#define MEDIA_LIBRARY_LIBRARY_PATH(library, name) uint_fast64_t name ## Length; \
+char* name; \
+do{ \
+	const bool isLibraryFilePathPathDeleimiterTerminated = (library)->location->value[(library)->location->valueLength - 1] == CONSTANTS_FILE_PATH_DIRECTORY_DELIMITER; \
+	name ## Length = (library)->location->valueLength + (isLibraryFilePathPathDeleimiterTerminated ? 0 : 1); \
+	\
+	name = alloca(sizeof(*name) * (name ## Length + 1)); \
+	memcpy(name, (library)->location->value, (library)->location->valueLength); \
+	\
+	if(!isLibraryFilePathPathDeleimiterTerminated){ \
+		name[(library)->location->valueLength] = CONSTANTS_FILE_PATH_DIRECTORY_DELIMITER; \
+	} \
+	name[name ## Length] = '\0'; \
+}while(0);
 
 #define MEDIA_LIBRARY_MEDIA_LIBRARY_FILE_PATH(library, name) uint_fast64_t name ## Length; \
 char* name; \
@@ -166,4 +180,7 @@ ERROR_CODE mediaLibrary_addLibrary(MediaLibrary*, const LibraryType, const char*
 ERROR_CODE __INTERNAL_USE__ _mediaLibrary_createLibraryDirectory(MediaLibrary*, const char*, const uint_fast64_t);
 
 ERROR_CODE __INTERNAL_USE__ _mediaLibrary_updateLibraryFile(MediaLibrary*, const LibraryType, const char*, const uint_fast64_t);
+
+ERROR_CODE mediaLibrary_parseShowLibrary(MediaLibrary_Show*);
+
 #endif

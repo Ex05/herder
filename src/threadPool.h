@@ -43,7 +43,7 @@ typedef struct{
 
 ERROR_CODE threadPool_init(ThreadPool*, const uint_fast16_t);
 
-void** threadPool_free(ThreadPool*);
+void threadPool_free(ThreadPool*);
 
 ERROR_CODE threadPool_run(ThreadPool*, Runnable*, void*);
 

@@ -115,7 +115,7 @@ typedef struct{
 
 typedef PropertyFileEntry Property;
 
-local const Version VERSION = {1, 0, 0};
+ scope_local const Version VERSION = {1, 0, 0};
 
 ERROR_CODE properties_loadFromDisk(PropertyFile*, const char*);
 
@@ -137,12 +137,12 @@ bool properties_propertyExists(PropertyFile*, const char*, const uint_fast64_t);
 
 void properties_free(PropertyFile*);
 
-local ERROR_CODE _properties_parseEmptyLine(PropertyFile*, DoublyLinkedList*, char*, uint_fast64_t);
+ scope_local ERROR_CODE _properties_parseEmptyLine(PropertyFile*, DoublyLinkedList*, char*, uint_fast64_t);
 
-local ERROR_CODE _properties_parseComment(PropertyFile*, DoublyLinkedList*, char*, uint_fast64_t);
+ scope_local ERROR_CODE _properties_parseComment(PropertyFile*, DoublyLinkedList*, char*, uint_fast64_t);
 
-local ERROR_CODE _properties_parseSection(PropertyFile*, DoublyLinkedList*, char*, uint_fast64_t);
+ scope_local ERROR_CODE _properties_parseSection(PropertyFile*, DoublyLinkedList*, char*, uint_fast64_t);
 
-local ERROR_CODE _properties_parseProperty(PropertyFile*, DoublyLinkedList*, char*, uint_fast64_t);
+ scope_local ERROR_CODE _properties_parseProperty(PropertyFile*, DoublyLinkedList*, char*, uint_fast64_t);
 
 #endif
