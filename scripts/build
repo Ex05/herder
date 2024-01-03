@@ -239,7 +239,7 @@ local fileName=$1; local executableName=$2
 
 # printBuildOptions(void)
 printBuildOptions(){
-	printf "Usage 'build <targaet> <optimisation level>'.\n "
+	printf "Usage 'build <target> <optimisation level>'.\n "
 	printf "\tTargets:[test, debug, release], Optimisation level:[0-3] (Release only).\n"
 }
 
