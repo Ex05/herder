@@ -25,6 +25,8 @@ TODO
 
 # Ignore any certificate files.
 res/*.pem
+res/*.crt
+res/*.key-x509
 
 # Ignore user settings.
 res/settings

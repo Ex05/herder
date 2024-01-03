@@ -2,12 +2,9 @@
 #define SERVER_TEST_C
 
 #include "../test.c"
-#include <stdint.h>
-#include <string.h>
-#include <sys/syslog.h>
 
-TEST_TEST_SUIT_CONSTRUCT_FUNCTION(server, server){
-	*server = calloc(1, sizeof(Server));
+TEST_TEST_SUIT_CONSTRUCT_FUNCTION(server, Server, server){
+	*server = calloc(1, sizeof(**server));
 
 	return ERROR(ERROR_NO_ERROR);
 }

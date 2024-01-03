@@ -4,10 +4,11 @@
 #include "test.h"
 
 #include "server.c"
+#include "arrayList.c"
+#include "doublyLinkedList.c"
 #include "argumentParser.c"
 #include "que.c"
 #include "stringBuilder.c"
-#include "stringBuilder.h"
 
 void test_testBegin(void){
 	openlog(TEST_SYSLOG_IDENTIFIER, LOG_CONS | LOG_NDELAY | LOG_PID, LOG_USER);
@@ -179,6 +180,7 @@ void test_test(test_testFunction* func, const char* name){
 #include "test/cache_test.c"
 #include "test/server_test.c"
 #include "test/stringBuilder_test.c"
+#include "test/mediaLibrary_test.c"
 
 // main
 #ifndef TEST_BUILD
@@ -198,6 +200,7 @@ TEST_BEGIN();
 		TEST(linkedList_iteration);
 		TEST(linkedList_remove);
 		TEST(linkedList_contains);
+		TEST(linkedList_addPointer);
 	TEST_SUIT_END();
 
 	TEST_SUIT_BEGIN_(doublyLinkedList);
@@ -231,6 +234,7 @@ TEST_BEGIN();
 		TEST(util_findFirst_s);
 		TEST(util_findLast);
 		TEST(util_replace);
+		TEST(util_replaceAll);
 		TEST(util_trim);
 		TEST(util_toLowerChase);
 		TEST(util_replaceAllChars);
@@ -244,8 +248,9 @@ TEST_BEGIN();
 		TEST(util_stringEndsWith);
 		TEST(util_intToString);
 
-		// File syste.
+		// File system.
 		TEST(util_getBaseDirectory);
+		TEST(util_getTailDirectory);
 		TEST(util_getFileName);
 		TEST(util_renameFile);
 		TEST(util_renameFileRelative);
@@ -297,6 +302,12 @@ TEST_BEGIN();
 		TEST(server_getContextHandler);
 		TEST(server_translateSymbolicFileLocation);
 		TEST(server_translateSymbolicFileLocationErrorPage);
+	TEST_SUIT_END();
+
+	TEST_SUIT_BEGIN("mediaLibrary");
+		TEST(mediaLibrary_getLibraryFreeFunction);
+		TEST(mediaLibrary_parseLibraryFileContent_);
+		TEST(mediaLibrary_sanitizeLibraryString);
 	TEST_SUIT_END();
 
 	TEST_END();

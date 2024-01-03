@@ -3,11 +3,11 @@
 
 #include "../test.c"
 
-TEST_TEST_SUIT_CONSTRUCT_FUNCTION(cache, cache){
-	*cache = malloc(sizeof(Cache));
+TEST_TEST_SUIT_CONSTRUCT_FUNCTION(cache, Cache, cache){
+	*cache = malloc(sizeof(**cache));
 
 	ERROR_CODE error;
-	if((error = cache_init((Cache*) *cache, 1, MB(1))) != ERROR_NO_ERROR){
+	if((error = cache_init(*cache, 1, MB(1))) != ERROR_NO_ERROR){
 		return ERROR(error);
 	}
 

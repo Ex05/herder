@@ -1,11 +1,10 @@
 #ifndef THREAD_POOL_H
 #define THREAD_POOL_H
 
+#include "util.h"
+
 #include <pthread.h>
 #include <semaphore.h>
-#include <stdint.h>
-
-#include "util.h"
 
 #include "que.h"
 
@@ -44,7 +43,7 @@ typedef struct{
 
 ERROR_CODE threadPool_init(ThreadPool*, const uint_fast16_t);
 
-void** threadPool_free(ThreadPool*);
+void threadPool_free(ThreadPool*);
 
 ERROR_CODE threadPool_run(ThreadPool*, Runnable*, void*);
 

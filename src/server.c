@@ -2,11 +2,6 @@
 #define SERVER_C
 
 // POSIX Version ¢2008
-#include "properties.h"
-#include "util.h"
-#include <stdint.h>
-#include <stdio.h>
-#include <sys/syslog.h>
 #define _XOPEN_SOURCE 700
 
 #define _GNU_SOURCE
@@ -25,10 +20,11 @@
 #include "cache.c"
 #include "argumentParser.c"
 #include "stringBuilder.c"
+#include "mediaLibrary.c"
 
 THREAD_POOL_RUNNABLE_(epoll_run, Server, server);
 
-local Server* server;
+ scope_local Server* server;
 
 // main
 #ifdef TEST_BUILD
@@ -79,12 +75,14 @@ local Server* server;
 		goto label_free;
 	}
 	
-	server_start(server);
+	// server_start(server);
 
 label_free:
 	UTIL_LOG_CONSOLE(LOG_INFO, "Shutting down...");
 
 	server_free(server);
+
+	free(server);
 
 label_return:
 	argumentParser_free(&parser);
@@ -185,12 +183,15 @@ http_cache_size = 256\n \
 error_page_cache_size = 4\n \
 // Max architecture independant guaranteed size is 2pow(16) or 65_535 Bytes.\n \
 http_read_buffer_size = 8096\n \
+library_location = \n \
+library_file_name = \n \
 \n \
 # Security\n \
 ssl_privateKeyFile = \n \
 ssl_certificate = \n \
 \n \
 work_directory = \n \
+// Note: Messages that got logged bevor this property was read from disk will be logged using the ID defined by 'CONSTANTS_TMP_SYSTEM_LOG_ID' in 'constants.h'.\
 system_log_id = herder_server";
 
 	ERROR_CODE error;
@@ -213,6 +214,8 @@ ERROR_CODE server_init(Server* server, char* propertyFileLocation, const int_fas
 
 	memset(server, 0, sizeof(Server));
 
+	openlog(CONSTANTS_TMP_SYSTEM_LOG_ID, LOG_PID, LOG_USER);
+
 	UTIL_LOG_CONSOLE(LOG_INFO, "Initialising server...");
 
 	// Check if settings file exists.
@@ -231,7 +234,7 @@ ERROR_CODE server_init(Server* server, char* propertyFileLocation, const int_fas
 	sigaddset(&signalMask, SIGUSR1);
 	sigprocmask(SIG_BLOCK, &signalMask, NULL);
 
-	// Register cusotm signal handler.
+	// Register custom signal handler.
 	struct sigaction signalhandler = {0};
 	signalhandler.sa_handler = &server_sigHandler;
 	sigemptyset(&signalhandler.sa_mask);
@@ -255,6 +258,7 @@ ERROR_CODE server_init(Server* server, char* propertyFileLocation, const int_fas
 	Property* syslogID_Property;
 	PROPERTIES_GET(&server->properties, syslogID_Property, SYSLOG_ID);
 
+	closelog();
 	openlog(syslogID_Property->value, LOG_PID, LOG_USER);
 
 	// Daemonize.
@@ -336,6 +340,27 @@ ERROR_CODE server_init(Server* server, char* propertyFileLocation, const int_fas
 	server_addContext(server, "/img", server_defaultContextHandler);
 	server_addContext(server, "/css", server_defaultContextHandler);
 	
+	if((error = mediaLibrary_init(&server->mediaLibrary, &server->properties)) != ERROR_NO_ERROR){
+		return ERROR(error);
+	}
+
+	// // Debug: ...
+	// if((error = mediaLibrary_addLibrary(&server->mediaLibrary, LIBRARY_TYPE_MOVIE, "Movies HD", strlen("Movies HD"))) != ERROR_NO_ERROR){
+	// 	UTIL_LOG_CONSOLE_(LOG_ERR, "Adding library failed with error:'%s'.", util_toErrorString(error));
+	// }
+
+	// if((error = mediaLibrary_addLibrary(&server->mediaLibrary, LIBRARY_TYPE_MOVIE, "Movies 3D", strlen("Movies 3D"))) != ERROR_NO_ERROR){
+	// 	UTIL_LOG_CONSOLE_(LOG_ERR, "Adding library failed with error:'%s'.", util_toErrorString(error));
+	// }
+
+	// if((error = mediaLibrary_addLibrary(&server->mediaLibrary, LIBRARY_TYPE_SHOW, "shows", strlen("shows"))) != ERROR_NO_ERROR){
+	// 	UTIL_LOG_CONSOLE_(LOG_ERR, "Adding library failed with error:'%s'.", util_toErrorString(error));
+	// }
+
+	// if((error = mediaLibrary_addLibrary(&server->mediaLibrary, LIBRARY_TYPE_PICTURE, "Images 2020", strlen("Images 2020"))) != ERROR_NO_ERROR){
+	// 	UTIL_LOG_CONSOLE_(LOG_ERR, "Adding library failed with error:'%s'.", util_toErrorString(error));
+	// }
+
 	return ERROR(ERROR_NO_ERROR);
 }
 
@@ -751,8 +776,9 @@ ERROR_CODE server_loadProperties(Server* server, char* propertyFileLocation, con
 	INTEGER_PROPERTY_EXISTS(server, EPOLL_EVENT_BUFFER_SIZE);
 	INTEGER_PROPERTY_EXISTS(server, HTTP_CACHE_SIZE);
 	INTEGER_PROPERTY_EXISTS(server, ERROR_PAGE_CACHE_SIZE);
-
 	INTEGER_PROPERTY_EXISTS(server, HTTP_READ_BUFFER_SIZE);
+	DIRECTORY_PROPERTY_EXISTS(server, MEDIA_LIBRARY_LOCATION);
+	PROPERTY_EXISTS(server, MEDIA_LIBRARY_LIBRARY_FILE_NAME);
 	
 	// #Security
 	FILE_PROPERTY_EXISTS(server, SSL_CERTIFICATE_LOCATION);
@@ -828,9 +854,6 @@ ERROR_CODE server_initSSL_Context(Server* server){
 	}
 
 	SSL_CTX_set_min_proto_version(server->sslContext, TLS1_3_VERSION);
-	
-	// Generate certificate.
-	// openssl req -x509 -nodes -days 365 -newkey rsa:2048 -keyout testCertificate.pem -out testCertificate.pem
 
 	if(!util_fileExists(sslCertificateLocation)){
 		UTIL_LOG_CONSOLE_(LOG_INFO, "The SSL certificate file at '%s' does not exist.", sslCertificateLocation);
@@ -892,18 +915,7 @@ ERROR_CODE server_initEpoll(Server* server){
 }
 
 inline void server_free(Server* server){
-	ERROR_CODE** returnValues = (ERROR_CODE**) threadPool_free(&server->epollWorkerThreads);
-
-	if(*returnValues != NULL){
-		uint_fast64_t i;
-		for(i = 0; i < server->epollWorkerThreads.numWorkers; i++){
-			ERROR_CODE* errorCode = (ERROR_CODE*) returnValues[i];
-
-			if(*errorCode != ERROR_NO_ERROR){
-				UTIL_LOG_ERROR_("ERROR: Worker thread[%" PRIuFAST64 "] returned with error code %d (%s).", i, *errorCode, util_toErrorString(*errorCode));
-			}
-		}
-	}
+	threadPool_free(&server->epollWorkerThreads);
 
 	close(server->socketFileDescriptor);
 	close(server->epollAcceptFileDescriptor);
@@ -912,6 +924,22 @@ inline void server_free(Server* server){
 	SSL_CTX_free(server->sslContext);
 
 	sem_destroy(&server->running);
+
+	LinkedListIterator it;
+	linkedList_initIterator(&it, &server->contexts);
+	while(LINKED_LIST_ITERATOR_HAS_NEXT(&it)){
+		Context* context = LINKED_LIST_ITERATOR_NEXT_PTR(&it, Context);
+
+		server_freeContext(context);
+
+		free(context);
+	}
+
+	linkedList_free(&server->contexts);
+
+	properties_free(&server->properties);
+
+	mediaLibrary_free(&server->mediaLibrary);
 
 	closelog();
 }

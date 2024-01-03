@@ -35,7 +35,6 @@
 #include <netdb.h>
 #include <sys/syslog.h>
 #include <math.h>
-#include "constants.h"
 
 #include "resources.h"
 #include "constants.h"
@@ -44,7 +43,7 @@
 	Require an array with atleast 10 elements.
 */
 #define __require static
-#define local static
+#define scope_local static
 #define localPersistent static
 
 #define UTIL_FORMATTED_NUMBER_LENGTH 33
@@ -57,6 +56,8 @@
 
 #define UTIL_FLAG(name, size) uint8_t name:size
 
+#define __INTERNAL_USE__
+
 #define UTIL_INT_TO_STRING_HEAP_ALLOCATED(name, value) char* name; \
 	uint_fast64_t name ## Length; \
 	do{ \
@@ -65,6 +66,14 @@
 	name = alloca(name ## Length); \
 	snprintf(name, name ## Length, "%" PRIdFAST64 "", (int_fast64_t) value); \
 }while(0)
+
+typedef enum{
+	WALK_DIRECTORY_FILTER_NONE = 0,
+	WALK_DIRECTORY_FILTER_DIRECTORIES_ONLY,
+	WALK_DIRECTORY_FILTER_FILES_ONLY,
+}WalkDirectoryFilter;
+
+typedef void* MemoryBucket;
 
 typedef enum{
 	ERROR_NO_ERROR = 0,
@@ -211,7 +220,7 @@ static ERROR_Supressor global_errorSupressionStruct = {0};
 	static ErrorCallback* errorCallback_ = globbal_errorCallback;
 	#define GLOBAL_ERROR_CALLBACK errorCallback_
 
-local ERROR_CODE util_error(const ERROR_CODE, const char*, const int, char*, ...);
+ scope_local ERROR_CODE util_error(const ERROR_CODE, const char*, const int, char*, ...);
 
 inline ERROR_CODE util_error(const ERROR_CODE error, const char* file, const int line, char* format, ...){
 		char* msg = alloca(sizeof(*msg) * UTIL_MAX_ERROR_MSG_LENGTH);
@@ -254,8 +263,8 @@ inline ERROR_CODE util_error(const ERROR_CODE error, const char* file, const int
 			break; \
 		} \
 		case LOG_INFO:{ \
-			STRING_BUILDER_INIT_SINGLE_COLOR_TEXT_MODIFIER(FUCHSIA); \
-			stringBuilder_appendColor_f(&b, FUCHSIA, "Info: " formatString "\n", __VA_ARGS__); \
+			STRING_BUILDER_INIT_SINGLE_COLOR_TEXT_MODIFIER(LEMON_CHIFFON); \
+			stringBuilder_appendColor_f(&b, LEMON_CHIFFON, "Info: " formatString "\n", __VA_ARGS__); \
 			 \
 			break; \
 		} \
@@ -278,8 +287,8 @@ inline ERROR_CODE util_error(const ERROR_CODE error, const char* file, const int
 			break; \
 		} \
 		case LOG_NOTICE:{ \
-			STRING_BUILDER_INIT_SINGLE_COLOR_TEXT_MODIFIER(BLANCHED_ALMOND); \
-			stringBuilder_appendColor_f(&b, BLANCHED_ALMOND, "Notice: " formatString "\n", __VA_ARGS__); \
+			STRING_BUILDER_INIT_SINGLE_COLOR_TEXT_MODIFIER(DODGER_BLUE); \
+			stringBuilder_appendColor_f(&b, DODGER_BLUE, "Notice: " formatString "\n", __VA_ARGS__); \
 			 \
 			break; \
 		} \
@@ -311,9 +320,6 @@ inline ERROR_CODE util_error(const ERROR_CODE error, const char* file, const int
 #define UTIL_ARRAY_LENGTH(array) (sizeof(array) / sizeof(array[0]))
 
 #undef UTIL_MAX_ERROR_MSG_LENGTH
-
-#define UTIL_DIRECTORIES_ONLY 0
-#define UTIL_FILES_ONLY 1
 
 #include "linkedList.h"
 #include "stringBuilder.h"
@@ -358,11 +364,17 @@ char* util_trim(char*, uint_fast64_t*);
 
 void util_printBuffer(void*, uint_fast64_t);
 
+void util_printBufferEnumerated(void*, uint_fast64_t);
+
 void util_replace(char*, const uint_fast64_t, uint_fast64_t*, const char*, const uint_fast64_t, const char*, const uint_fast64_t);
+
+void util_replaceAll(char*, const uint_fast64_t, uint_fast64_t*, const char*, const uint_fast64_t, const char*, const uint_fast64_t);
 
 int_fast32_t util_getNumAvailableProcessorCores(void);
 
 ERROR_CODE util_getBaseDirectory(char**, uint_fast64_t*, char*, uint_fast64_t);
+
+ERROR_CODE util_getTailDirectory(char**, uint_fast64_t*, char*, uint_fast64_t);
 
 ERROR_CODE util_concatenate(char*, const char*, const uint_fast64_t, const char*, const uint_fast64_t);
 
@@ -396,7 +408,9 @@ ERROR_CODE util_renameFileRelative(char*, char*, char*);
 
 ERROR_CODE util_getFileDirectory(char*, char*, const uint_fast64_t);
 
-ERROR_CODE util_walkDirectory(LinkedList*, const char*, bool);
+ERROR_CODE util_listDirectoryContent(LinkedList*, const char*, uint_fast64_t, WalkDirectoryFilter);
+
+ERROR_CODE util_walkDirectory(LinkedList*, const char*, uint_fast64_t, WalkDirectoryFilter);
 
 char* util_getHomeDirectory(void);
 
@@ -411,5 +425,13 @@ ERROR_CODE util_createAllDirectories(const char*, const uint_fast64_t);
 ERROR_CODE util_fileCopy(const char*, const char*);
 
 ERROR_CODE util_getFileSize(const char*, uint_fast64_t*);
+
+ERROR_CODE util_loadFile(const char*, const uint_fast64_t, uint8_t**);
+
+ERROR_CODE util_openFile(const char*, const char*, FILE**);
+
+ERROR_CODE util_closeFile(FILE*);
+
+ERROR_CODE util_createFile(const char*);
 
 #endif

@@ -6,9 +6,9 @@
 // Note:(jan) If the value of an argument points to this flag, then the Argument was present, but had no value assosiatet with it. e.g: ('--help', '-?') as opposed to ("--setImportDirectory '/herder/import'")
 char ARGUMENT_PARSER_ARGUMENT_PRESENT_FLAG = {0};
 
-local ERROR_CODE argumentParser_initArgument(Argument*, const uint_fast8_t);
+ scope_local ERROR_CODE argumentParser_initArgument(Argument*, const uint_fast8_t);
 
-local bool argumentParser_isArgument(const char*);
+ scope_local bool argumentParser_isArgument(const char*);
 
 inline ERROR_CODE argumentParser_init(ArgumentParser* parser){
 	memset(&parser->arguments, 0, sizeof(parser->arguments));

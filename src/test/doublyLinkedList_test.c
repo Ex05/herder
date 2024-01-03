@@ -3,8 +3,8 @@
 
 #include "../test.c"
 
-TEST_TEST_SUIT_CONSTRUCT_FUNCTION(doublyLinkedList, list){
-	*list = calloc(1, sizeof(DoublyLinkedList));
+TEST_TEST_SUIT_CONSTRUCT_FUNCTION(doublyLinkedList, DoublyLinkedList, list){
+	*list = calloc(1, sizeof(**list));
 		
 	if(*list == NULL){
 		return ERROR(ERROR_OUT_OF_MEMORY);

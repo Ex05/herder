@@ -3,6 +3,7 @@
 
 #include "http.h"
 #include "linkedList.h"
+#include "mediaLibrary.h"
 #include "threadPool.h"
 #include "util.h"
 #include "properties.h"
@@ -12,7 +13,6 @@
 #include <netdb.h>
 #include <openssl/crypto.h>
 #include <openssl/ossl_typ.h>
-#include <stdint.h>
 #include <sys/epoll.h>
 #include <sys/socket.h>
 #include <arpa/inet.h>
@@ -20,7 +20,6 @@
 #include <openssl/ssl.h>
 #include <openssl/err.h>
 #include <openssl/tls1.h>
-#include <signal.h>
 
 #define SERVER_SSL_ERROR_STRING_BUFFER_LENGTH 2048
 
@@ -42,6 +41,7 @@ typedef struct {
 	Property* workDirectory;
 	Property* httpRootDirectory;
 	Property* customErrorPageDirectory;
+	MediaLibrary mediaLibrary;
 }Server;
 
 #define SERVER_CONTEXT_HANDLER(functionName) ERROR_CODE functionName(Server* server, HTTP_Request* request, HTTP_Response* response)

@@ -2,9 +2,10 @@
 #define LINKED_LIST_TEST_C
 
 #include "../test.c"
+#include <sys/syslog.h>
 
-TEST_TEST_SUIT_CONSTRUCT_FUNCTION(linkedList, list){
-	*list = calloc(1, sizeof(LinkedList));
+TEST_TEST_SUIT_CONSTRUCT_FUNCTION(linkedList, LinkedList, list){
+	*list = calloc(1, sizeof(**list));
 		
 	if(*list == NULL){
 		return ERROR(ERROR_OUT_OF_MEMORY);
@@ -101,6 +102,34 @@ if(list->length != 4){
 
 	if(list->length != 2){
 		return TEST_FAILURE("Linked list length '%" PRIuFAST64 "' != '%d'.", list->length, 2);
+	}
+
+	return TEST_SUCCESS;
+}
+
+TEST_TEST_FUNCTION_(linkedList_addPointer, LinkedList, list){
+	typedef struct {
+		int a;
+		int b;
+	}Data;
+
+	Data* data = malloc(sizeof(*data));
+	data->a = 10;
+	data->b = 99;
+
+	LINKED_LIST_ADD_PTR(list, &data);
+
+	LinkedListIterator it;
+	linkedList_initIterator(&it, list);
+
+	while(LINKED_LIST_ITERATOR_HAS_NEXT(&it)){
+		Data* data = LINKED_LIST_ITERATOR_NEXT_PTR(&it, Data);
+
+		if(data->a != 10 || data->b != 99){
+			return TEST_FAILURE("Error:'%s'.", "Failed to retrieve struct data.");
+		}
+
+		free(data);
 	}
 
 	return TEST_SUCCESS;

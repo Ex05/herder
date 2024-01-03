@@ -10,15 +10,15 @@
 #define PROPERTY_EXISTS(server, name) Property* property ## name; do{ \
 	ERROR_CODE error; \
 	if((error = properties_get(&server->properties, &property ## name, CONSTANTS_ ## name ## _PROPERTY_NAME, strlen(CONSTANTS_ ## name ## _PROPERTY_NAME))) != ERROR_NO_ERROR){ \
-		UTIL_LOG_CONSOLE_(LOG_INFO, "Server:\t\tProperty '%s' could not be loaded from property file.", CONSTANTS_ ## name ## _PROPERTY_NAME); \
-		UTIL_LOG_CONSOLE(LOG_INFO, "Server:\t\tYou can use '--showSettings' to list all settings entries."); \
+		UTIL_LOG_CONSOLE_(LOG_WARNING, "Property '%s' could not be loaded from property file.", CONSTANTS_ ## name ## _PROPERTY_NAME); \
+		UTIL_LOG_CONSOLE(LOG_NOTICE, "You can use '--showSettings' to list all settings entries."); \
  \
 		return ERROR(error); \
 	} \
  \
 	if(property ## name->valueLength == 0){ \
-		UTIL_LOG_CONSOLE_(LOG_INFO, "Server:\t\tProperty '%s' has not been set.", CONSTANTS_ ## name ## _PROPERTY_NAME); \
-		UTIL_LOG_CONSOLE(LOG_INFO, "Server:\t\tYou can use '--showSettings' to list all settings entries."); \
+		UTIL_LOG_CONSOLE_(LOG_WARNING, "Property '%s' has not been set.", CONSTANTS_ ## name ## _PROPERTY_NAME); \
+		UTIL_LOG_CONSOLE(LOG_NOTICE, "You can use '--showSettings' to list all settings entries."); \
  \
 		return ERROR(ERROR_NO_VALID_ARGUMENT); \
 	} \
@@ -27,8 +27,8 @@
 #define INTEGER_PROPERTY_EXISTS(server, name) PROPERTY_EXISTS(server, name); \
 	int64_t value ## name; do{ \
 	if((error = util_stringToInt(property ## name->value, &value ## name)) != ERROR_NO_ERROR){ \
-		UTIL_LOG_CONSOLE_(LOG_INFO, "Server:\t\tProperty '%s' value '%s' has to be of type 'INTEGER'", CONSTANTS_ ## name ## _PROPERTY_NAME, property ## name->value); \
-		UTIL_LOG_CONSOLE(LOG_INFO, "Server:\t\tYou can use '--showSettings' to list all settings entries."); \
+		UTIL_LOG_CONSOLE_(LOG_WARNING, "Property '%s' value '%s' has to be of type 'INTEGER'", CONSTANTS_ ## name ## _PROPERTY_NAME, property ## name->value); \
+		UTIL_LOG_CONSOLE(LOG_NOTICE, "You can use '--showSettings' to list all settings entries."); \
  \
 		return ERROR(ERRROR_MISSING_PROPERTY); \
 	} \
@@ -36,8 +36,8 @@
 
 #define INTEGER_PROPERTY_OF_RANGE_EXISTS(server, name, min, max) INTEGER_PROPERTY_EXISTS(server, name); do{ \
 	if(value ## name < min || value ## name > max){ \
-		UTIL_LOG_CONSOLE_(LOG_INFO, "Server:\t\tInvalid range for property '%s' value '%s' has to be in range of %d-%d.", CONSTANTS_ ## name ## _PROPERTY_NAME, property ## name->value, min, max); \
-		UTIL_LOG_CONSOLE(LOG_INFO, "Server:\t\tYou can use '--showSettings' to list all settings entries."); \
+		UTIL_LOG_CONSOLE_(LOG_WARNING, "Invalid range for property '%s' value '%s' has to be in range of %d-%d.", CONSTANTS_ ## name ## _PROPERTY_NAME, property ## name->value, min, max); \
+		UTIL_LOG_CONSOLE(LOG_NOTICE, "You can use '--showSettings' to list all settings entries."); \
 		\
 		return ERROR(ERROR_INVALID_VALUE); \
 	} \
@@ -46,8 +46,8 @@
 
 #define BOOLEAN_PROPERTY_EXISTS(server, name) PROPERTY_EXISTS(server, name); do{ \
 	if(strncmp(property ## name->value, "true", 5) != 0 && strncmp(property ## name->value, "false", 6) != 0){ \
-		UTIL_LOG_CONSOLE_(LOG_INFO, "Server:\t\tProperty '%s' value '%s' has to be of type 'BOOLEAN'", CONSTANTS_ ## name ## _PROPERTY_NAME, property ## name->value); \
-		UTIL_LOG_CONSOLE(LOG_INFO, "Server:\t\tYou can use '--showSettings' to list all settings entries."); \
+		UTIL_LOG_CONSOLE_(LOG_WARNING, "Property '%s' value '%s' has to be of type 'BOOLEAN'", CONSTANTS_ ## name ## _PROPERTY_NAME, property ## name->value); \
+		UTIL_LOG_CONSOLE(LOG_NOTICE, "You can use '--showSettings' to list all settings entries."); \
  \
 		return ERROR(ERROR_INVALID_VALUE); \
 	} \
@@ -55,8 +55,8 @@
 
 #define DIRECTORY_PROPERTY_EXISTS(server, name) PROPERTY_EXISTS(server, name); do{ \
 	if(!util_directoryExists(property ## name->value)){ \
-		UTIL_LOG_CONSOLE_(LOG_INFO, "Server:\t\tThe directory reffered to by the property '%s' '%s' does not exist.", CONSTANTS_ ## name ## _PROPERTY_NAME, property ## name->value); \
-		UTIL_LOG_CONSOLE(LOG_INFO, "Server:\t\tYou can use '--showSettings' to list all settings entries."); \
+		UTIL_LOG_CONSOLE_(LOG_WARNING, "The directory referred to by the property '%s' '%s' does not exist.", CONSTANTS_ ## name ## _PROPERTY_NAME, property ## name->value); \
+		UTIL_LOG_CONSOLE(LOG_NOTICE, "You can use '--showSettings' to list all settings entries."); \
  \
 		return ERROR(ERROR_INVALID_VALUE); \
 	} \
@@ -64,8 +64,8 @@
 
 #define FILE_PROPERTY_EXISTS(server, name) PROPERTY_EXISTS(server, name); do{ \
 	if(!util_fileExists(property ## name->value)){ \
-		UTIL_LOG_CONSOLE_(LOG_INFO, "Server:\t\tThe file reffered to by the property '%s' '%s' does not exist.", CONSTANTS_ ## name ## _PROPERTY_NAME, property ## name->value); \
-		UTIL_LOG_CONSOLE(LOG_INFO, "Server:\t\tYou can use '--showSettings' to list all settings entries."); \
+		UTIL_LOG_CONSOLE_(LOG_WARNING, "The file referred to by the property '%s' '%s' does not exist.", CONSTANTS_ ## name ## _PROPERTY_NAME, property ## name->value); \
+		UTIL_LOG_CONSOLE(LOG_NOTICE, "You can use '--showSettings' to list all settings entries."); \
  \
 		return ERROR(ERROR_INVALID_VALUE); \
 	} \
@@ -115,7 +115,7 @@ typedef struct{
 
 typedef PropertyFileEntry Property;
 
-local const Version VERSION = {1, 0, 0};
+ scope_local const Version VERSION = {1, 0, 0};
 
 ERROR_CODE properties_loadFromDisk(PropertyFile*, const char*);
 
@@ -137,12 +137,12 @@ bool properties_propertyExists(PropertyFile*, const char*, const uint_fast64_t);
 
 void properties_free(PropertyFile*);
 
-local ERROR_CODE _properties_parseEmptyLine(PropertyFile*, DoublyLinkedList*, char*, uint_fast64_t);
+ scope_local ERROR_CODE _properties_parseEmptyLine(PropertyFile*, DoublyLinkedList*, char*, uint_fast64_t);
 
-local ERROR_CODE _properties_parseComment(PropertyFile*, DoublyLinkedList*, char*, uint_fast64_t);
+ scope_local ERROR_CODE _properties_parseComment(PropertyFile*, DoublyLinkedList*, char*, uint_fast64_t);
 
-local ERROR_CODE _properties_parseSection(PropertyFile*, DoublyLinkedList*, char*, uint_fast64_t);
+ scope_local ERROR_CODE _properties_parseSection(PropertyFile*, DoublyLinkedList*, char*, uint_fast64_t);
 
-local ERROR_CODE _properties_parseProperty(PropertyFile*, DoublyLinkedList*, char*, uint_fast64_t);
+ scope_local ERROR_CODE _properties_parseProperty(PropertyFile*, DoublyLinkedList*, char*, uint_fast64_t);
 
 #endif

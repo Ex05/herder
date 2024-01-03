@@ -6,7 +6,7 @@
 
 #define TEST_NO_SETUP_FLAG 0x01
 
-#define TEST_TEST_SUIT_CONSTRUCT_FUNCTION(functionName, varName) ERROR_CODE test_testSuitConstruct_##functionName(void** varName)
+#define TEST_TEST_SUIT_CONSTRUCT_FUNCTION(functionName, type, varName) ERROR_CODE test_testSuitConstruct_##functionName(type** varName)
 typedef ERROR_CODE test_TestSuitConstructFunction(void**);
 
 #define TEST_TEST_SUIT_DESTRUCT_FUNCTION(testSuitName, type, varName) ERROR_CODE test_testSuitDestruct_##testSuitName (type* varName)
@@ -20,7 +20,7 @@ typedef TEST_TEST_FUNCTION(testFunction);
 
 #define TEST_BEGIN() test_testBegin()
 
-#define TEST_SUIT_BEGIN_(name) test_testSuitBegin_(# name, test_testSuitConstruct_## name, (ERROR_CODE (*)(void*)) test_testSuitDestruct_## name)
+#define TEST_SUIT_BEGIN_(name) test_testSuitBegin_(# name, (ERROR_CODE (*)(void**)) test_testSuitConstruct_## name, (ERROR_CODE (*)(void*)) test_testSuitDestruct_## name)
 
 #define TEST_SUIT_BEGIN(name) test_testSuitBegin(name)
 

@@ -2,7 +2,6 @@
 #define UTIL_C
 
 #include "util.h"
-#include <ctype.h>
 #include <stdint.h>
 #include <string.h>
 #include <sys/syslog.h>
@@ -51,7 +50,7 @@ inline ERROR_CODE util_formatNumber(char* s, uint_fast64_t* bufferSize, const in
 	return ERROR(ERROR_NO_ERROR);
 }
 
-local const char* UTIL_ERROR_CODE_MESSAGE_MAPPING_ARRAY[] = {
+ scope_local const char* UTIL_ERROR_CODE_MESSAGE_MAPPING_ARRAY[] = {
 	"ERROR_NO_ERROR",
 	"ERROR_ERROR",
 	"ERROR_OUT_OF_MEMORY",
@@ -176,7 +175,6 @@ inline int_fast64_t util_findLast(const char* s, const uint_fast64_t length, con
 
 	return -1;
 }
-
 
 inline uint_fast32_t util_getFileSystemBlockSize(const char* path){
 	struct statvfs stat;
@@ -468,6 +466,36 @@ inline int_fast32_t util_getNumAvailableProcessorCores(void){
 	return sysconf(_SC_NPROCESSORS_ONLN);
 }
 
+inline ERROR_CODE util_getTailDirectory(char** tailDirectory, uint_fast64_t* tailDirectoryLength, char* path, uint_fast64_t pathLength){
+	const bool isPathSeperatorTerminated = (path[pathLength - 1] == CONSTANTS_FILE_PATH_DIRECTORY_DELIMITER);
+	// If path is '/' terminated, we can skip the last two character in the the string. e.g: '/' and '\0'.
+	const int searchOffsetModifier = (isPathSeperatorTerminated ? 2 : 1);
+
+	// Handle '/'.
+	if(pathLength == 1 && isPathSeperatorTerminated){
+		*tailDirectory = path;
+		*tailDirectoryLength = pathLength;
+
+		return ERROR(ERROR_NO_ERROR);
+	}
+
+	const int_fast64_t splitIndex = util_findLast(path, pathLength - searchOffsetModifier, CONSTANTS_FILE_PATH_DIRECTORY_DELIMITER);
+
+	// No directory seperator present/invalid directory path.
+	if(splitIndex == -1){
+		*tailDirectory = path;
+		*tailDirectoryLength = pathLength;
+
+		return ERROR(ERROR_INVALID_STRING);
+	}
+
+	*tailDirectoryLength = (pathLength - searchOffsetModifier) - splitIndex;
+	// To only return the directory name, we skip the leading directory seperator char.
+	*tailDirectory = path + splitIndex + 1;
+
+	return ERROR(ERROR_NO_ERROR);
+}
+
 inline ERROR_CODE util_getBaseDirectory(char** baseDirectory, uint_fast64_t* baseDirectoryLength, char* url, uint_fast64_t urlLength){
 	const int_fast64_t firstSeperator = util_findFirst(url, urlLength, '/');
 
@@ -531,6 +559,38 @@ inline void util_replace(char* buffer, const uint_fast64_t bufferLength, uint_fa
 			*srcStringLength += stringLengthB - stringLengthA;
 
 			searchOffset += writeOffset + stringLengthB;
+		}
+	}
+}
+
+// Note: 'util_replaceAll' uses the same algorithem as 'util_replace' to replace strings, but instead of moving the searchOffset every time a string gets replaced, we restart our search. This means the longer the provided search string the worse the performance. On the other hand this aproach does allow for the detection of strings that get created during repalcement. And thusly can be used to colapse repeated characters. (jan - 2023.09.09)
+inline void util_replaceAll(char* buffer, const uint_fast64_t bufferLength, uint_fast64_t* srcStringLength, const char* a, const uint_fast64_t stringLengthA, const char* b, const uint_fast64_t stringLengthB){
+	const bool shrink = stringLengthB <= stringLengthA;
+
+	int_fast64_t writeOffset = 0;
+	while((writeOffset = util_findFirst_s(buffer, *srcStringLength, a, stringLengthA)) != -1){
+		if(shrink){
+			// Replace string 'a' with 'b'.
+			memcpy(buffer + writeOffset, b, stringLengthB);
+			// Move everything that came behind 'a' to the end of 'b'.
+			memcpy(buffer + writeOffset + stringLengthB, buffer + writeOffset + stringLengthA, *srcStringLength + 1 - writeOffset - stringLengthA);
+
+			// Adjust src string length.
+			*srcStringLength -= stringLengthA - stringLengthB;
+		}else{			
+			const uint_fast64_t copyLength = *srcStringLength + 1 - writeOffset - stringLengthA;
+
+			uint_fast64_t i;
+			for(i = 0; i <= copyLength; i++){
+				const uint_fast64_t srcIndex = writeOffset + (stringLengthB - stringLengthA) + copyLength - i;
+				const uint_fast64_t dstIndex = writeOffset + stringLengthB + copyLength - i;
+
+				buffer[dstIndex] = buffer[srcIndex];
+			}
+
+			memcpy(buffer + writeOffset, b, stringLengthB);
+
+			*srcStringLength += stringLengthB - stringLengthA;
 		}
 	}
 }
@@ -615,6 +675,13 @@ uint_fast64_t i;
 	}
 }
 
+inline void util_printBufferEnumerated(void* buffer, uint_fast64_t length){
+uint_fast64_t i;
+	for(i = 0; i < length; i++){
+		printf("[%lu] %c\n", i, ((char*) buffer)[i]);
+	}
+}
+
 inline char* util_getHomeDirectory(void){
 	#ifdef __linux__
 		char* homeDir = getenv("HOME");
@@ -681,23 +748,34 @@ inline ERROR_CODE util_getFileDirectory(char* dir, char* filePath, const uint_fa
 	return ERROR(ERROR_NO_ERROR);
 }
 
-ERROR_CODE util_walkDirectory(LinkedList* list, const char* directory, bool listItemType){
+ERROR_CODE _util_walkDirectory(LinkedList* list, bool stepIntoChildDir, const char* directory, uint_fast64_t directoryLength, WalkDirectoryFilter filter){
 	ERROR_CODE error = ERROR_NO_ERROR;
 
-	DIR* currentDirectory = opendir(directory);
+	char* dir;
+	if(!util_stringEndsWith(directory, directoryLength, CONSTANTS_FILE_PATH_DIRECTORY_DELIMITER)){
+		dir = alloca(directoryLength + 1/*'/'*/ + 1);
+		strncpy(dir, directory, directoryLength + 1);
+		dir[directoryLength] = '/';
+		dir[directoryLength + 1] = '\0';
+
+		directoryLength += 1;
+	}else{
+		dir = alloca(directoryLength + 1);
+		strncpy(dir, directory, directoryLength + 1);
+	}
+
+	DIR* currentDirectory = opendir(dir);
 	if(currentDirectory == NULL){
 		error = ERROR_FAILED_TO_OPEN_DIRECTORY;
 
 		goto label_closeDir;
 	}
 
-	const uint_fast64_t directoryLength = strlen(directory);
-
 	struct dirent* directoryEntry;
 	while((directoryEntry = readdir(currentDirectory)) != NULL){
-		// Avoid reentering current and parent directory.
 		const uint_fast64_t currentEntryLength = strlen(directoryEntry->d_name);
 
+		// Avoid reentering current and parent directory.
 		const bool selfOrParent = directoryEntry->d_name[0] == '.';
 		if(selfOrParent || (selfOrParent && directoryEntry->d_name[1] == '.')){
 			continue;
@@ -707,29 +785,31 @@ ERROR_CODE util_walkDirectory(LinkedList* list, const char* directory, bool list
 			const uint_fast64_t directoryPathLength = directoryLength + currentEntryLength + 1;
 
 			char* directoryPath;
-			directoryPath = (listItemType == UTIL_DIRECTORIES_ONLY) ? malloc(sizeof(*directoryPath) * (directoryPathLength + 1)) : alloca(sizeof(*directoryPath) * (directoryPathLength + 1));
-			strncpy(directoryPath, directory, directoryLength + 1);
+			directoryPath = (filter == WALK_DIRECTORY_FILTER_DIRECTORIES_ONLY) ? malloc(sizeof(*directoryPath) * (directoryPathLength + 1)) : alloca(sizeof(*directoryPath) * (directoryPathLength + 1));
+			strncpy(directoryPath, dir, directoryLength + 1);
 
 			util_append(directoryPath + directoryLength, directoryPathLength - 1 - directoryLength, directoryEntry->d_name, currentEntryLength);
 			directoryPath[directoryPathLength - 1] = '/';
 			directoryPath[directoryPathLength] = '\0';
 
-			if(listItemType == UTIL_DIRECTORIES_ONLY){
+			if(filter == WALK_DIRECTORY_FILTER_DIRECTORIES_ONLY){
 				if((error = linkedList_add(list, &directoryPath, sizeof(char*))) !=ERROR_NO_ERROR){
 					goto label_closeDir;
 				}
 			}
 
-			if((error = util_walkDirectory(list, directoryPath, listItemType)) != ERROR_NO_ERROR){
-				goto label_closeDir;
+			if(stepIntoChildDir){
+				if((error = util_walkDirectory(list, directoryPath, directoryPathLength, filter)) != ERROR_NO_ERROR){
+					goto label_closeDir;
+				}
 			}
 		}else{
-			if(listItemType == UTIL_FILES_ONLY){
+			if(filter == WALK_DIRECTORY_FILTER_FILES_ONLY){
 				const uint_fast64_t pathLength = directoryLength + currentEntryLength;
 
 				char* path;
 				path = malloc(sizeof(*path) * (pathLength + 1));
-				strncpy(path, directory, directoryLength + 1);
+				strncpy(path, dir, directoryLength + 1);
 
 				util_append(path + directoryLength, pathLength - directoryLength, directoryEntry->d_name, currentEntryLength);
 				path[pathLength] = '\0';
@@ -745,6 +825,14 @@ label_closeDir:
 	closedir(currentDirectory);
 
 	return ERROR(error);
+}
+
+ERROR_CODE util_listDirectoryContent(LinkedList* list, const char* directory, uint_fast64_t directoryLength, WalkDirectoryFilter filter){
+	return ERROR(_util_walkDirectory(list, false, directory, directoryLength, filter));
+}
+
+ERROR_CODE util_walkDirectory(LinkedList* list, const char* directory, uint_fast64_t directoryLength, WalkDirectoryFilter filter){
+	return ERROR(_util_walkDirectory(list, true, directory, directoryLength, filter));
 }
 
 inline ERROR_CODE util_renameFile(char* file, char* newName){
@@ -898,6 +986,52 @@ inline ERROR_CODE util_getFileSize(const char* filePath, uint_fast64_t* fileSize
 	*fileSize = fileInfo.st_size;
 
 	return ERROR(ERROR_NO_ERROR);
+}
+
+inline ERROR_CODE util_loadFile(const char* path, const uint_fast64_t fileSize, uint8_t** buffer){
+	ERROR_CODE error;
+
+	FILE* file;
+	if((error = util_openFile(path, "r", &file)) != ERROR_NO_ERROR){
+		return ERROR(error);
+	}
+
+	if(fread(*buffer, sizeof(uint8_t), fileSize, file) != fileSize){
+		return ERROR(ERROR_FAILED_TO_LOAD_FILE);
+	}
+
+	if((error = util_closeFile(file)) != ERROR_NO_ERROR){
+		return ERROR(error);
+	}
+
+	return ERROR(error);
+}
+
+inline ERROR_CODE util_openFile(const char* path, const char* modes, FILE** file){
+	if((*file = fopen(path, modes)) == NULL){
+		return ERROR(ERROR_FAILED_TO_LOAD_FILE);
+	}
+
+	return ERROR(ERROR_NO_ERROR);
+}
+
+inline ERROR_CODE util_closeFile(FILE* file){
+	if(fclose(file) != 0){
+		return ERROR(ERROR_FAILED_TO_CLOSE_FILE);
+	}
+
+	return ERROR(ERROR_NO_ERROR);
+}
+
+inline ERROR_CODE util_createFile(const char* path){
+	ERROR_CODE error;
+
+	FILE* file;
+	if((error = util_openFile(path, "a", &file)) != ERROR_NO_ERROR){
+		return ERROR(error);
+	}
+
+	return util_closeFile(file);
 }
 
 #endif

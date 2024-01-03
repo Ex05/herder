@@ -5,8 +5,9 @@
 
 #include "que.c"
 #include "util.h"
+#include <sys/syslog.h>
 
-local void* threadPool_threadFunc(void*);
+ scope_local void* threadPool_threadFunc(void*);
 
 inline ERROR_CODE threadPool_init(ThreadPool* threadPool, const uint_fast16_t numWorkers){
 	memset(&threadPool->jobQue, 0, sizeof(threadPool->jobQue));
@@ -54,7 +55,7 @@ inline ERROR_CODE threadPool_init(ThreadPool* threadPool, const uint_fast16_t nu
 	return ERROR(ERROR_NO_ERROR);
 }
 
-inline void** threadPool_free(ThreadPool* threadPool){
+inline void threadPool_free(ThreadPool* threadPool){
 	// Set thread pool status to 'not alive'.
 	sem_post(&threadPool->alive);
 
@@ -64,14 +65,11 @@ inline void** threadPool_free(ThreadPool* threadPool){
 		sem_post(&threadPool->numJobs);
 	}
 
-	void** returnValues = malloc(sizeof(*returnValues) * threadPool->numWorkers);
 	for(i = 0; i < threadPool->numWorkers; i++){
 		void* retVal;
 		pthread_join(threadPool->threads[i], &retVal);
-
-		returnValues[i] = retVal;
 	}
-		
+
 	sem_destroy(&threadPool->numJobs);
 	pthread_mutex_destroy(&threadPool->lock);
 
@@ -81,8 +79,6 @@ inline void** threadPool_free(ThreadPool* threadPool){
 	}
 
 	free(threadPool->threads);
-
-	return returnValues;
 }
 
 ERROR_CODE threadPool_run(ThreadPool* threadPool, Runnable* runnable, void* data){

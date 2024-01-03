@@ -1,8 +1,8 @@
 #ifndef HTTP_H
 #define HTTP_H
 
-#include "properties.h"
 #include "util.h"
+#include "properties.h"
 
 static Version HTTP_HTTP_VERSION_1_0 = {1, 0, 0};
 static Version HTTP_HTTP_VERSION_1_1 = {1, 1, 0};
